@@ -5,8 +5,8 @@ import javafx.scene.image.Image;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Model class representing a PDF document
@@ -20,6 +20,7 @@ public class PDFDocument {
     private int rotation;
     private final List<Annotation> annotations;
     private final Map<String, Image> imageCache;
+    private static final int MAX_CACHE_SIZE = 20; // Cache up to 20 pages
 
     public PDFDocument(PDDocument document, File file) {
         this.document = document;
@@ -29,7 +30,13 @@ public class PDFDocument {
         this.zoomLevel = 1.0;
         this.rotation = 0;
         this.annotations = new ArrayList<>();
-        this.imageCache = new ConcurrentHashMap<>();
+        // Use LinkedHashMap with access order for LRU cache
+        this.imageCache = new LinkedHashMap<>(MAX_CACHE_SIZE, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<String, Image> eldest) {
+                return size() > MAX_CACHE_SIZE;
+            }
+        };
     }
 
     public PDDocument getDocument() {
@@ -60,7 +67,7 @@ public class PDFDocument {
 
     public void setZoomLevel(double zoomLevel) {
         double newZoom = Math.max(0.1, Math.min(5.0, zoomLevel));
-        if (this.zoomLevel != newZoom) {
+        if (Math.abs(this.zoomLevel - newZoom) > 0.001) {
             this.zoomLevel = newZoom;
             clearCache(); // Clear cache when zoom changes
         }
