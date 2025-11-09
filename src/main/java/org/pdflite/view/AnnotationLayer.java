@@ -38,38 +38,11 @@ public class AnnotationLayer extends Canvas {
     public AnnotationLayer(double width, double height) {
         super(width, height);
         setupMouseHandlers();
-        setupDebugListeners(); // Thêm dòng này
-        System.out.println("ANNO_LAYER width=" + width + " height=" + height);
+        logger.debug("AnnotationLayer created: {}x{}", width, height);
     }
 
     public void setScale(double scale) {
         this.scale = scale;
-    }
-
-    private void setupDebugListeners() {
-        // Listener cho kích thước của AnnotationLayer
-        this.widthProperty().addListener((obs, oldVal, newVal) -> {
-            logger.debug("AnnotationLayer width changed from {} to {}", oldVal, newVal);
-        });
-        this.heightProperty().addListener((obs, oldVal, newVal) -> {
-            logger.debug("AnnotationLayer height changed from {} to {}", oldVal, newVal);
-        });
-
-        // Listener cho kích thước thực tế của cửa sổ ứng dụng
-        this.sceneProperty().addListener((obsScene, oldScene, newScene) -> {
-            if (newScene != null) {
-                newScene.windowProperty().addListener((obsWindow, oldWindow, newWindow) -> {
-                    if (newWindow != null) {
-                        newWindow.widthProperty().addListener((obsW, oldW, newW)
-                                -> logger.debug("Application window width changed from {} to {}", oldW, newW)
-                        );
-                        newWindow.heightProperty().addListener((obsH, oldH, newH)
-                                -> logger.debug("Application window height from {} to {}", oldH, newH)
-                        );
-                    }
-                });
-            }
-        });
     }
 
     private void setupMouseHandlers() {
@@ -83,7 +56,6 @@ public class AnnotationLayer extends Canvas {
 
         setOnMouseDragged(event -> {
             if (isDrawing && currentMode == AnnotationMode.HIGHLIGHT) {
-                // Preview the highlight while dragging
                 redraw();
                 GraphicsContext gc = getGraphicsContext2D();
                 gc.setFill(getColorWithAlpha(currentColor, 0.4));
@@ -102,10 +74,8 @@ public class AnnotationLayer extends Canvas {
                         addHighlight(startX, startY, event.getX(), event.getY());
                         break;
                     case DRAW:
-                        // TODO: Implement freehand drawing
                         break;
                     case TEXT:
-                        // TODO: Implement text annotation
                         break;
                 }
                 isDrawing = false;
@@ -120,7 +90,7 @@ public class AnnotationLayer extends Canvas {
         double width = Math.abs(x2 - x1);
         double height = Math.abs(y2 - y1);
 
-        if (width > 5 && height > 5) { // Minimum size threshold
+        if (width > 5 && height > 5) {
             HighlightAnnotation annotation = new HighlightAnnotation(0, x, y, width, height, currentColor);
             annotations.add(annotation);
             logger.debug("Added highlight annotation at ({}, {}) with size {}x{}", x, y, width, height);
@@ -131,7 +101,6 @@ public class AnnotationLayer extends Canvas {
         GraphicsContext gc = getGraphicsContext2D();
         gc.clearRect(0, 0, getWidth(), getHeight());
 
-        // Draw user annotations first
         for (Annotation annotation : annotations) {
             if (annotation instanceof HighlightAnnotation highlight) {
                 gc.setFill(getColorWithAlpha(highlight.getColor(), 0.4));
@@ -140,7 +109,6 @@ public class AnnotationLayer extends Canvas {
             }
         }
 
-        // Draw search highlights on top
         drawSearchHighlights(gc);
     }
 
@@ -178,46 +146,42 @@ public class AnnotationLayer extends Canvas {
         SHAPE
     }
 
-    /**
-     * Set search highlights for this page
-     *
-     * @param results List of search results to highlight
-     */
+    // ==================== SEARCH HIGHLIGHTS ====================
+
     public void setSearchHighlights(List<SearchResult> results) {
         this.searchHighlights.clear();
         if (results != null) {
             this.searchHighlights.addAll(results);
         }
-        redraw(); // ✅ IMPORTANT: Must call redraw
+        redraw();
         logger.debug("Set {} search highlights", searchHighlights.size());
     }
 
-    /**
-     * Set the active (selected) search result
-     *
-     * @param result The active search result
-     */
     public void setActiveSearchResult(SearchResult result) {
+        if (activeSearchResult != null && activeSearchResult.equals(result)) {
+            logger.trace("Active result unchanged: {}", result);
+            return;
+        }
+        
         this.activeSearchResult = result;
-        redraw(); // ✅ IMPORTANT: Must call redraw
-        logger.debug("Set active search result at ({}, {})",
-                result != null ? result.getX() : 0,
-                result != null ? result.getY() : 0);
+        redraw();
+        
+        if (result != null) {
+            logger.debug("Set active search result: page={}, start={}, end={}, pos=({}, {})",
+                    result.getPageNumber(), result.getStartIndex(), result.getEndIndex(),
+                    result.getX(), result.getY());
+        } else {
+            logger.debug("Cleared active search result");
+        }
     }
 
-    /**
-     * Clear all search highlights
-     */
     public void clearSearchHighlights() {
         this.searchHighlights.clear();
         this.activeSearchResult = null;
-        redraw(); // ✅ IMPORTANT: Must call redraw
+        redraw();
         logger.debug("Cleared search highlights");
     }
 
-    /**
-     * Draw search highlights using accurate coordinates from PDFBox
-     */
     private void drawSearchHighlights(GraphicsContext gc) {
         if (searchHighlights.isEmpty()) {
             return;
@@ -225,22 +189,22 @@ public class AnnotationLayer extends Canvas {
 
         gc.save();
 
-        // ✅ Get canvas dimensions (should match rendered PDF page size)
         double canvasWidth = getWidth();
         double canvasHeight = getHeight();
 
-        logger.debug("Drawing on canvas {}x{} with scale={}", canvasWidth, canvasHeight, scale);
+        logger.trace("Drawing {} highlights on canvas {}x{} with scale={}",
+                searchHighlights.size(), canvasWidth, canvasHeight, scale);
+
+        int normalCount = 0;
+        int activeCount = 0;
 
         for (SearchResult result : searchHighlights) {
             if (result.getWidth() <= 0 || result.getHeight() <= 0) {
                 logger.warn("Invalid coordinates for search result: {}", result);
                 continue;
             }
-
-            boolean isActive = (activeSearchResult != null
-                    && result.getPageNumber() == activeSearchResult.getPageNumber()
-                    && result.getStartIndex() == activeSearchResult.getStartIndex()
-                    && result.getEndIndex() == activeSearchResult.getEndIndex());
+            
+            boolean isActive = (activeSearchResult != null && result.equals(activeSearchResult));
 
             Color highlightColor = isActive ? ACTIVE_SEARCH_HIGHLIGHT_COLOR : SEARCH_HIGHLIGHT_COLOR;
             double opacity = isActive ? ACTIVE_SEARCH_HIGHLIGHT_OPACITY : SEARCH_HIGHLIGHT_OPACITY;
@@ -252,14 +216,11 @@ public class AnnotationLayer extends Canvas {
                     opacity
             ));
 
-            // ✅ FIXED: Both PDFBox and JavaFX now use top-left origin
-            // No Y-axis conversion needed!
-            // Coordinates are already in JavaFX coordinate system and scaled
-            double finalscale = this.scale * LOW_RENDER_SCALE;
-            double x = result.getX() * finalscale;
-            double y = result.getY() * finalscale;
-            double width = result.getWidth() * finalscale;
-            double height = result.getHeight() * finalscale;
+            double finalScale = this.scale * LOW_RENDER_SCALE;
+            double x = result.getX() * finalScale;
+            double y = result.getY() * finalScale;
+            double width = result.getWidth() * finalScale;
+            double height = result.getHeight() * finalScale;
 
             gc.fillRect(x, y, width, height);
 
@@ -267,12 +228,21 @@ public class AnnotationLayer extends Canvas {
                 gc.setStroke(Color.DARKORANGE);
                 gc.setLineWidth(2);
                 gc.strokeRect(x, y, width, height);
+                activeCount++;
+                
+                logger.trace("Drew ACTIVE highlight at ({}, {}) size {}x{} - page={}, start={}",
+                        x, y, width, height, result.getPageNumber(), result.getStartIndex());
+            } else {
+                normalCount++;
             }
-
-            logger.trace("Drew highlight at ({}, {}) size {}x{} on canvas {}x{}",
-                    x, y, width, height, canvasWidth, scale);
         }
 
         gc.restore();
+
+        if (activeCount > 1) {
+            logger.warn("⚠️ Multiple active highlights detected! Count: {}", activeCount);
+        }
+        
+        logger.trace("Drew {} normal + {} active highlights", normalCount, activeCount);
     }
 }

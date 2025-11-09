@@ -12,12 +12,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.font.PDFont;
 
-/**
- * Service for searching text in PDF documents with accurate coordinates
- */
 public class SearchService {
 
     private static final Logger logger = LoggerFactory.getLogger(SearchService.class);
@@ -25,9 +20,6 @@ public class SearchService {
 
     private volatile boolean cancelled = false;
 
-    /**
-     * Search for keyword in document with accurate text coordinates
-     */
     public List<SearchResult> searchInDocument(
             PDDocument document,
             String keyword,
@@ -61,9 +53,6 @@ public class SearchService {
         return allResults;
     }
 
-    /**
-     * Search in a single page with coordinate extraction
-     */
     private List<SearchResult> searchInPage(
             PDDocument document,
             int pageIndex,
@@ -72,20 +61,15 @@ public class SearchService {
             boolean caseSensitive,
             boolean wholeWord) throws IOException {
 
-        // Create custom stripper to capture text positions
         CustomTextStripper stripper = new CustomTextStripper(keyword, caseSensitive, wholeWord);
         stripper.setStartPage(pageIndex + 1);
         stripper.setEndPage(pageIndex + 1);
         stripper.setSortByPosition(true);
-
-        // Extract text and capture positions
         StringWriter writer = new StringWriter();
         stripper.writeText(document, writer);
 
-        // Get results with coordinates
         List<SearchResult> results = stripper.getResults();
 
-        // Set page number for all results
         for (SearchResult result : results) {
             // Page number already set in CustomTextStripper
         }
@@ -93,24 +77,15 @@ public class SearchService {
         return results;
     }
 
-    /**
-     * Cancel ongoing search operation
-     */
     public void cancelSearch() {
         cancelled = true;
         logger.info("Search cancellation requested");
     }
 
-    /**
-     * Check if search was cancelled
-     */
     public boolean isCancelled() {
         return cancelled;
     }
 
-    /**
-     * Get context text around a position
-     */
     private String getContext(String text, int position, int length, boolean after) {
         if (text == null || text.isEmpty()) {
             return "";
@@ -125,14 +100,15 @@ public class SearchService {
         }
     }
 
-private class CustomTextStripper extends PDFTextStripper {
+    private class CustomTextStripper extends PDFTextStripper {
+
         private final String keyword;
         private final boolean caseSensitive;
         private final boolean wholeWord;
         private final List<SearchResult> results = new ArrayList<>();
         private int currentPageNumber = 0;
-        private String fullPageText; // To get context
-        private PDPage currentPage; // ✅ To get page dimensions
+        private String fullPageText;
+        private PDPage currentPage;
 
         public CustomTextStripper(String keyword, boolean caseSensitive, boolean wholeWord)
                 throws IOException {
@@ -145,9 +121,8 @@ private class CustomTextStripper extends PDFTextStripper {
         @Override
         protected void startPage(PDPage page) throws IOException {
             super.startPage(page);
-            this.currentPage = page; // ✅ Store current page
+            this.currentPage = page;
             currentPageNumber = getCurrentPageNo();
-            // Extract full text for context fetching later
             PDFTextStripper contextStripper = new PDFTextStripper();
             contextStripper.setStartPage(currentPageNumber);
             contextStripper.setEndPage(currentPageNumber);
@@ -157,10 +132,9 @@ private class CustomTextStripper extends PDFTextStripper {
         @Override
         protected void writeString(String text, List<TextPosition> textPositions) throws IOException {
             String currentText = caseSensitive ? text : text.toLowerCase();
-            
+
             int index = 0;
             while ((index = currentText.indexOf(keyword, index)) != -1) {
-                // Check for whole word match
                 if (wholeWord) {
                     boolean startOk = (index == 0) || !Character.isLetterOrDigit(text.charAt(index - 1));
                     boolean endOk = (index + keyword.length() == text.length()) || !Character.isLetterOrDigit(text.charAt(index + keyword.length()));
@@ -170,27 +144,25 @@ private class CustomTextStripper extends PDFTextStripper {
                     }
                 }
 
-                // Found a match, calculate its precise bounding box
                 BoundingBox bbox = calculateBoundingBoxForMatch(textPositions, index, keyword.length());
                 if (bbox != null) {
                     String matchedText = text.substring(index, index + keyword.length());
-                    
-                    int globalIndex = fullPageText.indexOf(matchedText, 0); 
+
+                    int globalIndex = fullPageText.indexOf(matchedText, 0);
                     String contextBefore = getContext(fullPageText, globalIndex, CONTEXT_LENGTH, false);
                     String contextAfter = getContext(fullPageText, globalIndex + matchedText.length(), CONTEXT_LENGTH, true);
 
-                    // ✅ FIX: Store RAW PDF coordinates, let rendering handle transformation
                     SearchResult result = new SearchResult(
-                        currentPageNumber,
-                        globalIndex, 
-                        globalIndex + matchedText.length(),
-                        matchedText,
-                        contextBefore,
-                        contextAfter,
-                        bbox.x,      // ✅ Raw PDF X (unchanged)
-                        bbox.y,      // ✅ Raw PDF Y (unchanged) 
-                        bbox.width,  // ✅ Raw PDF width
-                        bbox.height  // ✅ Raw PDF height
+                            currentPageNumber,
+                            globalIndex,
+                            globalIndex + matchedText.length(),
+                            matchedText,
+                            contextBefore,
+                            contextAfter,
+                            bbox.x,
+                            bbox.y,
+                            bbox.width,
+                            bbox.height
                     );
                     results.add(result);
                 }
@@ -199,74 +171,54 @@ private class CustomTextStripper extends PDFTextStripper {
             super.writeString(text, textPositions);
         }
 
-        /**
-         * ✅ REWRITTEN: Calculates the precise bounding box of a match that may span
-         * multiple TextPosition objects.
-         */
-        // Trong file: SearchService.java
-// Bắt buộc phải thêm "throws IOException"
-// Trong file: SearchService.java
-// KHÔNG cần "throws IOException" nữa
+        private BoundingBox calculateBoundingBoxForMatch(List<TextPosition> textPositions,
+                int matchStartIndex,
+                int matchLength) {
+            if (textPositions.isEmpty()) {
+                return null;
+            }
 
-private BoundingBox calculateBoundingBoxForMatch(List<TextPosition> textPositions, 
-                                                 int matchStartIndex, 
-                                                 int matchLength) {
-    if (textPositions.isEmpty()) {
-        return null;
-    }
+            int matchEndIndex = matchStartIndex + matchLength;
 
-    int matchEndIndex = matchStartIndex + matchLength;
-    
-    float minX = Float.MAX_VALUE;
-    float minY = Float.MAX_VALUE;
-    float maxX = Float.MIN_VALUE;
-    float maxY = Float.MIN_VALUE;
-    boolean matchFound = false;
+            float minX = Float.MAX_VALUE;
+            float minY = Float.MAX_VALUE;
+            float maxX = Float.MIN_VALUE;
+            float maxY = Float.MIN_VALUE;
+            boolean matchFound = false;
 
-    // (Heuristic) Tỷ lệ phần đuôi (descent) so với phần trên (ascent)
-    // Chúng ta đoán rằng đuôi chữ (như 'y') chiếm khoảng 25% chiều cao
-    final float GUESSED_DESCENT_RATIO = 0.25f; 
+            final float DESCENT_RATIO = 0.25f;
+            int charIndex = 0;
+            for (TextPosition textPos : textPositions) {
+                int textPosLen = textPos.getUnicode().length();
+                int textPosEndIndex = charIndex + textPosLen;
 
-    int charIndex = 0;
-    for (TextPosition textPos : textPositions) {
-        int textPosLen = textPos.getUnicode().length();
-        int textPosEndIndex = charIndex + textPosLen;
+                if (Math.max(charIndex, matchStartIndex) < Math.min(textPosEndIndex, matchEndIndex)) {
+                    matchFound = true;
 
-        if (Math.max(charIndex, matchStartIndex) < Math.min(textPosEndIndex, matchEndIndex)) {
-            matchFound = true;
-            
-            float ascent = textPos.getHeight(); // Giả sử đây là chiều cao trên baseline
-            float baseline = textPos.getY();
-            
-            // Tính toán cạnh trên (Giống code gốc của bạn, đã đúng)
-            float topY = baseline - ascent;
-            
-            // ✅ SỬA LỖI: Tính cạnh dưới
-            // Thêm một phần padding bằng 25% chiều cao để bao trọn đuôi chữ
-            float bottomY = baseline + (ascent * GUESSED_DESCENT_RATIO); 
+                    float ascent = textPos.getHeight();
+                    float baseline = textPos.getY();
+                    float topY = baseline - ascent;
+                    float bottomY = baseline + (ascent * DESCENT_RATIO);
 
-            minX = Math.min(minX, textPos.getX());
-            maxX = Math.max(maxX, textPos.getX() + textPos.getWidth());
-            
-            // Cập nhật Y với logic mới
-            minY = Math.min(minY, topY);
-            maxY = Math.max(maxY, bottomY);
+                    minX = Math.min(minX, textPos.getX());
+                    maxX = Math.max(maxX, textPos.getX() + textPos.getWidth());
+
+                    // Cập nhật Y với logic mới
+                    minY = Math.min(minY, topY);
+                    maxY = Math.max(maxY, bottomY);
+                }
+
+                charIndex = textPosEndIndex;
+            }
+
+            if (!matchFound) {
+                return null;
+            }
+
+            return new BoundingBox(minX, minY, maxX - minX, maxY - minY);
         }
-        
-        charIndex = textPosEndIndex;
-    }
 
-    if (!matchFound) {
-        return null;
-    }
-
-    return new BoundingBox(minX, minY, maxX - minX, maxY - minY);
-}
-        /**
-         * Check if match is a whole word
-         */
         private boolean isWholeWord(String text, int start, int length) {
-            // Check character before
             if (start > 0) {
                 char before = text.charAt(start - 1);
                 if (Character.isLetterOrDigit(before)) {
@@ -274,7 +226,6 @@ private BoundingBox calculateBoundingBoxForMatch(List<TextPosition> textPosition
                 }
             }
 
-            // Check character after
             int end = start + length;
             if (end < text.length()) {
                 char after = text.charAt(end);
@@ -290,9 +241,6 @@ private BoundingBox calculateBoundingBoxForMatch(List<TextPosition> textPosition
             return results;
         }
 
-        /**
-         * Simple bounding box container
-         */
         private static class BoundingBox {
 
             final float x, y, width, height;

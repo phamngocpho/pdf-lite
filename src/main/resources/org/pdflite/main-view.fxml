@@ -19,9 +19,7 @@
                 </Menu>
                 
                 <Menu text="Edit">
-                    <MenuItem text="Find (Float)..." onAction="#handleSearch" accelerator="Ctrl+F"/>
-                    <MenuItem text="Find (Left Panel)" onAction="#handleSearchLeft" accelerator="Ctrl+Shift+L"/>
-                    <MenuItem text="Find (Right Panel)" onAction="#handleSearchRight" accelerator="Ctrl+Shift+R"/>
+                    <MenuItem text="Find..." onAction="#handleSearch" accelerator="Ctrl+F"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Hide Search Panel" onAction="#handleHideSearch" accelerator="Escape"/>
                 </Menu>
@@ -64,9 +62,9 @@
                         <Tooltip text="Search in document"/>
                     </tooltip>
                     <items>
-                        <MenuItem text="Float Dialog (Ctrl+F)" onAction="#handleSearch"/>
-                        <MenuItem text="Left Panel (Ctrl+Shift+L)" onAction="#handleSearchLeft"/>
-                        <MenuItem text="Right Panel (Ctrl+Shift+R)" onAction="#handleSearchRight"/>
+                        <MenuItem text="Float" onAction="#handleSearch"/>
+                        <MenuItem text="Left" onAction="#handleSearchLeft"/>
+                        <MenuItem text="Right" onAction="#handleSearchRight"/>
                     </items>
                 </MenuButton>
                 
