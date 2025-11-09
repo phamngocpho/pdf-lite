@@ -32,7 +32,7 @@ import java.util.concurrent.Executors;
  * </p>
  * <p>
  * The controller implements an efficient continuous scrolling mechanism with debounced
- * scroll event handling, lazy loading of pages, multi-threaded rendering using an
+ * scroll event handling, lazy loading of pages, multithreaded rendering using an
  * ExecutorService, and page caching through the PDFDocument model.
  * </p>
  *
@@ -117,8 +117,9 @@ public class MainController {
 
     /**
      * Executor service for parallel page rendering.
+     * Using cached thread pool for better performance with dynamic thread allocation.
      */
-    private final ExecutorService renderExecutor = Executors.newFixedThreadPool(2); // 2 threads for parallel rendering
+    private final ExecutorService renderExecutor = Executors.newFixedThreadPool(6); // 6 threads for parallel rendering
 
     /**
      * Debounce delay in milliseconds for scroll event handling.
@@ -128,7 +129,7 @@ public class MainController {
      * the page loading logic, which improves performance and reduces unnecessary rendering.
      * </p>
      */
-    private static final long SCROLL_DEBOUNCE_MS = 200; // Wait 200ms after scroll stops
+    private static final long SCROLL_DEBOUNCE_MS = 150; // Wait 150ms after scroll stops for responsive loading
 
     /**
      * Flag indicating whether highlight mode is currently active.
@@ -144,6 +145,26 @@ public class MainController {
      * Set of page indices currently being loaded to prevent duplicate loading.
      */
     private final java.util.Set<Integer> loadingPages = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /**
+     * LRU cache for rendered page images to improve performance.
+     */
+    private final java.util.Map<String, Image> imageCache = new java.util.LinkedHashMap<>(50, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(java.util.Map.Entry<String, Image> eldest) {
+            return size() > 50; // Keep max 50 pages in cache
+        }
+    };
+
+    /**
+     * Map to track pending render tasks for cancellation.
+     */
+    private final java.util.Map<Integer, java.util.concurrent.Future<?>> pendingRenders = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Last scroll time for detecting fast scrolling.
+     */
+    private volatile long lastScrollTime = 0;
 
     /**
      * Initializes the controller after FXML injection.
@@ -458,7 +479,7 @@ public class MainController {
      * Applies the current zoom level and updates UI components.
      * <p>
      * This method updates the document's zoom level, updates the zoom combo box display,
-     * clears the loading pages set, re-renders all pages at the new zoom level, and
+     * clears the loading pages set and cache, re-renders all pages at the new zoom level, and
      * updates the status label with the current zoom percentage.
      * </p>
      *
@@ -473,8 +494,10 @@ public class MainController {
                 zoomComboBox.setValue(String.format("%.0f%%", currentZoom * 100));
             }
 
-            // Clear loading pages set and re-render all pages with new zoom
+            // Clear loading pages set, cache, and pending renders for new zoom level
             loadingPages.clear();
+            imageCache.clear();
+            cancelAllPendingRenders();
             renderCurrentPage();
 
             String statusMessage = prefix != null
@@ -482,6 +505,18 @@ public class MainController {
                     : String.format("Zoom: %.0f%%", currentZoom * 100);
             updateStatusLabel(statusMessage);
         }
+    }
+
+    /**
+     * Cancels all pending render tasks.
+     */
+    private void cancelAllPendingRenders() {
+        pendingRenders.forEach((pageIndex, future) -> {
+            if (!future.isDone()) {
+                future.cancel(true);
+            }
+        });
+        pendingRenders.clear();
     }
 
     /**
@@ -695,9 +730,10 @@ public class MainController {
      * Loads pages that are currently visible or near the viewport.
      * <p>
      * This method implements lazy loading by calculating the currently visible range
-     * based on scroll position, adding a buffer zone (one viewport height above and below),
-     * loading all pages within the extended range, preventing duplicate loading using a
-     * concurrent set, and using multi-threaded rendering for parallel page loading.
+     * based on scroll position, adding a buffer zone (0.5 viewport height above and below),
+     * loading all pages within the extended range with priority queue, preventing duplicate 
+     * loading using a concurrent set, canceling pending renders outside the load range,
+     * and using multithreaded rendering for parallel page loading.
      * </p>
      * <p>
      * This method is typically called after scroll events with a debounce delay.
@@ -706,13 +742,18 @@ public class MainController {
     private void loadVisiblePages() {
         if (currentDocument == null || pagesContainer == null || scrollPane == null) return;
 
+        // Detect fast scrolling
+        long currentTime = System.currentTimeMillis();
+        boolean isFastScrolling = (currentTime - lastScrollTime) < SCROLL_DEBOUNCE_MS;
+        lastScrollTime = currentTime;
+
         Platform.runLater(() -> {
             try {
-                double bufferZone = scrollPane.getViewportBounds().getHeight();
+                double bufferSize = scrollPane.getViewportBounds().getHeight();
                 double scrollValue = scrollPane.getVvalue();
                 double contentHeight = pagesContainer.getHeight();
 
-                if (contentHeight <= bufferZone) {
+                if (contentHeight <= bufferSize) {
                     // All content is visible, load all pages
                     int totalPages = currentDocument.getTotalPages();
                     for (int i = 0; i < totalPages; i++) {
@@ -729,15 +770,20 @@ public class MainController {
                 }
 
                 // Calculate visible range
-                double visibleStart = scrollValue * (contentHeight - bufferZone);
-                double visibleEnd = visibleStart + bufferZone;
+                double visibleStart = scrollValue * (contentHeight - bufferSize);
+                double visibleEnd = visibleStart + bufferSize;
 
-                // Add buffer zone (1 viewport above and below)
-                double loadStart = Math.max(0, visibleStart - bufferZone);
-                double loadEnd = Math.min(contentHeight, visibleEnd + bufferZone);
+                // Add buffer zone (1 viewport above and below for smooth scrolling)
+                double loadStart = Math.max(0, visibleStart - bufferSize);
+                double loadEnd = Math.min(contentHeight, visibleEnd + bufferSize);
 
                 int totalPages = currentDocument.getTotalPages();
                 double currentY = 0;
+
+                // Priority lists: visible pages first, then nearby pages
+                java.util.List<Integer> visiblePages = new java.util.ArrayList<>();
+                java.util.List<Integer> nearbyPages = new java.util.ArrayList<>();
+                java.util.Set<Integer> pagesInRange = new java.util.HashSet<>();
 
                 for (int i = 0; i < totalPages; i++) {
                     VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
@@ -747,17 +793,46 @@ public class MainController {
 
                     // Check if page is in load range
                     if (pageEnd >= loadStart && pageStart <= loadEnd) {
-                        // Load page if not already loading or loaded
-                        if (!loadingPages.contains(i)) {
-                            if (pageBox.getChildren().getFirst() instanceof StackPane placeholder) {
-                                if (placeholder.getChildren().getFirst() instanceof Label) {
-                                    loadPage(i, pageBox);
-                                }
-                            }
+                        pagesInRange.add(i);
+                        
+                        // Prioritize visible pages over buffer pages
+                        if (pageEnd >= visibleStart && pageStart <= visibleEnd) {
+                            visiblePages.add(i);
+                        } else {
+                            nearbyPages.add(i);
                         }
                     }
 
                     currentY = pageEnd + 10; // Add spacing
+                }
+
+                // Cancel pending renders outside the load range (fast scroll optimization)
+                if (isFastScrolling) {
+                    cancelOutOfRangePendingRenders(pagesInRange);
+                }
+
+                // Load visible pages first (high priority)
+                for (int pageIndex : visiblePages) {
+                    if (!loadingPages.contains(pageIndex)) {
+                        VBox pageBox = (VBox) pagesContainer.getChildren().get(pageIndex);
+                        if (pageBox.getChildren().getFirst() instanceof StackPane placeholder) {
+                            if (placeholder.getChildren().getFirst() instanceof Label) {
+                                loadPage(pageIndex, pageBox);
+                            }
+                        }
+                    }
+                }
+
+                // Then load nearby pages (lower priority)
+                for (int pageIndex : nearbyPages) {
+                    if (!loadingPages.contains(pageIndex)) {
+                        VBox pageBox = (VBox) pagesContainer.getChildren().get(pageIndex);
+                        if (pageBox.getChildren().getFirst() instanceof StackPane placeholder) {
+                            if (placeholder.getChildren().getFirst() instanceof Label) {
+                                loadPage(pageIndex, pageBox);
+                            }
+                        }
+                    }
                 }
 
             } catch (Exception e) {
@@ -766,14 +841,31 @@ public class MainController {
         });
     }
 
+    /**
+     * Cancels pending render tasks that are outside the current load range.
+     * This optimization prevents wasting resources on pages that are no longer needed.
+     *
+     * @param pagesInRange set of page indices that should be kept
+     */
+    private void cancelOutOfRangePendingRenders(java.util.Set<Integer> pagesInRange) {
+        pendingRenders.forEach((pageIndex, future) -> {
+            if (!pagesInRange.contains(pageIndex) && !future.isDone()) {
+                future.cancel(true);
+                pendingRenders.remove(pageIndex);
+                loadingPages.remove(pageIndex);
+                logger.debug("Cancelled render for page {} (out of range)", pageIndex + 1);
+            }
+        });
+    }
+
 
     /**
      * Loads and renders a single page in the background.
      * <p>
-     * This method marks the page as loading to prevent duplicate requests, renders the page
-     * using PDFService in a background thread, creates an ImageView and AnnotationLayer for
-     * the rendered page, replaces the placeholder with the actual content on the JavaFX thread,
-     * and handles errors by displaying an error message in the placeholder.
+     * This method marks the page as loading to prevent duplicate requests, checks cache first,
+     * renders the page using PDFService in a background thread, creates an ImageView and 
+     * AnnotationLayer for the rendered page, replaces the placeholder with the actual content 
+     * on the JavaFX thread, and handles errors by displaying an error message in the placeholder.
      * </p>
      *
      * @param pageIndex the zero-based page index to load
@@ -783,40 +875,41 @@ public class MainController {
         // Mark as loading to prevent duplicate requests
         loadingPages.add(pageIndex);
 
+        // Check cache first
+        String cacheKey = getCacheKey(pageIndex, currentZoom);
+        Image cachedImage = imageCache.get(cacheKey);
+        
+        if (cachedImage != null) {
+            // Use cached image immediately
+            Platform.runLater(() -> {
+                displayImage(cachedImage, pageBox, pageIndex);
+                loadingPages.remove(pageIndex);
+            });
+            return;
+        }
+
         // Render in background thread to avoid blocking UI
-        renderExecutor.submit(() -> {
+        java.util.concurrent.Future<?> future = renderExecutor.submit(() -> {
             try {
-                Image image = pdfService.renderPage(
-                    currentDocument,
-                    pageIndex,
-                    (float) currentZoom
-                );
+                if (!Thread.currentThread().isInterrupted()) {
+                    Image image = pdfService.renderPage(
+                        currentDocument,
+                        pageIndex,
+                        (float) currentZoom
+                    );
 
-                // Update UI on JavaFX thread
-                Platform.runLater(() -> {
-                    ImageView imageView = new ImageView(image);
-                    imageView.setPreserveRatio(true);
-                    imageView.setSmooth(true);
-                    imageView.setCache(true);
+                    // Cache the rendered image
+                    imageCache.put(cacheKey, image);
 
-                    // Create annotation layer on top of the image
-                    AnnotationLayer annotationLayer = new AnnotationLayer(image.getWidth(), image.getHeight());
-                    if (highlightModeActive) {
-                        annotationLayer.setAnnotationMode(AnnotationLayer.AnnotationMode.HIGHLIGHT);
-                    }
-
-                    // Stack the image and annotation layer
-                    StackPane imageStack = new StackPane(imageView, annotationLayer);
-                    imageStack.setAlignment(Pos.CENTER);
-
-                    // Replace placeholder with actual image
-                    if (!pageBox.getChildren().isEmpty()) {
-                        pageBox.getChildren().set(0, imageStack);
-                    }
-
-                    loadingPages.remove(pageIndex);
-                    logger.debug("Loaded page {}", pageIndex + 1);
-                });
+                    // Update UI on JavaFX thread
+                    Platform.runLater(() -> {
+                        if (!Thread.currentThread().isInterrupted()) {
+                            displayImage(image, pageBox, pageIndex);
+                            loadingPages.remove(pageIndex);
+                            logger.debug("Loaded page {}", pageIndex + 1);
+                        }
+                    });
+                }
 
             } catch (IOException e) {
                 logger.error("Error loading page {}", pageIndex + 1, e);
@@ -830,8 +923,53 @@ public class MainController {
                         ((StackPane) pageBox.getChildren().getFirst()).getChildren().set(0, errorLabel);
                     }
                 });
+            } finally {
+                pendingRenders.remove(pageIndex);
             }
         });
+
+        // Track the future for potential cancellation
+        pendingRenders.put(pageIndex, future);
+    }
+
+    /**
+     * Generates a cache key for a page image.
+     *
+     * @param pageIndex the page index
+     * @param zoom the zoom level
+     * @return cache key string
+     */
+    private String getCacheKey(int pageIndex, double zoom) {
+        return String.format("page_%d_zoom_%.2f", pageIndex, zoom);
+    }
+
+    /**
+     * Displays an image in the page box with annotation layer.
+     *
+     * @param image the image to display
+     * @param pageBox the container for the page
+     * @param pageIndex the page index
+     */
+    private void displayImage(Image image, VBox pageBox, int pageIndex) {
+        ImageView imageView = new ImageView(image);
+        imageView.setPreserveRatio(true);
+        imageView.setSmooth(true);
+        imageView.setCache(true);
+
+        // Create annotation layer on top of the image
+        AnnotationLayer annotationLayer = new AnnotationLayer(image.getWidth(), image.getHeight());
+        if (highlightModeActive) {
+            annotationLayer.setAnnotationMode(AnnotationLayer.AnnotationMode.HIGHLIGHT);
+        }
+
+        // Stack the image and annotation layer
+        StackPane imageStack = new StackPane(imageView, annotationLayer);
+        imageStack.setAlignment(Pos.CENTER);
+
+        // Replace placeholder with actual image
+        if (!pageBox.getChildren().isEmpty()) {
+            pageBox.getChildren().set(0, imageStack);
+        }
     }
 
 

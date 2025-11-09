@@ -4,6 +4,7 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.pdflite.model.PDFDocument;
@@ -69,12 +70,13 @@ public class PDFService {
     }
 
     /**
-     * Renders a specific page of the PDF as a JavaFX Image.
+     * Renders a specific page of the PDF as a JavaFX Image with optimized settings.
      * <p>
-     * This method renders the specified page at the given scale. It first checks
-     * the document's cache for a previously rendered version of the page at the
-     * same scale. If a cached version exists, it is returned immediately. Otherwise,
-     * the page is rendered using Apache PDFBox and the result is cached for future use.
+     * This method renders the specified page at the given scale with RGB image type
+     * for better performance. It first checks the document's cache for a previously 
+     * rendered version of the page at the same scale. If a cached version exists, it is 
+     * returned immediately. Otherwise, the page is rendered using Apache PDFBox and 
+     * the result is cached for future use.
      * </p>
      * <p>
      * The actual DPI used for rendering is calculated as: {@code DEFAULT_DPI * scale}.
@@ -102,11 +104,14 @@ public class PDFService {
             return cachedImage;
         }
 
+        // Create renderer with optimized settings
         PDFRenderer renderer = new PDFRenderer(pdfDoc.getDocument());
         float dpi = DEFAULT_DPI * scale;
 
         logger.debug("Rendering page {} with DPI {}", pageIndex, dpi);
-        BufferedImage bufferedImage = renderer.renderImageWithDPI(pageIndex, dpi);
+        
+        // Render with RGB image type for better performance (no alpha channel overhead)
+        BufferedImage bufferedImage = renderer.renderImageWithDPI(pageIndex, dpi, ImageType.RGB);
 
         Image image = SwingFXUtils.toFXImage(bufferedImage, null);
 
