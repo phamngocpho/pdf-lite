@@ -12,13 +12,54 @@ import java.io.IOException;
 import java.util.Objects;
 
 /**
- * Main Application class for PDF Lite
+ * Main JavaFX Application class for PDF Lite.
+ * <p>
+ * This class is responsible for initializing and starting the PDF Lite application.
+ * It sets up the main window, loads the FXML layout, applies stylesheets, and configures
+ * the application's appearance and behavior.
+ * </p>
+ * <p>
+ * The application provides features for viewing PDF documents with zoom, navigation,
+ * and annotation capabilities.
+ * </p>
+ *
+ * @author PDF Lite Team
+ * @version 1.0.0
+ * @since 1.0.0
+ * @see javafx.application.Application
  */
 public class PDFLiteApplication extends Application {
     private static final Logger logger = LoggerFactory.getLogger(PDFLiteApplication.class);
+
+    /**
+     * Minimum width of the application window in pixels.
+     */
     private static final int MIN_WIDTH = 1000;
+
+    /**
+     * Minimum height of the application window in pixels.
+     */
     private static final int MIN_HEIGHT = 700;
 
+    /**
+     * Starts the PDF Lite application and initializes the main window.
+     * <p>
+     * This method is called by the JavaFX runtime when the application is launched.
+     * It performs the following tasks:
+     * <ul>
+     *   <li>Loads the main FXML layout file</li>
+     *   <li>Creates the main scene with specified dimensions</li>
+     *   <li>Applies the CSS stylesheet</li>
+     *   <li>Sets the window title and size constraints</li>
+     *   <li>Attempts to load and set the application icon</li>
+     *   <li>Displays the main window</li>
+     * </ul>
+     * </p>
+     *
+     * @param stage the primary stage for this application, onto which
+     *              the application scene can be set
+     * @throws IOException if the FXML file cannot be loaded
+     */
     @Override
     public void start(Stage stage) throws IOException {
         logger.info("Starting PDF Lite Application");
