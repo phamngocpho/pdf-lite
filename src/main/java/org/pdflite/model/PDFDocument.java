@@ -15,7 +15,6 @@ public class PDFDocument {
     private final PDDocument document;
     private final File file;
     private int currentPage;
-    private final int totalPages;
     private double zoomLevel;
     private int rotation;
     private final List<Annotation> annotations;
@@ -26,7 +25,6 @@ public class PDFDocument {
         this.document = document;
         this.file = file;
         this.currentPage = 0;
-        this.totalPages = document.getNumberOfPages();
         this.zoomLevel = 1.0;
         this.rotation = 0;
         this.annotations = new ArrayList<>();
@@ -52,13 +50,13 @@ public class PDFDocument {
     }
 
     public void setCurrentPage(int currentPage) {
-        if (currentPage >= 0 && currentPage < totalPages) {
+        if (currentPage >= 0 && currentPage < getTotalPages()) {
             this.currentPage = currentPage;
         }
     }
 
     public int getTotalPages() {
-        return totalPages;
+        return document.getNumberOfPages();
     }
 
     public double getZoomLevel() {

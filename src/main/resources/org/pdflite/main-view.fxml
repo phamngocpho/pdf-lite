@@ -14,6 +14,8 @@
             <MenuBar>
                 <Menu text="File">
                     <MenuItem text="Open PDF..." onAction="#handleOpenPDF"/>
+                    <MenuItem text="Save" onAction="#handleSave"/>
+                    <MenuItem text="Save As..." onAction="#handleSaveAs"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Exit" onAction="#handleExit"/>
                 </Menu>
@@ -22,9 +24,13 @@
                     <MenuItem text="Zoom Out" onAction="#handleZoomOut"/>
                     <MenuItem text="Fit to Width" onAction="#handleFitToWidth"/>
                     <MenuItem text="Fit to Page" onAction="#handleFitToPage"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="Toggle Full Screen" onAction="#handleToggleFullScreen" accelerator="F11"/>
                 </Menu>
                 <Menu text="Tools">
                     <MenuItem text="Highlight" onAction="#handleHighlight"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="Delete Page" onAction="#handleDeletePage"/>
                 </Menu>
                 <Menu text="Help">
                     <MenuItem text="About" onAction="#handleAbout"/>
@@ -32,8 +38,9 @@
             </MenuBar>
 
             <!-- Toolbar -->
-            <ToolBar>
+            <ToolBar fx:id="toolbar">
                 <Button text="Open" onAction="#handleOpenPDF"/>
+                <Button text="Save" onAction="#handleSave"/>
                 <Separator orientation="VERTICAL"/>
                 <Button text="Previous" onAction="#handlePreviousPage"/>
                 <Label text="Page:"/>
@@ -46,6 +53,9 @@
                 <ComboBox fx:id="zoomComboBox" onAction="#handleZoomChange" prefWidth="100"/>
                 <Separator orientation="VERTICAL"/>
                 <Button text="Highlight" onAction="#handleHighlight"/>
+                <Separator orientation="VERTICAL"/>
+                <Button text="Delete Page" onAction="#handleDeletePage"/>
+                <Button text="Full Screen" onAction="#handleToggleFullScreen"/>
             </ToolBar>
         </VBox>
     </top>

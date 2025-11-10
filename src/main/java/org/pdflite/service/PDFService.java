@@ -15,6 +15,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Comparator;
+import java.util.Collection;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * Service class for handling PDF operations
@@ -128,5 +132,73 @@ public class PDFService {
 
         logger.info("Found '{}' on {} page(s)", searchTerm, matchingPages.size());
         return matchingPages;
+    }
+
+    /**
+     * Save the current document to its original file.
+     */
+    public void save(PDFDocument pdfDoc) throws IOException {
+        if (pdfDoc == null || pdfDoc.getDocument() == null || pdfDoc.getFile() == null) {
+            throw new IOException("No document or target file to save.");
+        }
+        pdfDoc.getDocument().save(pdfDoc.getFile());
+        logger.info("Saved PDF to {}", pdfDoc.getFile().getAbsolutePath());
+    }
+
+    /**
+     * Save the current document to a specific path.
+     */
+    public void saveAs(PDFDocument pdfDoc, File targetFile) throws IOException {
+        if (pdfDoc == null || pdfDoc.getDocument() == null || targetFile == null) {
+            throw new IOException("Invalid save parameters.");
+        }
+        // Ensure directory exists
+        Path parent = targetFile.toPath().getParent();
+        if (parent != null && !Files.exists(parent)) {
+            Files.createDirectories(parent);
+        }
+        pdfDoc.getDocument().save(targetFile);
+        logger.info("Saved PDF as {}", targetFile.getAbsolutePath());
+    }
+
+    /**
+     * Delete pages from the PDF document. Indices are 0-based.
+     * Pages are removed in descending order to keep indices stable.
+     */
+    public void deletePages(PDFDocument pdfDoc, Collection<Integer> pageIndices) throws IOException {
+        if (pdfDoc == null || pageIndices == null || pageIndices.isEmpty()) {
+            return;
+        }
+
+        PDDocument doc = pdfDoc.getDocument();
+        int total = doc.getNumberOfPages();
+
+        // Prevent deleting all pages
+        long toDelete = pageIndices.stream()
+                .filter(i -> i >= 0 && i < total)
+                .distinct()
+                .count();
+        if (toDelete >= total) {
+            throw new IllegalArgumentException("Cannot delete all pages of a PDF document.");
+        }
+
+        // Delete in descending order
+        pageIndices.stream()
+                .filter(i -> i >= 0 && i < total)
+                .distinct()
+                .sorted(Comparator.reverseOrder())
+                .forEach(doc::removePage);
+
+        // Clear render cache since page indices/images changed
+        pdfDoc.clearCache();
+
+        // Clamp current page to valid range
+        int newTotal = doc.getNumberOfPages();
+        int current = pdfDoc.getCurrentPage();
+        if (current >= newTotal) {
+            pdfDoc.setCurrentPage(Math.max(0, newTotal - 1));
+        }
+
+        logger.info("Deleted {} page(s). New total pages: {}", toDelete, newTotal);
     }
 }
