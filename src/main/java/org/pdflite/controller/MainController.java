@@ -1,7 +1,10 @@
 package org.pdflite.controller;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.Group;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -9,14 +12,23 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.geometry.Pos;
+import javafx.scene.transform.Scale;
+import javafx.scene.transform.Translate;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import org.apache.pdfbox.pdmodel.PDPage;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
 import org.pdflite.util.Constants;
 import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javafx.animation.Interpolator;
+import javafx.animation.KeyValue;
+import javafx.util.Duration;
+import javafx.scene.control.TextFormatter;
+
 
 import java.io.File;
 import java.io.IOException;
@@ -170,6 +182,10 @@ public class MainController {
         // Setup page navigation
         if (pageNumberField != null) {
             pageNumberField.setOnAction(e -> jumpToPage());
+            pageNumberField.setTextFormatter(new TextFormatter<>(change -> {
+                String next = change.getControlNewText();
+                return next.matches("\\d*") ? change : null;
+            }));
         }
 
         // Setup scroll listener for continuous scrolling
@@ -256,6 +272,23 @@ public class MainController {
             }
         }
     }
+    //Thêm hàm cuộn mượt
+    private void smoothScrollTo(double targetVValue, Duration duration) {
+        if (scrollPane == null) return;
+
+        double start = scrollPane.getVvalue();
+        double target = Math.max(0.0, Math.min(1.0, targetVValue));
+        if (Math.abs(target - start) < 1e-4) return;
+
+        Timeline timeline = new Timeline(
+                new KeyFrame(Duration.ZERO,
+                        new KeyValue(scrollPane.vvalueProperty(), start, Interpolator.EASE_BOTH)),
+                new KeyFrame(duration,
+                        new KeyValue(scrollPane.vvalueProperty(), target, Interpolator.EASE_BOTH))
+        );
+        timeline.play();
+    }
+
 
     /**
      * Handles the "Fit to Page" action.
@@ -468,21 +501,28 @@ public class MainController {
         if (currentDocument != null) {
             currentDocument.setZoomLevel(currentZoom);
 
-            // Update zoom combo box
             if (zoomComboBox != null) {
                 zoomComboBox.setValue(String.format("%.0f%%", currentZoom * 100));
             }
 
-            // Clear loading pages set and re-render all pages with new zoom
-            loadingPages.clear();
-            renderCurrentPage();
+            // 🔁 Chỉ render lại nội dung của từng trang hiện có
+            pagesContainer.getChildren().forEach(node -> {
+                if (node instanceof VBox box) {
+                    int pageIndex = Integer.parseInt(box.getId().replace("page-", ""));
+                    ImageView img = (ImageView) ((StackPane) box.getChildren().get(0)).getChildren().get(0);
+                    try {
+                        Image newImg = pdfService.renderPage(currentDocument, pageIndex, (float) currentZoom);
+                        img.setImage(newImg);
+                    } catch (IOException e) {
+                        logger.error("Error updating page zoom", e);
+                    }
+                }
+            });
 
-            String statusMessage = prefix != null
-                    ? String.format("%s - Zoom: %.0f%%", prefix, currentZoom * 100)
-                    : String.format("Zoom: %.0f%%", currentZoom * 100);
-            updateStatusLabel(statusMessage);
+            updateStatusLabel(String.format("Zoom: %.0f%%", currentZoom * 100));
         }
     }
+
 
     /**
      * Handles the "Previous Page" action.
@@ -609,40 +649,34 @@ public class MainController {
         if (currentDocument == null) return;
 
         try {
-            if (contentPane != null) {
-                contentPane.getChildren().clear();
-
-                // Create container for all pages
+            if (pagesContainer == null) {
                 pagesContainer = new VBox(10);
                 pagesContainer.setAlignment(Pos.TOP_CENTER);
                 pagesContainer.setStyle("-fx-background-color: #808080; -fx-padding: 10;");
-
-                // Create placeholders for all pages
-                int totalPages = currentDocument.getTotalPages();
-
-                // Render first page to get dimensions
-                Image firstPage = pdfService.renderPage(currentDocument, 0, (float) currentZoom);
-                double pageWidth = firstPage.getWidth();
-                double pageHeight = firstPage.getHeight();
-
-                logger.info("Creating continuous scroll view for {} pages", totalPages);
-
-                for (int i = 0; i < totalPages; i++) {
-                    VBox pageBox = createPagePlaceholder(i, pageWidth, pageHeight);
-                    pagesContainer.getChildren().add(pageBox);
-                }
-
                 contentPane.getChildren().add(pagesContainer);
-
-                // Load first few visible pages immediately
-                Platform.runLater(this::loadVisiblePages);
             }
+
+            // 🧹 Thay vì clear toàn bộ contentPane, chỉ xóa bên trong pagesContainer
+            pagesContainer.getChildren().clear();
+
+            int totalPages = currentDocument.getTotalPages();
+            Image firstPage = pdfService.renderPage(currentDocument, 0, (float) currentZoom);
+            double pageWidth = firstPage.getWidth();
+            double pageHeight = firstPage.getHeight();
+
+            for (int i = 0; i < totalPages; i++) {
+                VBox pageBox = createPagePlaceholder(i, pageWidth, pageHeight);
+                pagesContainer.getChildren().add(pageBox);
+            }
+
+            Platform.runLater(this::loadVisiblePages);
 
         } catch (IOException e) {
             logger.error("Error rendering page", e);
             showError("Rendering Error", "Could not render the page: " + e.getMessage());
         }
     }
+
 
     /**
      * Creates a placeholder VBox for a PDF page before it's loaded.
@@ -787,9 +821,9 @@ public class MainController {
         renderExecutor.submit(() -> {
             try {
                 Image image = pdfService.renderPage(
-                    currentDocument,
-                    pageIndex,
-                    (float) currentZoom
+                        currentDocument,
+                        pageIndex,
+                        (float) currentZoom
                 );
 
                 // Update UI on JavaFX thread
@@ -824,7 +858,7 @@ public class MainController {
                 // Keep placeholder with error message
                 Platform.runLater(() -> {
                     if (!pageBox.getChildren().isEmpty() &&
-                        pageBox.getChildren().getFirst() instanceof StackPane) {
+                            pageBox.getChildren().getFirst() instanceof StackPane) {
                         Label errorLabel = new Label("Error loading page");
                         errorLabel.setStyle("-fx-text-fill: red;");
                         ((StackPane) pageBox.getChildren().getFirst()).getChildren().set(0, errorLabel);
@@ -902,23 +936,23 @@ public class MainController {
 
         Platform.runLater(() -> {
             try {
-                int targetPage = currentDocument.getCurrentPage();
-                double currentY = 0;
+                int targetPage = currentDocument.getCurrentPage(); // 0-based hoặc 1-based tùy bạn đang dùng
+                double y = 0;
 
                 for (int i = 0; i < targetPage; i++) {
                     VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
-                    currentY += pageBox.getPrefHeight() + 10; // Add spacing
+                    y += pageBox.getPrefHeight() + 10; // 10 = spacing giữa các trang (điều chỉnh nếu khác)
                 }
 
-                double contentHeight = pagesContainer.getHeight();
+                double contentHeight  = pagesContainer.getHeight();
                 double viewportHeight = scrollPane.getViewportBounds().getHeight();
 
                 if (contentHeight > viewportHeight) {
-                    double scrollPosition = currentY / (contentHeight - viewportHeight);
-                    scrollPane.setVvalue(Math.min(1.0, Math.max(0.0, scrollPosition)));
+                    double targetV = y / (contentHeight - viewportHeight);
+                    smoothScrollTo(targetV, Duration.millis(350)); // 300–400ms là mượt
                 }
-            } catch (Exception e) {
-                logger.error("Error scrolling to page", e);
+            } catch (Exception ex) {
+                // logger.error("Error scrolling to page", ex);
             }
         });
     }
@@ -989,6 +1023,11 @@ public class MainController {
             }
             if (nextButton != null) {
                 nextButton.setDisable(current == total);
+            }
+            if (prevButton != null) prevButton.setMinSize(40, 40);
+            if (nextButton != null) nextButton.setMinSize(40, 40);
+            if (pageNumberField != null) {
+                pageNumberField.setPrefColumnCount(4);
             }
         }
     }
