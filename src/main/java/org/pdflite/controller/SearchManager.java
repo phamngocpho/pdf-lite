@@ -121,7 +121,7 @@ public class SearchManager {
                     // Delay to ensure scroll completes
                     Platform.runLater(() -> {
                         updateAllHighlights();
-                        logger.info("✅ Active result updated on page {}", result.getPageNumber());
+                        logger.info("Active result updated on page {}", result.getPageNumber());
                     });
                 });
             });
@@ -277,7 +277,7 @@ public class SearchManager {
                     layer.setActiveSearchResult(activeResult);
                     activeSetCount++;
                     
-                    logger.debug("✅ Set active result on page {} - {}", 
+                    logger.debug("Set active result on page {} - {}",
                             pageIndex + 1, activeResult);
                 } else {
                     layer.setActiveSearchResult(null);
@@ -291,9 +291,9 @@ public class SearchManager {
         }
 
         if (activeSetCount > 1) {
-            logger.error("⚠️ CRITICAL: Active result set on {} pages! Should be 1!", activeSetCount);
+            logger.error("CRITICAL: Active result set on {} pages! Should be 1!", activeSetCount);
         } else if (activeSetCount == 0 && activeResult != null) {
-            logger.warn("⚠️ Active result not set on any page (page may not be loaded yet)");
+            logger.warn("Active result not set on any page (page may not be loaded yet)");
         }
 
         if (pagesMissing > 0) {
