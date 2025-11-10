@@ -44,11 +44,11 @@
             <ToolBar>
                 <Button text="Open" onAction="#handleOpenPDF"/>
                 <Separator orientation="VERTICAL"/>
-                <Button text="Previous" onAction="#handlePreviousPage"/>
+                <Button fx:id="prevButton" text="Previous" onAction="#handlePreviousPage"/>
                 <Label text="Page:"/>
                 <TextField fx:id="pageNumberField" prefWidth="50" onAction="#handleGoToPage"/>
                 <Label fx:id="totalPagesLabel" text="/ 0"/>
-                <Button text="Next" onAction="#handleNextPage"/>
+                <Button fx:id="nextButton" text="Next" onAction="#handleNextPage"/>
                 <Separator orientation="VERTICAL"/>
                 <Button text="Zoom In" onAction="#handleZoomIn"/>
                 <Button text="Zoom Out" onAction="#handleZoomOut"/>
