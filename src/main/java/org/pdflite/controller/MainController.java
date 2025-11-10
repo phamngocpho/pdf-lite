@@ -38,7 +38,7 @@ import org.pdflite.model.SearchResult;
  * </p>
  * <p>
  * The controller implements an efficient continuous scrolling mechanism with debounced
- * scroll event handling, lazy loading of pages, multi-threaded rendering using an
+ * scroll event handling, lazy loading of pages, multithreaded rendering using an
  * ExecutorService, and page caching through the PDFDocument model.
  * </p>
  *
@@ -121,31 +121,22 @@ public class MainController {
     /**
      * Executor service for parallel page rendering.
      */
-    private final ExecutorService renderExecutor = Executors.newFixedThreadPool(2); // 2 threads for parallel rendering
+    private final ExecutorService renderExecutor = Executors.newFixedThreadPool(6);
 
     /**
-     * Debounce delay in milliseconds for scroll event handling.
-     * <p>
-     * This delay prevents excessive page loading operations during continuous scrolling.
-     * After the user stops scrolling, the system waits this duration before triggering
-     * the page loading logic, which improves performance and reduces unnecessary rendering.
-     * </p>
+     * Page renderer for handling page rendering and caching.
      */
-    private static final long SCROLL_DEBOUNCE_MS = 200; // Wait 200ms after scroll stops
+    private PageRenderer pageRenderer;
+
+    /**
+     * Scroll handler for managing scroll events and lazy loading.
+     */
+    private ScrollHandler scrollHandler;
 
     /**
      * Flag indicating whether highlight mode is currently active.
      */
     private boolean highlightModeActive = false;
-
-    /**
-     * Timer for debouncing scroll events.
-     */
-    private java.util.Timer scrollTimer;
-
-    /**
-     * Set of page indices currently being loaded to prevent duplicate loading.
-     */
     private final java.util.Set<Integer> loadingPages = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private static final long SCROLL_DEBOUNCE_MS = 200;
     private Timer scrollTimer;
@@ -172,6 +163,11 @@ public class MainController {
         logger.info("Initializing MainController");
         pdfService = new PDFService();
 
+        // Initialize page renderer and scroll handler
+        pageRenderer = new PageRenderer(pdfService, renderExecutor);
+        scrollHandler = new ScrollHandler(pageRenderer, scrollPane);
+
+        // Setup zoom combo box if present
         // Create helpers
         navigationHelper = new NavigationHelper(this, pdfService, renderExecutor, loadingPages);
         searchManager = new SearchManager(this, navigationHelper);
@@ -193,21 +189,17 @@ public class MainController {
         // Setup scroll listener
         if (scrollPane != null) {
             scrollPane.vvalueProperty().addListener((obs, oldVal, newVal) -> {
-                if (currentDocument != null && pagesContainer != null) {
-                    if (scrollTimer != null) {
-                        scrollTimer.cancel();
-                    }
-
-                    scrollTimer = new Timer();
-                    scrollTimer.schedule(new TimerTask() {
-                        @Override
-                        public void run() {
-                            loadVisiblePages();
+                scrollHandler.handleScroll();
+                // Update page info after scroll handler processes the scroll
+                Platform.runLater(() -> {
+                    if (currentDocument != null) {
+                        int currentPage = scrollHandler.getCurrentPageFromScroll();
+                        if (currentPage >= 0 && currentPage != currentDocument.getCurrentPage()) {
+                            currentDocument.setCurrentPage(currentPage);
+                            updatePageInfo();
                         }
-                    }, SCROLL_DEBOUNCE_MS);
-
-                    navigationHelper.updateCurrentPageFromScroll();
-                }
+                    }
+                });
             });
         }
 
@@ -393,6 +385,50 @@ public class MainController {
         }
     }
 
+    /**
+     * Enables highlight mode for all annotation layers.
+     */
+    private void enableHighlightMode() {
+        setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.HIGHLIGHT);
+        if (pageRenderer != null) {
+            pageRenderer.setHighlightModeActive(true);
+        }
+    }
+
+    /**
+     * Disables highlight mode for all annotation layers.
+     */
+    private void disableHighlightMode() {
+        setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
+        if (pageRenderer != null) {
+            pageRenderer.setHighlightModeActive(false);
+        }
+    }
+
+    /**
+     * Sets the annotation mode for all page annotation layers.
+     * <p>
+     * This iterates through all pages in the container and updates their
+     * annotation layers to the specified mode.
+     * </p>
+     *
+     * @param mode the annotation mode to set
+     */
+    private void setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode mode) {
+        if (pagesContainer != null) {
+            pagesContainer.getChildren().forEach(node -> {
+                if (node instanceof VBox pageBox) {
+                    pageBox.getChildren().forEach(child -> {
+                        if (child instanceof StackPane stackPane) {
+                            stackPane.getChildren().forEach(stackChild -> {
+                                if (stackChild instanceof AnnotationLayer annotationLayer) {
+                                    annotationLayer.setAnnotationMode(mode);
+                                }
+                            });
+                        }
+                    });
+                }
+            });
     @FXML
     private void handleNextPage() {
         if (currentDocument != null
@@ -492,7 +528,7 @@ public class MainController {
      * Applies the current zoom level and updates UI components.
      * <p>
      * This method updates the document's zoom level, updates the zoom combo box display,
-     * clears the loading pages set, re-renders all pages at the new zoom level, and
+     * clears the loading pages set and cache, re-renders all pages at the new zoom level, and
      * updates the status label with the current zoom percentage.
      * </p>
      *
@@ -520,6 +556,13 @@ public class MainController {
                 searchDialogController.setPDFDocument(currentDocument);
             }
 
+            // Clear cache and pending renders for new zoom level
+            if (pageRenderer != null) {
+                pageRenderer.clearCache();
+                pageRenderer.cancelAllPendingRenders();
+                pageRenderer.setZoom(currentZoom);
+            }
+            renderCurrentPage();
             searchDialogStage.show();
             searchDialogStage.toFront();
 
@@ -573,7 +616,6 @@ public class MainController {
         }
     }
 
-    // ==================== HELP ====================
 
     /**
      * Handles the "Previous Page" action.
@@ -669,6 +711,11 @@ public class MainController {
 
             currentDocument.setZoomLevel(currentZoom);
 
+            // Update renderer and scroll handler with new document
+            if (pageRenderer != null) {
+                pageRenderer.setDocument(currentDocument, currentZoom);
+            }
+
             // Update UI
             updateUIState(true);
             renderCurrentPage();
@@ -714,12 +761,21 @@ public class MainController {
                 logger.info("Creating continuous scroll view for {} pages", totalPages);
 
                 for (int i = 0; i < totalPages; i++) {
-                    VBox pageBox = createPagePlaceholder(i, pageWidth, pageHeight);
+                    VBox pageBox = pageRenderer.createPagePlaceholder(i, pageWidth, pageHeight);
                     pagesContainer.getChildren().add(pageBox);
                 }
 
                 contentPane.getChildren().add(pagesContainer);
 
+                // Update scroll handler with document and container
+                if (scrollHandler != null) {
+                    scrollHandler.setDocument(currentDocument, pagesContainer);
+                }
+
+                // Load first few visible pages immediately
+                if (scrollHandler != null) {
+                    Platform.runLater(() -> scrollHandler.handleScroll());
+                }
                 Platform.runLater(this::loadVisiblePages);
             }
 
@@ -730,6 +786,56 @@ public class MainController {
     }
 
     /**
+     * Scrolls the viewport to display the current page.
+     * <p>
+     * This method delegates to ScrollHandler to scroll to the current page.
+     * </p>
+     */
+    private void scrollToCurrentPage() {
+        if (currentDocument != null && scrollHandler != null) {
+            scrollHandler.scrollToPage(currentDocument.getCurrentPage());
+        }
+    }
+
+    /**
+     * Processes the page number field input and navigates to the specified page.
+     * <p>
+     * This method parses the page number from the text field (1-based), validates that
+     * the page number is within valid bounds, navigates to the page if valid, or shows
+     * an error dialog and resets the field if invalid.
+     * </p>
+     */
+    private void jumpToPage() {
+        if (currentDocument == null || pageNumberField == null) return;
+
+        try {
+            int pageNum = Integer.parseInt(pageNumberField.getText()) - 1;
+            if (pageNum >= 0 && pageNum < currentDocument.getTotalPages()) {
+                navigateToPage(pageNum);
+            } else {
+                showError("Invalid Page", "Page number must be between 1 and " +
+                         currentDocument.getTotalPages());
+                resetPageFieldToCurrentPage();
+            }
+        } catch (NumberFormatException e) {
+            showError("Invalid Input", "Please enter a valid page number");
+            resetPageFieldToCurrentPage();
+        }
+    }
+
+    /**
+     * Resets the page number field to display the current page number.
+     * <p>
+     * This is typically called after an invalid page number input to restore
+     * the field to a known good state.
+     * </p>
+     */
+    private void resetPageFieldToCurrentPage() {
+        if (currentDocument != null && pageNumberField != null) {
+            pageNumberField.setText(String.valueOf(currentDocument.getCurrentPage() + 1));
+        }
+    }
+
      * Creates a placeholder VBox for a PDF page before it's loaded.
      * <p>
      * The placeholder contains a loading indicator stack pane with "Loading..." text
@@ -844,7 +950,14 @@ public class MainController {
         });
     }
 
-    // ==================== UI HELPERS ====================
+     /**
+     * Updates the page information display in the UI.
+     * <p>
+     * This method updates the total pages label, the current page number field, and
+     * the enabled/disabled state of navigation buttons. Navigation buttons are disabled
+     * when at the first or last page.
+     * </p>
+     */
 
     public void updatePageInfo() {
         if (currentDocument != null) {
