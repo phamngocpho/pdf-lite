@@ -4,24 +4,30 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.geometry.Pos;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.scene.Scene;
+import javafx.scene.Parent;
+import javafx.fxml.FXMLLoader;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
 import org.pdflite.util.Constants;
+import org.pdflite.util.NavigationHelper;
 import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import org.pdflite.model.SearchResult;
 
 /**
  * Main Controller for the PDF Lite Application.
@@ -44,6 +50,7 @@ import java.util.concurrent.Executors;
  * @see AnnotationLayer
  */
 public class MainController {
+
     private static final Logger logger = LoggerFactory.getLogger(MainController.class);
 
     // FXML Injected UI Components
@@ -93,16 +100,12 @@ public class MainController {
      */
     @FXML private Button nextButton;
 
-    // Service and Model
-
-    /**
-     * Service for PDF operations.
-     */
+    // Services and helpers
     private PDFService pdfService;
+    private NavigationHelper navigationHelper;
+    private SearchManager searchManager;
 
-    /**
-     * Currently open PDF document.
-     */
+    // Document state
     private PDFDocument currentDocument;
 
     /**
@@ -144,6 +147,15 @@ public class MainController {
      * Set of page indices currently being loaded to prevent duplicate loading.
      */
     private final java.util.Set<Integer> loadingPages = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private static final long SCROLL_DEBOUNCE_MS = 200;
+    private Timer scrollTimer;
+
+    // Annotation mode
+    private boolean highlightModeActive = false;
+
+    // Search dialog (for float mode)
+    private SearchDialogController searchDialogController;
+    private Stage searchDialogStage;
 
     /**
      * Initializes the controller after FXML injection.
@@ -160,7 +172,11 @@ public class MainController {
         logger.info("Initializing MainController");
         pdfService = new PDFService();
 
-        // Setup zoom combo box if present
+        // Create helpers
+        navigationHelper = new NavigationHelper(this, pdfService, renderExecutor, loadingPages);
+        searchManager = new SearchManager(this, navigationHelper);
+
+        // Setup zoom combo box
         if (zoomComboBox != null) {
             zoomComboBox.getItems().addAll("50%", "75%", "100%", "125%", "150%", "200%");
             zoomComboBox.setValue("100%");
@@ -169,29 +185,28 @@ public class MainController {
 
         // Setup page navigation
         if (pageNumberField != null) {
-            pageNumberField.setOnAction(e -> jumpToPage());
+            pageNumberField.setOnAction(e -> navigationHelper.jumpToPage(
+                Integer.parseInt(pageNumberField.getText())
+            ));
         }
 
-        // Setup scroll listener for continuous scrolling
+        // Setup scroll listener
         if (scrollPane != null) {
             scrollPane.vvalueProperty().addListener((obs, oldVal, newVal) -> {
                 if (currentDocument != null && pagesContainer != null) {
-                    // Cancel previous timer
                     if (scrollTimer != null) {
                         scrollTimer.cancel();
                     }
 
-                    // Start new timer to load pages after scroll stops
-                    scrollTimer = new java.util.Timer();
-                    scrollTimer.schedule(new java.util.TimerTask() {
+                    scrollTimer = new Timer();
+                    scrollTimer.schedule(new TimerTask() {
                         @Override
                         public void run() {
                             loadVisiblePages();
                         }
                     }, SCROLL_DEBOUNCE_MS);
 
-                    // Immediately update current page indicator
-                    updateCurrentPageFromScroll();
+                    navigationHelper.updateCurrentPageFromScroll();
                 }
             });
         }
@@ -243,6 +258,37 @@ public class MainController {
      * </p>
      */
     @FXML
+    private void handleExit() {
+        if (currentDocument != null) {
+            pdfService.closePDF(currentDocument);
+        }
+        Platform.exit();
+    }
+
+    // ==================== ZOOM OPERATIONS ====================
+
+    @FXML
+    private void handleZoomIn() {
+        currentZoom = Math.min(Constants.MAX_ZOOM, currentZoom + Constants.ZOOM_STEP);
+        if (currentDocument != null) {
+            applyZoom(null);
+        }
+    }
+
+    @FXML
+    private void handleZoomOut() {
+        currentZoom = Math.max(Constants.MIN_ZOOM, currentZoom - Constants.ZOOM_STEP);
+        if (currentDocument != null) {
+            applyZoom(null);
+        }
+    }
+    
+    @FXML
+    private void handleZoomChange() {
+        handleZoomComboBoxChange();
+    }
+
+    @FXML
     private void handleFitToWidth() {
         if (currentDocument != null && scrollPane != null) {
             try {
@@ -278,19 +324,49 @@ public class MainController {
         }
     }
 
-    /**
-     * Calculate zoom level to fit image to viewport while maintaining aspect ratio
-     * @param imageWidth Width of the image
-     * @param imageHeight Height of the image
-     * @return Calculated zoom level (maximum 1.0)
-     */
+    private void handleZoomComboBoxChange() {
+        if (zoomComboBox != null && currentDocument != null) {
+            String value = zoomComboBox.getValue();
+            if (value != null) {
+                try {
+                    currentZoom = Double.parseDouble(value.replace("%", "")) / 100.0;
+                    applyZoom(null);
+                } catch (NumberFormatException e) {
+                    logger.error("Invalid zoom value: {}", value);
+                }
+            }
+        }
+    }
+
+    private void applyZoom(String prefix) {
+        if (currentDocument != null) {
+            currentDocument.setZoomLevel(currentZoom);
+
+            if (zoomComboBox != null) {
+                zoomComboBox.setValue(String.format("%.0f%%", currentZoom * 100));
+            }
+
+            loadingPages.clear();
+            renderCurrentPage();
+
+            Platform.runLater(() -> {
+                searchManager.updateHighlightsAfterZoom(currentZoom);
+            });
+
+            String statusMessage = prefix != null
+                ? String.format("%s - Zoom: %.0f%%", prefix, currentZoom * 100)
+                : String.format("Zoom: %.0f%%", currentZoom * 100);
+            updateStatusLabel(statusMessage);
+        }
+    }
+
     private double calculateFitToPageZoom(double imageWidth, double imageHeight) {
         if (scrollPane == null) {
             return Constants.DEFAULT_ZOOM;
         }
 
-        double viewportWidth = scrollPane.getViewportBounds().getWidth() - 20; // padding
-        double viewportHeight = scrollPane.getViewportBounds().getHeight() - 20; // padding
+        double viewportWidth = scrollPane.getViewportBounds().getWidth() - 20;
+        double viewportHeight = scrollPane.getViewportBounds().getHeight() - 20;
 
         double zoomWidth = viewportWidth / imageWidth;
         double zoomHeight = viewportHeight / imageHeight;
@@ -310,38 +386,175 @@ public class MainController {
     private void handleHighlight() {
         highlightModeActive = !highlightModeActive;
 
-        if (highlightModeActive) {
-            updateStatusLabel("Highlight mode: Active - Click and drag to highlight");
-            enableHighlightMode();
-        } else {
-            updateStatusLabel("Highlight mode: Disabled");
-            disableHighlightMode();
+    @FXML
+    private void handlePreviousPage() {
+        if (currentDocument != null && currentDocument.getCurrentPage() > 0) {
+            navigationHelper.navigateToPage(currentDocument.getCurrentPage() - 1);
+        }
+    }
+
+    @FXML
+    private void handleNextPage() {
+        if (currentDocument != null
+            && currentDocument.getCurrentPage() < currentDocument.getTotalPages() - 1) {
+            navigationHelper.navigateToPage(currentDocument.getCurrentPage() + 1);
         }
     }
 
     /**
-     * Enables highlight mode for all annotation layers.
-     */
-    private void enableHighlightMode() {
-        setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.HIGHLIGHT);
-    }
-
-    /**
-     * Disables highlight mode for all annotation layers.
-     */
-    private void disableHighlightMode() {
-        setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
-    }
-
-    /**
-     * Sets the annotation mode for all page annotation layers.
+     * Handles the "Go to Page" action.
      * <p>
-     * This iterates through all pages in the container and updates their
-     * annotation layers to the specified mode.
+     * Delegates to {@link #jumpToPage()} to process the page number.
+     * </p>
+     */
+    @FXML
+    private void handleGoToPage() {
+        if (pageNumberField != null && !pageNumberField.getText().isEmpty()) {
+            try {
+                int pageNum = Integer.parseInt(pageNumberField.getText());
+                navigationHelper.jumpToPage(pageNum);
+            } catch (NumberFormatException e) {
+                showError("Invalid Input", "Please enter a valid page number");
+                resetPageFieldToCurrentPage();
+            }
+        }
+    }
+
+    /**
+     * Handles changes to the zoom combo box selection.
+     * <p>
+     * Delegates to {@link #handleZoomComboBoxChange()} to process the zoom change.
+     * </p>
+     */
+    @FXML
+    private void handleSearch() {
+        handleSearchDialog();
+    }
+
+    @FXML
+    private void handleSearchLeft() {
+        searchManager.togglePanel(SearchManager.SearchPanelPosition.LEFT);
+    }
+
+    /**
+     * Handles the "Exit" action.
+     * <p>
+     * Closes the current PDF document if open and exits the application.
+     * </p>
+     */
+    @FXML
+    private void handleSearchRight() {
+        searchManager.togglePanel(SearchManager.SearchPanelPosition.RIGHT);
+    }
+
+    /**
+     * Handles the "Zoom In" action.
+     * <p>
+     * Increases the zoom level by the configured step amount, up to the maximum
+     * zoom level. The zoom level is then applied to re-render the pages.
      * </p>
      *
-     * @param mode the annotation mode to set
+     * @see Constants#ZOOM_STEP
+     * @see Constants#MAX_ZOOM
      */
+    @FXML
+    private void handleHideSearch() {
+        searchManager.clearSearch();
+    }
+
+    public void handleSearchDialog() {
+        if (currentDocument == null) {
+            showError("No PDF Loaded", "Please open a PDF file first");
+            return;
+    /**
+     * Handles the "Zoom Out" action.
+     * <p>
+     * Decreases the zoom level by the configured step amount, down to the minimum
+     * zoom level. The zoom level is then applied to re-render the pages.
+     * </p>
+     *
+     * @see Constants#ZOOM_STEP
+     * @see Constants#MIN_ZOOM
+     */
+    @FXML
+    private void handleZoomOut() {
+        currentZoom = Math.max(Constants.MIN_ZOOM, currentZoom - Constants.ZOOM_STEP);
+        if (currentDocument != null) {
+            applyZoom(null);
+        }
+
+        try {
+            if (searchDialogStage == null) {
+                FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/org/pdflite/search-dialog.fxml")
+                );
+    /**
+     * Applies the current zoom level and updates UI components.
+     * <p>
+     * This method updates the document's zoom level, updates the zoom combo box display,
+     * clears the loading pages set, re-renders all pages at the new zoom level, and
+     * updates the status label with the current zoom percentage.
+     * </p>
+     *
+     * @param prefix optional prefix for the status message (e.g., "Fit to Width"), or null
+     */
+    private void applyZoom(String prefix) {
+        if (currentDocument != null) {
+            currentDocument.setZoomLevel(currentZoom);
+
+                Parent root = loader.load();
+
+                searchDialogController = loader.getController();
+                searchDialogController.setPDFDocument(currentDocument);
+                searchDialogController.setMainController(this);
+
+                searchDialogStage = new Stage();
+                searchDialogStage.setTitle("Search in PDF");
+                searchDialogStage.setScene(new Scene(root));
+                searchDialogStage.initOwner(rootPane.getScene().getWindow());
+
+                searchDialogStage.setOnCloseRequest(e -> {
+                    searchDialogController.cleanup();
+                });
+            } else {
+                searchDialogController.setPDFDocument(currentDocument);
+            }
+
+            searchDialogStage.show();
+            searchDialogStage.toFront();
+
+            logger.info("Search dialog opened");
+
+        } catch (IOException e) {
+            logger.error("Error loading search dialog", e);
+            showError("Error", "Could not open search dialog: " + e.getMessage());
+        }
+    }
+
+    // Called by SearchPanel/SearchDialog
+    public void highlightSearchResults(List<SearchResult> results) {
+        searchManager.showResults(results);
+    }
+
+    public void highlightSearchResult(SearchResult result) {
+        searchManager.navigateToResult(result);
+    }
+
+    // ==================== ANNOTATION ====================
+
+    @FXML
+    private void handleHighlight() {
+        highlightModeActive = !highlightModeActive;
+
+        if (highlightModeActive) {
+            updateStatusLabel("Highlight mode: Active - Click and drag to highlight");
+            setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.HIGHLIGHT);
+        } else {
+            updateStatusLabel("Highlight mode: Disabled");
+            setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
+        }
+    }
+
     private void setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode mode) {
         if (pagesContainer != null) {
             pagesContainer.getChildren().forEach(node -> {
@@ -360,129 +573,7 @@ public class MainController {
         }
     }
 
-    /**
-     * Handles the "Go to Page" action.
-     * <p>
-     * Delegates to {@link #jumpToPage()} to process the page number.
-     * </p>
-     */
-    @FXML
-    private void handleGoToPage() {
-        jumpToPage();
-    }
-
-    /**
-     * Handles changes to the zoom combo box selection.
-     * <p>
-     * Delegates to {@link #handleZoomComboBoxChange()} to process the zoom change.
-     * </p>
-     */
-    @FXML
-    private void handleZoomChange() {
-        handleZoomComboBoxChange();
-    }
-
-    /**
-     * Processes zoom combo box value changes.
-     * <p>
-     * Extracts the percentage value from the combo box selection and
-     * applies it as the new zoom level.
-     * </p>
-     */
-    private void handleZoomComboBoxChange() {
-        if (zoomComboBox != null && currentDocument != null) {
-            String value = zoomComboBox.getValue();
-            if (value != null) {
-                try {
-                    // Remove % and parse
-                    currentZoom = Double.parseDouble(value.replace("%", "")) / 100.0;
-                    applyZoom(null);
-                } catch (NumberFormatException e) {
-                    logger.error("Invalid zoom value: {}", value);
-                }
-            }
-        }
-    }
-
-    /**
-     * Handles the "Exit" action.
-     * <p>
-     * Closes the current PDF document if open and exits the application.
-     * </p>
-     */
-    @FXML
-    private void handleExit() {
-        if (currentDocument != null) {
-            pdfService.closePDF(currentDocument);
-        }
-        Platform.exit();
-    }
-
-    /**
-     * Handles the "Zoom In" action.
-     * <p>
-     * Increases the zoom level by the configured step amount, up to the maximum
-     * zoom level. The zoom level is then applied to re-render the pages.
-     * </p>
-     *
-     * @see Constants#ZOOM_STEP
-     * @see Constants#MAX_ZOOM
-     */
-    @FXML
-    private void handleZoomIn() {
-        currentZoom = Math.min(Constants.MAX_ZOOM, currentZoom + Constants.ZOOM_STEP);
-        if (currentDocument != null) {
-            applyZoom(null);
-        }
-    }
-
-    /**
-     * Handles the "Zoom Out" action.
-     * <p>
-     * Decreases the zoom level by the configured step amount, down to the minimum
-     * zoom level. The zoom level is then applied to re-render the pages.
-     * </p>
-     *
-     * @see Constants#ZOOM_STEP
-     * @see Constants#MIN_ZOOM
-     */
-    @FXML
-    private void handleZoomOut() {
-        currentZoom = Math.max(Constants.MIN_ZOOM, currentZoom - Constants.ZOOM_STEP);
-        if (currentDocument != null) {
-            applyZoom(null);
-        }
-    }
-
-    /**
-     * Applies the current zoom level and updates UI components.
-     * <p>
-     * This method updates the document's zoom level, updates the zoom combo box display,
-     * clears the loading pages set, re-renders all pages at the new zoom level, and
-     * updates the status label with the current zoom percentage.
-     * </p>
-     *
-     * @param prefix optional prefix for the status message (e.g., "Fit to Width"), or null
-     */
-    private void applyZoom(String prefix) {
-        if (currentDocument != null) {
-            currentDocument.setZoomLevel(currentZoom);
-
-            // Update zoom combo box
-            if (zoomComboBox != null) {
-                zoomComboBox.setValue(String.format("%.0f%%", currentZoom * 100));
-            }
-
-            // Clear loading pages set and re-render all pages with new zoom
-            loadingPages.clear();
-            renderCurrentPage();
-
-            String statusMessage = prefix != null
-                    ? String.format("%s - Zoom: %.0f%%", prefix, currentZoom * 100)
-                    : String.format("Zoom: %.0f%%", currentZoom * 100);
-            updateStatusLabel(statusMessage);
-        }
-    }
+    // ==================== HELP ====================
 
     /**
      * Handles the "Previous Page" action.
@@ -541,11 +632,11 @@ public class MainController {
         alert.setTitle("About PDF Lite");
         alert.setHeaderText("PDF Lite - PDF Viewer & Editor");
         alert.setContentText("""
-                Version 1.0
-                
-                A lightweight PDF viewer with annotation features.
-                
-                Built with JavaFX and Apache PDFBox""");
+            Version 1.0
+            
+            A lightweight PDF viewer with annotation features.
+            
+            Built with JavaFX and Apache PDFBox""");
         alert.showAndWait();
     }
 
@@ -562,22 +653,18 @@ public class MainController {
      */
     private void openPDFFile(File file) {
         try {
-            // Close current document if any
             if (currentDocument != null) {
                 pdfService.closePDF(currentDocument);
             }
 
-            // Open new document
             currentDocument = pdfService.openPDF(file);
 
-            // Calculate initial zoom to fit both width and height
             if (scrollPane != null && scrollPane.getViewportBounds().getWidth() > 0
                 && scrollPane.getViewportBounds().getHeight() > 0) {
-                // Get first page to calculate proper zoom
                 Image firstPage = pdfService.renderPage(currentDocument, 0, 1.0f);
                 currentZoom = calculateFitToPageZoom(firstPage.getWidth(), firstPage.getHeight());
             } else {
-                currentZoom = 0.7; // Default to 70% if it can't calculate
+                currentZoom = 0.7;
             }
 
             currentDocument.setZoomLevel(currentZoom);
@@ -606,21 +693,20 @@ public class MainController {
      * </p>
      */
     private void renderCurrentPage() {
-        if (currentDocument == null) return;
+        if (currentDocument == null) {
+            return;
+        }
 
         try {
             if (contentPane != null) {
                 contentPane.getChildren().clear();
 
-                // Create container for all pages
                 pagesContainer = new VBox(10);
-                pagesContainer.setAlignment(Pos.TOP_CENTER);
+                pagesContainer.setAlignment(javafx.geometry.Pos.TOP_CENTER);
                 pagesContainer.setStyle("-fx-background-color: #808080; -fx-padding: 10;");
 
-                // Create placeholders for all pages
                 int totalPages = currentDocument.getTotalPages();
 
-                // Render first page to get dimensions
                 Image firstPage = pdfService.renderPage(currentDocument, 0, (float) currentZoom);
                 double pageWidth = firstPage.getWidth();
                 double pageHeight = firstPage.getHeight();
@@ -634,7 +720,6 @@ public class MainController {
 
                 contentPane.getChildren().add(pagesContainer);
 
-                // Load first few visible pages immediately
                 Platform.runLater(this::loadVisiblePages);
             }
 
@@ -659,7 +744,7 @@ public class MainController {
      */
     private VBox createPagePlaceholder(int pageIndex, double width, double height) {
         VBox pageBox = new VBox(5);
-        pageBox.setAlignment(Pos.TOP_CENTER);
+        pageBox.setAlignment(javafx.geometry.Pos.TOP_CENTER);
         pageBox.setId("page-" + pageIndex);
         pageBox.setPrefSize(width, height + 20);
         pageBox.setStyle("-fx-background-color: #606060; -fx-border-color: #404040;");
@@ -704,7 +789,9 @@ public class MainController {
      * </p>
      */
     private void loadVisiblePages() {
-        if (currentDocument == null || pagesContainer == null || scrollPane == null) return;
+        if (currentDocument == null || pagesContainer == null || scrollPane == null) {
+            return;
+        }
 
         Platform.runLater(() -> {
             try {
@@ -713,26 +800,21 @@ public class MainController {
                 double contentHeight = pagesContainer.getHeight();
 
                 if (contentHeight <= bufferZone) {
-                    // All content is visible, load all pages
                     int totalPages = currentDocument.getTotalPages();
                     for (int i = 0; i < totalPages; i++) {
                         if (!loadingPages.contains(i)) {
                             VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
-                            if (pageBox.getChildren().getFirst() instanceof StackPane placeholder) {
-                                if (placeholder.getChildren().getFirst() instanceof Label) {
-                                    loadPage(i, pageBox);
-                                }
+                            if (!navigationHelper.isPageRendered(pageBox)) {
+                                navigationHelper.loadPageAndWait(i, pageBox, null);
                             }
                         }
                     }
                     return;
                 }
 
-                // Calculate visible range
                 double visibleStart = scrollValue * (contentHeight - bufferZone);
                 double visibleEnd = visibleStart + bufferZone;
 
-                // Add buffer zone (1 viewport above and below)
                 double loadStart = Math.max(0, visibleStart - bufferZone);
                 double loadEnd = Math.min(contentHeight, visibleEnd + bufferZone);
 
@@ -745,19 +827,15 @@ public class MainController {
                     double pageStart = currentY;
                     double pageEnd = currentY + pageHeight;
 
-                    // Check if page is in load range
                     if (pageEnd >= loadStart && pageStart <= loadEnd) {
-                        // Load page if not already loading or loaded
                         if (!loadingPages.contains(i)) {
-                            if (pageBox.getChildren().getFirst() instanceof StackPane placeholder) {
-                                if (placeholder.getChildren().getFirst() instanceof Label) {
-                                    loadPage(i, pageBox);
-                                }
+                            if (!navigationHelper.isPageRendered(pageBox)) {
+                                navigationHelper.loadPageAndWait(i, pageBox, null);
                             }
                         }
                     }
 
-                    currentY = pageEnd + 10; // Add spacing
+                    currentY = pageEnd + 10;
                 }
 
             } catch (Exception e) {
@@ -766,211 +844,9 @@ public class MainController {
         });
     }
 
+    // ==================== UI HELPERS ====================
 
-    /**
-     * Loads and renders a single page in the background.
-     * <p>
-     * This method marks the page as loading to prevent duplicate requests, renders the page
-     * using PDFService in a background thread, creates an ImageView and AnnotationLayer for
-     * the rendered page, replaces the placeholder with the actual content on the JavaFX thread,
-     * and handles errors by displaying an error message in the placeholder.
-     * </p>
-     *
-     * @param pageIndex the zero-based page index to load
-     * @param pageBox the VBox container that will hold the rendered page
-     */
-    private void loadPage(int pageIndex, VBox pageBox) {
-        // Mark as loading to prevent duplicate requests
-        loadingPages.add(pageIndex);
-
-        // Render in background thread to avoid blocking UI
-        renderExecutor.submit(() -> {
-            try {
-                Image image = pdfService.renderPage(
-                    currentDocument,
-                    pageIndex,
-                    (float) currentZoom
-                );
-
-                // Update UI on JavaFX thread
-                Platform.runLater(() -> {
-                    ImageView imageView = new ImageView(image);
-                    imageView.setPreserveRatio(true);
-                    imageView.setSmooth(true);
-                    imageView.setCache(true);
-
-                    // Create annotation layer on top of the image
-                    AnnotationLayer annotationLayer = new AnnotationLayer(image.getWidth(), image.getHeight());
-                    if (highlightModeActive) {
-                        annotationLayer.setAnnotationMode(AnnotationLayer.AnnotationMode.HIGHLIGHT);
-                    }
-
-                    // Stack the image and annotation layer
-                    StackPane imageStack = new StackPane(imageView, annotationLayer);
-                    imageStack.setAlignment(Pos.CENTER);
-
-                    // Replace placeholder with actual image
-                    if (!pageBox.getChildren().isEmpty()) {
-                        pageBox.getChildren().set(0, imageStack);
-                    }
-
-                    loadingPages.remove(pageIndex);
-                    logger.debug("Loaded page {}", pageIndex + 1);
-                });
-
-            } catch (IOException e) {
-                logger.error("Error loading page {}", pageIndex + 1, e);
-                loadingPages.remove(pageIndex);
-                // Keep placeholder with error message
-                Platform.runLater(() -> {
-                    if (!pageBox.getChildren().isEmpty() &&
-                        pageBox.getChildren().getFirst() instanceof StackPane) {
-                        Label errorLabel = new Label("Error loading page");
-                        errorLabel.setStyle("-fx-text-fill: red;");
-                        ((StackPane) pageBox.getChildren().getFirst()).getChildren().set(0, errorLabel);
-                    }
-                });
-            }
-        });
-    }
-
-
-    /**
-     * Updates the current page indicator based on scroll position.
-     * <p>
-     * This method determines which page is currently centered in the viewport
-     * by calculating the visible center position and finding the page that
-     * contains that position. It then updates the document's current page
-     * and the UI page information.
-     * </p>
-     * <p>
-     * This method is called immediately during scroll events (without debouncing)
-     * to provide responsive page number feedback to the user.
-     * </p>
-     */
-    private void updateCurrentPageFromScroll() {
-        if (currentDocument == null || pagesContainer == null || scrollPane == null) return;
-
-        try {
-            double viewportHeight = scrollPane.getViewportBounds().getHeight();
-            double scrollValue = scrollPane.getVvalue();
-            double contentHeight = pagesContainer.getHeight();
-
-            if (contentHeight <= viewportHeight) {
-                return; // All content visible, stay on current page
-            }
-
-            double visibleStart = scrollValue * (contentHeight - viewportHeight);
-            double visibleCenter = visibleStart + (viewportHeight / 2);
-
-            int totalPages = currentDocument.getTotalPages();
-            double currentY = 0;
-
-            for (int i = 0; i < totalPages; i++) {
-                VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
-                double pageHeight = pageBox.getPrefHeight();
-                double pageEnd = currentY + pageHeight;
-
-                if (visibleCenter >= currentY && visibleCenter < pageEnd) {
-                    currentDocument.setCurrentPage(i);
-                    updatePageInfo();
-                    break;
-                }
-
-                currentY = pageEnd + 10; // Add spacing
-            }
-        } catch (Exception e) {
-            logger.error("Error updating current page from scroll", e);
-        }
-    }
-
-    /**
-     * Scrolls the viewport to display the current page.
-     * <p>
-     * This method calculates the vertical position of the current page in the
-     * continuous scroll view and adjusts the scroll pane's vertical value to
-     * bring that page into view. The calculation accounts for page heights
-     * and spacing between pages.
-     * </p>
-     * <p>
-     * This method is typically called after programmatic page navigation
-     * (e.g., clicking previous/next buttons or jumping to a specific page).
-     * </p>
-     */
-    private void scrollToCurrentPage() {
-        if (currentDocument == null || pagesContainer == null || scrollPane == null) return;
-
-        Platform.runLater(() -> {
-            try {
-                int targetPage = currentDocument.getCurrentPage();
-                double currentY = 0;
-
-                for (int i = 0; i < targetPage; i++) {
-                    VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
-                    currentY += pageBox.getPrefHeight() + 10; // Add spacing
-                }
-
-                double contentHeight = pagesContainer.getHeight();
-                double viewportHeight = scrollPane.getViewportBounds().getHeight();
-
-                if (contentHeight > viewportHeight) {
-                    double scrollPosition = currentY / (contentHeight - viewportHeight);
-                    scrollPane.setVvalue(Math.min(1.0, Math.max(0.0, scrollPosition)));
-                }
-            } catch (Exception e) {
-                logger.error("Error scrolling to page", e);
-            }
-        });
-    }
-
-    /**
-     * Processes the page number field input and navigates to the specified page.
-     * <p>
-     * This method parses the page number from the text field (1-based), validates that
-     * the page number is within valid bounds, navigates to the page if valid, or shows
-     * an error dialog and resets the field if invalid.
-     * </p>
-     */
-    private void jumpToPage() {
-        if (currentDocument == null || pageNumberField == null) return;
-
-        try {
-            int pageNum = Integer.parseInt(pageNumberField.getText()) - 1;
-            if (pageNum >= 0 && pageNum < currentDocument.getTotalPages()) {
-                navigateToPage(pageNum);
-            } else {
-                showError("Invalid Page", "Page number must be between 1 and " +
-                         currentDocument.getTotalPages());
-                resetPageFieldToCurrentPage();
-            }
-        } catch (NumberFormatException e) {
-            showError("Invalid Input", "Please enter a valid page number");
-            resetPageFieldToCurrentPage();
-        }
-    }
-
-    /**
-     * Resets the page number field to display the current page number.
-     * <p>
-     * This is typically called after an invalid page number input to restore
-     * the field to a known good state.
-     * </p>
-     */
-    private void resetPageFieldToCurrentPage() {
-        if (currentDocument != null && pageNumberField != null) {
-            pageNumberField.setText(String.valueOf(currentDocument.getCurrentPage() + 1));
-        }
-    }
-
-    /**
-     * Updates the page information display in the UI.
-     * <p>
-     * This method updates the total pages label, the current page number field, and
-     * the enabled/disabled state of navigation buttons. Navigation buttons are disabled
-     * when at the first or last page.
-     * </p>
-     */
-    private void updatePageInfo() {
+    public void updatePageInfo() {
         if (currentDocument != null) {
             int current = currentDocument.getCurrentPage() + 1;
             int total = currentDocument.getTotalPages();
@@ -983,13 +859,18 @@ public class MainController {
                 pageNumberField.setText(String.valueOf(current));
             }
 
-            // Update navigation buttons
             if (prevButton != null) {
                 prevButton.setDisable(current == 1);
             }
             if (nextButton != null) {
                 nextButton.setDisable(current == total);
             }
+        }
+    }
+
+    private void resetPageFieldToCurrentPage() {
+        if (currentDocument != null && pageNumberField != null) {
+            pageNumberField.setText(String.valueOf(currentDocument.getCurrentPage() + 1));
         }
     }
 
@@ -1003,33 +884,34 @@ public class MainController {
      * @param hasDocument true if a document is currently open, false otherwise
      */
     private void updateUIState(boolean hasDocument) {
-        // Enable/disable menu items and toolbar buttons based on whether a document is open
         if (prevButton != null) prevButton.setDisable(!hasDocument);
         if (nextButton != null) nextButton.setDisable(!hasDocument);
         if (pageNumberField != null) pageNumberField.setDisable(!hasDocument);
         if (zoomComboBox != null) zoomComboBox.setDisable(!hasDocument);
     }
 
-    /**
-     * Updates the status label with a message.
-     *
-     * @param message the message to display in the status label
-     */
-    private void updateStatusLabel(String message) {
+    public void updateStatusLabel(String message) {
         statusLabel.setText(message);
     }
 
-    /**
-     * Displays an error dialog to the user.
-     *
-     * @param title the title of the error dialog
-     * @param message the error message to display
-     */
-    private void showError(String title, String message) {
+    public void showError(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    // ==================== GETTERS FOR HELPERS ====================
+
+    public BorderPane getRootPane() { return rootPane; }
+    public ScrollPane getScrollPane() { return scrollPane; }
+    public VBox getPagesContainer() { return pagesContainer; }
+    public PDFDocument getCurrentDocument() { return currentDocument; }
+    public double getCurrentZoom() { return currentZoom; }
+    public boolean isHighlightModeActive() { return highlightModeActive; }
+    
+    public int getTotalPages() {
+        return currentDocument != null ? currentDocument.getTotalPages() : 0;
     }
 }
