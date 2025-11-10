@@ -51,3 +51,6 @@ nbdist/
 .nb-gradle/
 
 logs/
+
+docs/
+nb-configuration.xml
