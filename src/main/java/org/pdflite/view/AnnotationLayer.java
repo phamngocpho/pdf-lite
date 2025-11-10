@@ -15,16 +15,58 @@ import org.pdflite.model.SearchResult;
 import static org.pdflite.util.Constants.LOW_RENDER_SCALE;
 
 /**
- * Canvas layer for drawing annotations on top of PDF pages
+ * Interactive canvas layer for drawing and managing annotations on PDF pages.
+ * <p>
+ * This class extends JavaFX Canvas and provides an overlay layer that sits on top
+ * of rendered PDF pages. It allows users to create annotations by interacting with
+ * the mouse. The layer supports multiple annotation modes:
+ * <ul>
+ *   <li>{@link AnnotationMode#NONE} - No annotation functionality</li>
+ *   <li>{@link AnnotationMode#HIGHLIGHT} - Create rectangular highlight annotations</li>
+ *   <li>{@link AnnotationMode#DRAW} - Freehand drawing (planned)</li>
+ *   <li>{@link AnnotationMode#TEXT} - Text annotations (planned)</li>
+ *   <li>{@link AnnotationMode#SHAPE} - Shape annotations (planned)</li>
+ * </ul>
+ * </p>
+ * <p>
+ * The layer handles mouse events to create annotations interactively. When in
+ * HIGHLIGHT mode, users can click and drag to select a rectangular area which
+ * becomes a semi-transparent highlight annotation.
+ * </p>
+ *
+ * @author PDF Lite Team
+ * @version 1.0.0
+ * @since 1.0.0
+ * @see Annotation
+ * @see HighlightAnnotation
  */
 public class AnnotationLayer extends Canvas {
 
     private static final Logger logger = LoggerFactory.getLogger(AnnotationLayer.class);
-
+    
+    /**
+     * List of annotations currently on this layer.
+     */
     private final List<Annotation> annotations = new ArrayList<>();
+
+    /**
+     * The current annotation mode.
+     */
     private AnnotationMode currentMode = AnnotationMode.NONE;
+
+    /**
+     * The current color to use for new annotations.
+     */
     private Color currentColor = Color.YELLOW;
+
+    /**
+     * Starting X coordinate for drag operations.
+     */
     private double startX, startY;
+
+    /**
+     * Flag indicating whether a draw operation is in progress.
+     */
     private boolean isDrawing = false;
 
     private final List<SearchResult> searchHighlights = new ArrayList<>();
@@ -35,6 +77,16 @@ public class AnnotationLayer extends Canvas {
     private static final double ACTIVE_SEARCH_HIGHLIGHT_OPACITY = 0.6;
     private double scale = 1.0;
 
+    /**
+     * Creates a new annotation layer with the specified dimensions.
+     * <p>
+     * The dimensions should match the rendered PDF page image dimensions
+     * to ensure proper alignment of annotations.
+     * </p>
+     *
+     * @param width the width of the layer in pixels
+     * @param height the height of the layer in pixels
+     */
     public AnnotationLayer(double width, double height) {
         super(width, height);
         setupMouseHandlers();
@@ -45,6 +97,17 @@ public class AnnotationLayer extends Canvas {
         this.scale = scale;
     }
 
+    /**
+     * Sets up mouse event handlers for interactive annotation creation.
+     * <p>
+     * This method configures handlers for:
+     * <ul>
+     *   <li>Mouse pressed - Start annotation creation</li>
+     *   <li>Mouse dragged - Preview annotation while dragging</li>
+     *   <li>Mouse released - Finalize and store annotation</li>
+     * </ul>
+     * </p>
+     */
     private void setupMouseHandlers() {
         setOnMousePressed(event -> {
             if (event.getButton() == MouseButton.PRIMARY && currentMode != AnnotationMode.NONE) {
@@ -84,6 +147,20 @@ public class AnnotationLayer extends Canvas {
         });
     }
 
+    /**
+     * Adds a highlight annotation to the layer.
+     * <p>
+     * This method creates a {@link HighlightAnnotation} from the given coordinates
+     * and adds it to the annotations list. The coordinates are normalized so that
+     * (x, y) represents the top-left corner. Highlights with dimensions smaller
+     * than 5x5 pixels are ignored to prevent accidental tiny highlights.
+     * </p>
+     *
+     * @param x1 the X coordinate of the first corner
+     * @param y1 the Y coordinate of the first corner
+     * @param x2 the X coordinate of the opposite corner
+     * @param y2 the Y coordinate of the opposite corner
+     */
     private void addHighlight(double x1, double y1, double x2, double y2) {
         double x = Math.min(x1, x2);
         double y = Math.min(y1, y2);
@@ -97,6 +174,14 @@ public class AnnotationLayer extends Canvas {
         }
     }
 
+    /**
+     * Redraws all annotations on the canvas.
+     * <p>
+     * This method clears the canvas and then redraws all stored annotations.
+     * It should be called whenever the annotation list changes or when the
+     * layer needs to be refreshed.
+     * </p>
+     */
     public void redraw() {
         GraphicsContext gc = getGraphicsContext2D();
         gc.clearRect(0, 0, getWidth(), getHeight());
@@ -112,37 +197,109 @@ public class AnnotationLayer extends Canvas {
         drawSearchHighlights(gc);
     }
 
+    /**
+     * Creates a new Color with the specified alpha (opacity) value.
+     * <p>
+     * This utility method is used to create semi-transparent colors for
+     * annotation rendering.
+     * </p>
+     *
+     * @param color the base color
+     * @param alpha the opacity value (0.0 = fully transparent, 1.0 = fully opaque)
+     * @return a new Color with the specified alpha value
+     */
     private Color getColorWithAlpha(Color color, double alpha) {
         return Color.color(color.getRed(), color.getGreen(), color.getBlue(), alpha);
     }
 
+    /**
+     * Sets the current annotation mode.
+     * <p>
+     * This determines what type of annotation will be created when the user
+     * interacts with the layer. Set to {@link AnnotationMode#NONE} to disable
+     * annotation creation.
+     * </p>
+     *
+     * @param mode the annotation mode to set
+     */
     public void setAnnotationMode(AnnotationMode mode) {
         this.currentMode = mode;
         logger.debug("Annotation mode set to: {}", mode);
     }
 
+    /**
+     * Gets the current annotation mode.
+     *
+     * @return the current AnnotationMode
+     */
     public AnnotationMode getCurrentMode() {
         return currentMode;
     }
 
+    /**
+     * Sets the color to use for new highlight annotations.
+     *
+     * @param color the color to set
+     */
     public void setHighlightColor(Color color) {
         this.currentColor = color;
     }
 
+    /**
+     * Clears all annotations from this layer and redraws.
+     * <p>
+     * This permanently removes all annotations. The operation cannot be undone.
+     * </p>
+     */
     public void clearAnnotations() {
         annotations.clear();
         redraw();
     }
 
+    /**
+     * Gets a copy of all annotations on this layer.
+     * <p>
+     * Returns a new list to prevent external modification of the internal
+     * annotations list.
+     * </p>
+     *
+     * @return a new list containing all annotations
+     */
     public List<Annotation> getAnnotations() {
         return new ArrayList<>(annotations);
     }
 
+    /**
+     * Enumeration of available annotation modes.
+     * <p>
+     * Each mode determines what type of annotation will be created when
+     * the user interacts with the annotation layer.
+     * </p>
+     */
     public enum AnnotationMode {
+        /**
+         * No annotation functionality - clicks are ignored.
+         */
         NONE,
+
+        /**
+         * Create rectangular highlight annotations by clicking and dragging.
+         */
         HIGHLIGHT,
+
+        /**
+         * Freehand drawing mode (not yet implemented).
+         */
         DRAW,
+
+        /**
+         * Text annotation mode (not yet implemented).
+         */
         TEXT,
+
+        /**
+         * Shape annotation mode (not yet implemented).
+         */
         SHAPE
     }
 
