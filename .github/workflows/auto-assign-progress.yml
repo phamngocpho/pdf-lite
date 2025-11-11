@@ -1,0 +1,17 @@
+name: Auto Move on Assign
+
+on:
+  issues:
+    types: [assigned]
+
+jobs:
+  move-to-progress:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Move issue to In progress
+        uses: tatsuya-koizumi/auto-move-issue@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          project-url: https://github.com/users/phamngocpho/projects/3
+          column-name: In progress
+          from-column: Ready
