@@ -1,5 +1,12 @@
 package org.pdflite.controller;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.application.Platform;
+import javafx.fxml.FXML;
+import javafx.geometry.Bounds;
+import javafx.scene.Group;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -364,22 +371,54 @@ public class MainController {
         }
     }
 
-    @FXML
-    private void handleNextPage() {
-        if (currentDocument != null
-            && currentDocument.getCurrentPage() < currentDocument.getTotalPages() - 1) {
-            navigationHelper.navigateToPage(currentDocument.getCurrentPage() + 1);
+    private void applyZoom(String prefix) {
+        if (currentDocument != null && scrollPane != null && pagesContainer != null) {
+            // Lưu lại vị trí cuộn theo pixel trước khi zoom
+            Bounds viewportBounds = scrollPane.getViewportBounds();
+            Bounds contentBounds = pagesContainer.getBoundsInLocal();
+            double oldVValue = scrollPane.getVvalue();
+            double oldCenterY = oldVValue * (contentBounds.getHeight() - viewportBounds.getHeight())
+                    + viewportBounds.getHeight() / 2;
+
+            // Cập nhật zoom level và render lại ảnh
+            currentDocument.setZoomLevel(currentZoom);
+
+            if (zoomComboBox != null) {
+                zoomComboBox.setValue(String.format("%.0f%%", currentZoom * 100));
+            }
+
+            pagesContainer.getChildren().forEach(node -> {
+                if (node instanceof VBox box) {
+                    int pageIndex = Integer.parseInt(box.getId().replace("page-", ""));
+                    ImageView img = (ImageView) ((StackPane) box.getChildren().get(0)).getChildren().get(0);
+                    try {
+                        Image newImg = pdfService.renderPage(currentDocument, pageIndex, (float) currentZoom);
+                        img.setImage(newImg);
+                    } catch (IOException e) {
+                        logger.error("Error updating page zoom", e);
+                    }
+                }
+            });
+
+            // Sau khi layout xong, khôi phục lại đúng vị trí cũ (theo pixel)
+            Platform.runLater(() -> {
+                Bounds newContentBounds = pagesContainer.getBoundsInLocal();
+                double newCenterY = oldCenterY * newContentBounds.getHeight() / contentBounds.getHeight();
+                double newVValue = (newCenterY - viewportBounds.getHeight() / 2)
+                        / (newContentBounds.getHeight() - viewportBounds.getHeight());
+                scrollPane.setVvalue(Math.max(0, Math.min(1, newVValue)));
+            });
+
+            updateStatusLabel(String.format("Zoom: %.0f%%", currentZoom * 100));
         }
     }
 
-    @FXML
-    private void handleGoToPage() {
-        int pageNum = pageInfoManager.getPageNumberFromField();
-        if (pageNum > 0) {
-            navigationHelper.jumpToPage(pageNum);
-        } else {
-            uiStateManager.showError("Invalid Input", "Please enter a valid page number");
-            pageInfoManager.resetPageFieldToCurrentPage(currentDocument);
+
+
+
+    private double calculateFitToPageZoom(double imageWidth, double imageHeight) {
+        if (scrollPane == null) {
+            return Constants.DEFAULT_ZOOM;
         }
     }
 
@@ -521,9 +560,7 @@ public class MainController {
      * Renders all pages of the current document in continuous scroll mode.
      */
     private void renderCurrentPage() {
-        if (currentDocument == null) {
-            return;
-        }
+        if (currentDocument == null) return;
 
         try {
             if (pagesContainer == null) {
@@ -533,7 +570,7 @@ public class MainController {
                 contentPane.getChildren().add(pagesContainer);
             }
 
-            // Clear existing pages
+            // Thay vì clear toàn bộ contentPane, chỉ xóa bên trong pagesContainer
             pagesContainer.getChildren().clear();
 
             int totalPages = currentDocument.getTotalPages();
@@ -541,25 +578,12 @@ public class MainController {
             double pageWidth = firstPage.getWidth();
             double pageHeight = firstPage.getHeight();
 
-            logger.info("Creating continuous scroll view for {} pages", totalPages);
-
-            // Create placeholders for all pages
             for (int i = 0; i < totalPages; i++) {
                 VBox pageBox = pageRenderer.createPagePlaceholder(i, pageWidth, pageHeight);
                 pagesContainer.getChildren().add(pageBox);
             }
 
-            // Update scroll handler with document and container
-            if (scrollHandler != null) {
-                scrollHandler.setDocument(currentDocument, pagesContainer);
-            }
-
-            // Load first few visible pages immediately
-            Platform.runLater(() -> {
-                if (scrollHandler != null) {
-                    scrollHandler.handleScroll();
-                }
-            });
+            Platform.runLater(this::loadVisiblePages);
 
         } catch (IOException e) {
             logger.error("Error rendering page", e);
@@ -568,7 +592,20 @@ public class MainController {
     }
 
 
-    // ==================== Getters for External Access ====================
+
+    /**
+     * Resets the page number field to display the current page number.
+     * <p>
+     * This is typically called after an invalid page number input to restore
+     * the field to a known good state.
+     * </p>
+     */
+    private void resetPageFieldToCurrentPage() {
+        if (currentDocument != null && pageNumberField != null) {
+            pageNumberField.setText(String.valueOf(currentDocument.getCurrentPage() + 1));
+        }
+    }
+
 
     public BorderPane getRootPane() { return rootPane; }
     public ScrollPane getScrollPane() { return scrollPane; }
