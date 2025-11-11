@@ -13,10 +13,9 @@
             <!-- Menu Bar -->
             <MenuBar>
                 <Menu text="File">
-                    <MenuItem text="Open PDF..." onAction="#handleOpenPDF"/>
+                    <MenuItem text="Open PDF..." onAction="#handleOpenPDF" accelerator="Ctrl+O"/>
                     <MenuItem text="Save" onAction="#handleSave"/>
                     <MenuItem text="Save As..." onAction="#handleSaveAs"/>
-                    <MenuItem text="Open PDF..." onAction="#handleOpenPDF" accelerator="Ctrl+O"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Exit" onAction="#handleExit"/>
                 </Menu>
