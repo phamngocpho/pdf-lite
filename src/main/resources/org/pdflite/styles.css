@@ -46,3 +46,6 @@
     -fx-background-color: #808080;
 }
 
+.full-screen-mode {
+    -fx-background-color: #000000;
+}

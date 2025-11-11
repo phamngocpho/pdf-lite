@@ -1,14 +1,22 @@
 package org.pdflite.controller;
 
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.stage.Window;
+import javafx.util.Duration;
 import javafx.scene.Scene;
 import javafx.scene.Parent;
 import javafx.fxml.FXMLLoader;
@@ -25,6 +33,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import javafx.beans.value.ChangeListener;
 import org.pdflite.model.SearchResult;
 
 /**
@@ -87,6 +96,7 @@ public class MainController {
      * Combo box for selecting zoom levels.
      */
     @FXML private ComboBox<String> zoomComboBox;
+    @FXML private ToolBar toolbar;
 
     /**
      * Button for navigating to the previous page.
@@ -135,7 +145,12 @@ public class MainController {
      * Flag indicating whether highlight mode is currently active.
      */
     private boolean highlightModeActive = false;
+    private boolean isFullScreen = false;
+    private java.util.Timer scrollTimer;
     private final java.util.Set<Integer> loadingPages = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private PauseTransition toolbarHideTimer;
+    private Stage primaryStage;
+    private ChangeListener<Boolean> fullScreenListener;
 
     // Search dialog (for float mode)
     private SearchDialogController searchDialogController;
@@ -197,6 +212,7 @@ public class MainController {
         }
 
         updateUIState(false);
+        setupFullScreenSupport();
     }
 
     /**
@@ -469,6 +485,52 @@ public class MainController {
      * </p>
      */
     @FXML
+    private void handleSave() {
+        if (currentDocument == null) return;
+        try {
+            pdfService.save(currentDocument);
+            updateStatusLabel("Saved: " + currentDocument.getFileName());
+            logger.info("Document saved");
+        } catch (IOException e) {
+            logger.error("Error saving document", e);
+            showError("Save Error", "Could not save the document: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleSaveAs() {
+        if (currentDocument == null) return;
+
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save PDF As");
+        fileChooser.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
+        );
+        Stage stage = (Stage) rootPane.getScene().getWindow();
+        File target = fileChooser.showSaveDialog(stage);
+        if (target == null) return;
+
+        try {
+            pdfService.saveAs(currentDocument, target);
+            updateStatusLabel("Saved As: " + target.getName());
+            logger.info("Document saved as {}", target.getAbsolutePath());
+        } catch (IOException e) {
+            logger.error("Error saving document as", e);
+            showError("Save As Error", "Could not save the document: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleToggleFullScreen() {
+        toggleFullScreen();
+    }
+
+    @FXML
+    private void handleZoomIn() {
+        currentZoom = Math.min(Constants.MAX_ZOOM, currentZoom + Constants.ZOOM_STEP);
+        if (currentDocument != null) {
+            applyZoom(null);
+        }
     private void handleSearchRight() {
         searchManager.togglePanel(SearchManager.SearchPanelPosition.RIGHT);
     }
@@ -527,6 +589,52 @@ public class MainController {
         searchManager.showResults(results);
     }
 
+    @FXML
+    private void handleDeletePage() {
+        if (currentDocument == null) {
+            return;
+        }
+
+        int total = currentDocument.getTotalPages();
+        if (total <= 1) {
+            showError("Delete Page", "Cannot delete the last remaining page.");
+            return;
+        }
+
+        int current = currentDocument.getCurrentPage();
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Delete Page");
+        confirm.setHeaderText("Delete current page?");
+        confirm.setContentText("This will remove page " + (current + 1) + " from the document.");
+        confirm.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
+        confirm.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.OK) {
+                try {
+                    pdfService.deletePages(currentDocument, java.util.List.of(current));
+                    // Reset UI containers and re-render pages
+                    if (contentPane != null) {
+                        contentPane.getChildren().clear();
+                    }
+                    pagesContainer = null;
+                    loadingPages.clear();
+                    renderCurrentPage();
+                    updatePageInfo();
+                    updateStatusLabel("Deleted page " + (current + 1));
+                } catch (Exception e) {
+                    logger.error("Error deleting page {}", current + 1, e);
+                    showError("Delete Page Error", "Could not delete the page: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    private void navigateToPage(int pageIndex) {
+        if (currentDocument != null) {
+            currentDocument.setCurrentPage(pageIndex);
+            scrollToCurrentPage();
+            updatePageInfo();
+        }
     public void highlightSearchResult(SearchResult result) {
         searchManager.navigateToResult(result);
     }
@@ -823,6 +931,122 @@ public class MainController {
         alert.showAndWait();
     }
 
+    private void setupFullScreenSupport() {
+        toolbarHideTimer = new PauseTransition(Duration.seconds(3));
+        toolbarHideTimer.setOnFinished(e -> {
+            if (isFullScreen) {
+                hideToolbar();
+            }
+        });
+
+        rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (oldScene != null) {
+                oldScene.removeEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPress);
+                oldScene.removeEventFilter(MouseEvent.MOUSE_MOVED, this::handleMouseMove);
+            }
+            if (newScene != null) {
+                newScene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyPress);
+                newScene.addEventFilter(MouseEvent.MOUSE_MOVED, this::handleMouseMove);
+
+                if (newScene.getWindow() != null) {
+                    attachStageListeners((Stage) newScene.getWindow());
+                } else {
+                    newScene.windowProperty().addListener((winObs, oldWin, newWin) -> {
+                        if (newWin instanceof Stage stage) {
+                            attachStageListeners(stage);
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    private void attachStageListeners(Stage stage) {
+        if (stage == null || stage == primaryStage) {
+            return;
+        }
+        if (primaryStage != null && fullScreenListener != null) {
+            primaryStage.fullScreenProperty().removeListener(fullScreenListener);
+        }
+        primaryStage = stage;
+        stage.setFullScreenExitHint("");
+        fullScreenListener = (obs, wasFull, isNowFull) -> {
+            isFullScreen = isNowFull;
+            if (isNowFull) {
+                if (!rootPane.getStyleClass().contains("full-screen-mode")) {
+                    rootPane.getStyleClass().add("full-screen-mode");
+                }
+                showToolbar();
+                scheduleToolbarHide();
+                updateStatusLabel("Full screen mode");
+            } else {
+                rootPane.getStyleClass().remove("full-screen-mode");
+                toolbarHideTimer.stop();
+                showToolbar();
+                updateStatusLabel("Exited full screen");
+            }
+        };
+        stage.fullScreenProperty().addListener(fullScreenListener);
+    }
+
+    private void handleKeyPress(KeyEvent event) {
+        if (event.getCode() == KeyCode.F11) {
+            toggleFullScreen();
+            event.consume();
+        } else if (event.getCode() == KeyCode.ESCAPE && isFullScreen) {
+            exitFullScreen();
+            event.consume();
+        }
+    }
+
+    private void handleMouseMove(MouseEvent event) {
+        if (isFullScreen) {
+            showToolbar();
+            scheduleToolbarHide();
+        }
+    }
+
+    private void toggleFullScreen() {
+        Stage stage = getStage();
+        if (stage == null) return;
+        stage.setFullScreen(!stage.isFullScreen());
+    }
+
+    private void exitFullScreen() {
+        Stage stage = getStage();
+        if (stage == null) return;
+        stage.setFullScreen(false);
+    }
+
+    private Stage getStage() {
+        if (rootPane == null || rootPane.getScene() == null) {
+            return null;
+        }
+        Window window = rootPane.getScene().getWindow();
+        return window instanceof Stage ? (Stage) window : null;
+    }
+
+    private void scheduleToolbarHide() {
+        if (isFullScreen && toolbarHideTimer != null) {
+            toolbarHideTimer.playFromStart();
+        }
+    }
+
+    private void showToolbar() {
+        if (toolbar != null) {
+            toolbar.setVisible(true);
+            toolbar.setManaged(true);
+            toolbar.setOpacity(1.0);
+        }
+    }
+
+    private void hideToolbar() {
+        if (toolbar != null) {
+            toolbar.setVisible(false);
+            toolbar.setManaged(false);
+        }
+    }
+}
 
     public BorderPane getRootPane() { return rootPane; }
     public ScrollPane getScrollPane() { return scrollPane; }
