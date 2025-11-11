@@ -51,3 +51,9 @@ nbdist/
 .nb-gradle/
 
 logs/
+
+docs/
+nb-configuration.xml
+
+issues.json
+create-github-issues.ps1

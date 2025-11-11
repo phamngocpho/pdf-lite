@@ -14,43 +14,77 @@
             <MenuBar>
                 <Menu text="File">
                     <MenuItem text="Open PDF..." onAction="#handleOpenPDF"/>
+                    <MenuItem text="Save" onAction="#handleSave"/>
+                    <MenuItem text="Save As..." onAction="#handleSaveAs"/>
+                    <MenuItem text="Open PDF..." onAction="#handleOpenPDF" accelerator="Ctrl+O"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Exit" onAction="#handleExit"/>
                 </Menu>
+                
+                <Menu text="Edit">
+                    <MenuItem text="Find..." onAction="#handleSearch" accelerator="Ctrl+F"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="Hide Search Panel" onAction="#handleHideSearch" accelerator="Escape"/>
+                </Menu>
+    
                 <Menu text="View">
-                    <MenuItem text="Zoom In" onAction="#handleZoomIn"/>
-                    <MenuItem text="Zoom Out" onAction="#handleZoomOut"/>
+                    <MenuItem text="Zoom In" onAction="#handleZoomIn" accelerator="Ctrl+Plus"/>
+                    <MenuItem text="Zoom Out" onAction="#handleZoomOut" accelerator="Ctrl+Minus"/>
                     <MenuItem text="Fit to Width" onAction="#handleFitToWidth"/>
                     <MenuItem text="Fit to Page" onAction="#handleFitToPage"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="Toggle Full Screen" onAction="#handleToggleFullScreen" accelerator="F11"/>
                 </Menu>
+    
                 <Menu text="Tools">
                     <MenuItem text="Highlight" onAction="#handleHighlight"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="Delete Page" onAction="#handleDeletePage"/>
                 </Menu>
+    
                 <Menu text="Help">
                     <MenuItem text="About" onAction="#handleAbout"/>
                 </Menu>
             </MenuBar>
 
             <!-- Toolbar -->
-            <ToolBar>
+            <ToolBar fx:id="toolbar">
                 <Button text="Open" onAction="#handleOpenPDF"/>
+                <Button text="Save" onAction="#handleSave"/>
                 <Separator orientation="VERTICAL"/>
-                <Button text="Previous" onAction="#handlePreviousPage"/>
+                <Button fx:id="prevButton" text="Previous" onAction="#handlePreviousPage"/>
                 <Label text="Page:"/>
                 <TextField fx:id="pageNumberField" prefWidth="50" onAction="#handleGoToPage"/>
                 <Label fx:id="totalPagesLabel" text="/ 0"/>
-                <Button text="Next" onAction="#handleNextPage"/>
+                <Button fx:id="nextButton" text="Next" onAction="#handleNextPage"/>
                 <Separator orientation="VERTICAL"/>
                 <Button text="Zoom In" onAction="#handleZoomIn"/>
                 <Button text="Zoom Out" onAction="#handleZoomOut"/>
                 <ComboBox fx:id="zoomComboBox" onAction="#handleZoomChange" prefWidth="100"/>
                 <Separator orientation="VERTICAL"/>
                 <Button text="Highlight" onAction="#handleHighlight"/>
+                <Separator orientation="VERTICAL"/>
+                <Button text="Delete Page" onAction="#handleDeletePage"/>
+                <Button text="Full Screen" onAction="#handleToggleFullScreen"/>
+                
+                <!-- Search button with menu -->
+                <MenuButton text="🔍" style="-fx-font-size: 14px;">
+                    <tooltip>
+                        <Tooltip text="Search in document"/>
+                    </tooltip>
+                    <items>
+                        <MenuItem text="Float" onAction="#handleSearch"/>
+                        <MenuItem text="Left" onAction="#handleSearchLeft"/>
+                        <MenuItem text="Right" onAction="#handleSearchRight"/>
+                    </items>
+                </MenuButton>
+                
+                <Separator orientation="VERTICAL"/>
             </ToolBar>
         </VBox>
     </top>
 
-    <!-- Center: PDF Viewer -->
+    <!-- Center: PDF Viewer (side panels will be added programmatically) -->
     <center>
         <ScrollPane fx:id="scrollPane" fitToWidth="true" fitToHeight="true">
             <StackPane fx:id="contentPane" style="-fx-background-color: #808080;">
@@ -67,4 +101,3 @@
     </bottom>
 
 </BorderPane>
-
