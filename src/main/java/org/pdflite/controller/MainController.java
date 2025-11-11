@@ -559,41 +559,6 @@ public class MainController {
         toggleFullScreen();
     }
 
-
-            if (zoomComboBox != null) {
-                zoomComboBox.setValue(String.format("%.0f%%", currentZoom * 100));
-            }
-
-            // Chỉ render lại nội dung của từng trang hiện có
-            pagesContainer.getChildren().forEach(node -> {
-                if (node instanceof VBox box) {
-                    int pageIndex = Integer.parseInt(box.getId().replace("page-", ""));
-                    ImageView img = (ImageView) ((StackPane) box.getChildren().get(0)).getChildren().get(0);
-                    try {
-                        Image newImg = pdfService.renderPage(currentDocument, pageIndex, (float) currentZoom);
-                        img.setImage(newImg);
-                    } catch (IOException e) {
-                        logger.error("Error updating page zoom", e);
-                    }
-                }
-            });
-
-            updateStatusLabel(String.format("Zoom: %.0f%%", currentZoom * 100));
-        }
-    }
-
-
-    /**
-     * Handles the "Previous Page" action.
-     * <p>
-     * Navigates to the previous page if not already on the first page.
-     * </p>
-     */
-    @FXML
-    private void handlePreviousPage() {
-        if (currentDocument != null && currentDocument.getCurrentPage() > 0) {
-            navigateToPage(currentDocument.getCurrentPage() - 1);
-        }
     @FXML
     private void handleSearchRight() {
         searchManager.togglePanel(SearchManager.SearchPanelPosition.RIGHT);
@@ -797,42 +762,35 @@ public class MainController {
                 contentPane.getChildren().add(pagesContainer);
             }
 
-            // Thay vì clear toàn bộ contentPane, chỉ xóa bên trong pagesContainer
+            // Clear existing pages
             pagesContainer.getChildren().clear();
-                int totalPages = currentDocument.getTotalPages();
-
-                Image firstPage = pdfService.renderPage(currentDocument, 0, (float) currentZoom);
-                double pageWidth = firstPage.getWidth();
-                double pageHeight = firstPage.getHeight();
-
-                logger.info("Creating continuous scroll view for {} pages", totalPages);
-
-                for (int i = 0; i < totalPages; i++) {
-                    VBox pageBox = pageRenderer.createPagePlaceholder(i, pageWidth, pageHeight);
-                    pagesContainer.getChildren().add(pageBox);
-                }
 
             int totalPages = currentDocument.getTotalPages();
             Image firstPage = pdfService.renderPage(currentDocument, 0, (float) currentZoom);
             double pageWidth = firstPage.getWidth();
             double pageHeight = firstPage.getHeight();
 
-            for (int i = 0; i < totalPages; i++) {
-                VBox pageBox = createPagePlaceholder(i, pageWidth, pageHeight);
-                pagesContainer.getChildren().add(pageBox);
-                // Update scroll handler with document and container
-                if (scrollHandler != null) {
-                    scrollHandler.setDocument(currentDocument, pagesContainer);
-                }
+            logger.info("Creating continuous scroll view for {} pages", totalPages);
 
-                // Load first few visible pages immediately
-                if (scrollHandler != null) {
-                    Platform.runLater(() -> scrollHandler.handleScroll());
-                }
-                Platform.runLater(this::loadVisiblePages);
+            // Create placeholders for all pages
+            for (int i = 0; i < totalPages; i++) {
+                VBox pageBox = pageRenderer.createPagePlaceholder(i, pageWidth, pageHeight);
+                pagesContainer.getChildren().add(pageBox);
             }
 
-            Platform.runLater(this::loadVisiblePages);
+            // Update scroll handler with document and container
+            if (scrollHandler != null) {
+                scrollHandler.setDocument(currentDocument, pagesContainer);
+            }
+
+            // Load first few visible pages immediately
+            Platform.runLater(() -> {
+                if (scrollHandler != null) {
+                    scrollHandler.handleScroll();
+                } else {
+                    loadVisiblePages();
+                }
+            });
 
         } catch (IOException e) {
             logger.error("Error rendering page", e);
@@ -1129,18 +1087,6 @@ public class MainController {
         }
     }
 
-    /**
-     * Resets the page number field to display the current page number.
-     * <p>
-     * This is typically called after an invalid page number input to restore
-     * the field to a known good state.
-     * </p>
-     */
-    private void resetPageFieldToCurrentPage() {
-        if (currentDocument != null && pageNumberField != null) {
-            pageNumberField.setText(String.valueOf(currentDocument.getCurrentPage() + 1));
-        }
-    }
 
     /**
      * Updates the page information display in the UI.
