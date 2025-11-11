@@ -1,29 +1,14 @@
 package org.pdflite.controller;
 
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.geometry.Bounds;
-import javafx.scene.Group;
-import javafx.animation.PauseTransition;
-import javafx.application.Platform;
-import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.geometry.Pos;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import org.pdflite.manager.FileManager;
-import org.pdflite.manager.FullscreenManager;
-import org.pdflite.manager.PageInfoManager;
-import org.pdflite.manager.UIStateManager;
-import org.pdflite.manager.ZoomManager;
+import org.pdflite.manager.*;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
 import org.pdflite.service.PDFService;
@@ -38,6 +23,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import javafx.scene.control.TextFormatter;
 
 /**
  * Main Controller for the PDF Lite Application.
@@ -82,6 +68,8 @@ public class MainController {
     private FullscreenManager fullscreenManager;
     private UIStateManager uiStateManager;
     private PageInfoManager pageInfoManager;
+    private RenderingManager renderingManager;
+    private SearchDialogManager searchDialogManager;
 
     // ==================== Document State ====================
 
@@ -90,11 +78,6 @@ public class MainController {
     private final ExecutorService renderExecutor = Executors.newFixedThreadPool(6);
     private final java.util.Set<Integer> loadingPages = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private boolean highlightModeActive = false;
-
-    // ==================== Search Dialog ====================
-
-    private SearchDialogController searchDialogController;
-    private Stage searchDialogStage;
 
     // ==================== Initialization ====================
 
@@ -113,6 +96,11 @@ public class MainController {
 
         // Initialize managers
         initializeManagers();
+
+        // Setup rendering manager with UI components
+        if (renderingManager != null) {
+            renderingManager.setUIComponents(pagesContainer, scrollPane, contentPane);
+        }
 
         // Setup page navigation
         if (pageNumberField != null) {
@@ -147,13 +135,38 @@ public class MainController {
      * Initializes all manager classes.
      */
     private void initializeManagers() {
+        // UI State Manager (needed by other managers)
+        uiStateManager = new UIStateManager(statusLabel, prevButton, nextButton, pageNumberField, zoomComboBox);
+
         // Zoom Manager
-        zoomManager = new ZoomManager(pdfService, new ZoomManager.ZoomChangeListener() {
+        zoomManager = new ZoomManager(pdfService, createZoomChangeListener());
+        zoomManager.initialize(zoomComboBox, scrollPane);
+
+        // Rendering Manager
+        renderingManager = new RenderingManager(pdfService, pageRenderer, scrollHandler, zoomManager);
+
+        // File Manager
+        fileManager = new FileManager(pdfService, createFileOperationListener());
+
+        // Fullscreen Manager
+        fullscreenManager = new FullscreenManager(rootPane, toolbar, createFullscreenListener());
+
+        // Page Info Manager
+        pageInfoManager = new PageInfoManager(totalPagesLabel, pageNumberField, prevButton, nextButton);
+
+        // Search Dialog Manager
+        searchDialogManager = new SearchDialogManager(rootPane, pageRenderer, zoomManager, renderingManager, uiStateManager);
+    }
+
+    /**
+     * Creates the zoom change listener.
+     */
+    private ZoomManager.ZoomChangeListener createZoomChangeListener() {
+        return new ZoomManager.ZoomChangeListener() {
             @Override
             public void onZoomChanged(double newZoom) {
-                if (currentDocument != null) {
-                    loadingPages.clear();
-                    renderCurrentPage();
+                if (currentDocument != null && pagesContainer != null && scrollPane != null) {
+                    renderingManager.preserveScrollPositionAndApplyZoom(newZoom);
                     Platform.runLater(() -> searchManager.updateHighlightsAfterZoom(newZoom));
                 }
             }
@@ -162,11 +175,14 @@ public class MainController {
             public void onZoomApplied(double newZoom, String statusMessage) {
                 uiStateManager.updateStatus(statusMessage);
             }
-        });
-        zoomManager.initialize(zoomComboBox, scrollPane);
+        };
+    }
 
-        // File Manager
-        fileManager = new FileManager(pdfService, new FileManager.FileOperationListener() {
+    /**
+     * Creates the file operation listener.
+     */
+    private FileManager.FileOperationListener createFileOperationListener() {
+        return new FileManager.FileOperationListener() {
             @Override
             public void onFileOpened(PDFDocument document, File file) {
                 // Handled in openPDFFile
@@ -191,10 +207,14 @@ public class MainController {
             public void onPageDeleted(int pageNumber) {
                 uiStateManager.updateStatus("Deleted page " + pageNumber);
             }
-        });
+        };
+    }
 
-        // Fullscreen Manager
-        fullscreenManager = new FullscreenManager(rootPane, toolbar, new FullscreenManager.FullscreenListener() {
+    /**
+     * Creates the fullscreen listener.
+     */
+    private FullscreenManager.FullscreenListener createFullscreenListener() {
+        return new FullscreenManager.FullscreenListener() {
             @Override
             public void onFullscreenChanged(boolean isFullscreen) {
                 // Fullscreen state changed
@@ -204,13 +224,7 @@ public class MainController {
             public void updateStatus(String message) {
                 uiStateManager.updateStatus(message);
             }
-        });
-
-        // UI State Manager
-        uiStateManager = new UIStateManager(statusLabel, prevButton, nextButton, pageNumberField, zoomComboBox);
-
-        // Page Info Manager
-        pageInfoManager = new PageInfoManager(totalPagesLabel, pageNumberField, prevButton, nextButton);
+        };
     }
 
     // ==================== File Operations ====================
@@ -251,10 +265,12 @@ public class MainController {
             // Update renderer and scroll handler with new document
             pageRenderer.setDocument(currentDocument, initialZoom);
             zoomManager.setDocument(currentDocument);
+            renderingManager.setDocument(currentDocument);
 
             // Update UI
             uiStateManager.updateUIState(true);
-            renderCurrentPage();
+            renderingManager.renderAllPages();
+            pagesContainer = renderingManager.getPagesContainer();
             pageInfoManager.updatePageInfo(currentDocument);
             uiStateManager.updateStatus("Opened: " + file.getName());
 
@@ -325,7 +341,9 @@ public class MainController {
                     }
                     pagesContainer = null;
                     loadingPages.clear();
-                    renderCurrentPage();
+                    renderingManager.setUIComponents(null, scrollPane, contentPane);
+                    renderingManager.renderAllPages();
+                    pagesContainer = renderingManager.getPagesContainer();
                     pageInfoManager.updatePageInfo(currentDocument);
                 } catch (Exception e) {
                     logger.error("Error deleting page {}", current + 1, e);
@@ -371,54 +389,22 @@ public class MainController {
         }
     }
 
-    private void applyZoom(String prefix) {
-        if (currentDocument != null && scrollPane != null && pagesContainer != null) {
-            // Lưu lại vị trí cuộn theo pixel trước khi zoom
-            Bounds viewportBounds = scrollPane.getViewportBounds();
-            Bounds contentBounds = pagesContainer.getBoundsInLocal();
-            double oldVValue = scrollPane.getVvalue();
-            double oldCenterY = oldVValue * (contentBounds.getHeight() - viewportBounds.getHeight())
-                    + viewportBounds.getHeight() / 2;
-
-            // Cập nhật zoom level và render lại ảnh
-            currentDocument.setZoomLevel(currentZoom);
-
-            if (zoomComboBox != null) {
-                zoomComboBox.setValue(String.format("%.0f%%", currentZoom * 100));
-            }
-
-            pagesContainer.getChildren().forEach(node -> {
-                if (node instanceof VBox box) {
-                    int pageIndex = Integer.parseInt(box.getId().replace("page-", ""));
-                    ImageView img = (ImageView) ((StackPane) box.getChildren().get(0)).getChildren().get(0);
-                    try {
-                        Image newImg = pdfService.renderPage(currentDocument, pageIndex, (float) currentZoom);
-                        img.setImage(newImg);
-                    } catch (IOException e) {
-                        logger.error("Error updating page zoom", e);
-                    }
-                }
-            });
-
-            // Sau khi layout xong, khôi phục lại đúng vị trí cũ (theo pixel)
-            Platform.runLater(() -> {
-                Bounds newContentBounds = pagesContainer.getBoundsInLocal();
-                double newCenterY = oldCenterY * newContentBounds.getHeight() / contentBounds.getHeight();
-                double newVValue = (newCenterY - viewportBounds.getHeight() / 2)
-                        / (newContentBounds.getHeight() - viewportBounds.getHeight());
-                scrollPane.setVvalue(Math.max(0, Math.min(1, newVValue)));
-            });
-
-            updateStatusLabel(String.format("Zoom: %.0f%%", currentZoom * 100));
+    @FXML
+    private void handleNextPage() {
+        if (currentDocument != null
+                && currentDocument.getCurrentPage() < currentDocument.getTotalPages() - 1) {
+            navigationHelper.navigateToPage(currentDocument.getCurrentPage() + 1);
         }
     }
 
-
-
-
-    private double calculateFitToPageZoom(double imageWidth, double imageHeight) {
-        if (scrollPane == null) {
-            return Constants.DEFAULT_ZOOM;
+    @FXML
+    private void handleGoToPage() {
+        int pageNum = pageInfoManager.getPageNumberFromField();
+        if (pageNum > 0) {
+            navigationHelper.jumpToPage(pageNum);
+        } else {
+            uiStateManager.showError("Invalid Input", "Please enter a valid page number");
+            pageInfoManager.resetPageFieldToCurrentPage(currentDocument);
         }
     }
 
@@ -487,47 +473,7 @@ public class MainController {
     }
 
     public void handleSearchDialog() {
-        if (currentDocument == null) {
-            uiStateManager.showError("No PDF Loaded", "Please open a PDF file first");
-            return;
-        }
-
-        try {
-            if (searchDialogStage == null) {
-                FXMLLoader loader = new FXMLLoader(
-                    getClass().getResource("/org/pdflite/search-dialog.fxml")
-                );
-
-                Parent root = loader.load();
-
-                searchDialogController = loader.getController();
-                searchDialogController.setPDFDocument(currentDocument);
-                searchDialogController.setMainController(this);
-
-                searchDialogStage = new Stage();
-                searchDialogStage.setTitle("Search in PDF");
-                searchDialogStage.setScene(new Scene(root));
-                searchDialogStage.initOwner(rootPane.getScene().getWindow());
-
-                searchDialogStage.setOnCloseRequest(e -> searchDialogController.cleanup());
-            } else {
-                searchDialogController.setPDFDocument(currentDocument);
-            }
-            if (pageRenderer != null) {
-                pageRenderer.clearCache();
-                pageRenderer.cancelAllPendingRenders();
-                pageRenderer.setZoom(zoomManager.getCurrentZoom());
-            }
-            renderCurrentPage();
-            searchDialogStage.show();
-            searchDialogStage.toFront();
-
-            logger.info("Search dialog opened");
-
-        } catch (IOException e) {
-            logger.error("Error loading search dialog", e);
-            uiStateManager.showError("Error", "Could not open search dialog: " + e.getMessage());
-        }
+        searchDialogManager.openSearchDialog(currentDocument, this);
     }
 
     public void highlightSearchResults(List<SearchResult> results) {
@@ -554,58 +500,6 @@ public class MainController {
         alert.showAndWait();
     }
 
-    // ==================== Page Rendering ====================
-
-    /**
-     * Renders all pages of the current document in continuous scroll mode.
-     */
-    private void renderCurrentPage() {
-        if (currentDocument == null) return;
-
-        try {
-            if (pagesContainer == null) {
-                pagesContainer = new VBox(10);
-                pagesContainer.setAlignment(Pos.TOP_CENTER);
-                pagesContainer.setStyle("-fx-background-color: #808080; -fx-padding: 10;");
-                contentPane.getChildren().add(pagesContainer);
-            }
-
-            // Thay vì clear toàn bộ contentPane, chỉ xóa bên trong pagesContainer
-            pagesContainer.getChildren().clear();
-
-            int totalPages = currentDocument.getTotalPages();
-            Image firstPage = pdfService.renderPage(currentDocument, 0, (float) zoomManager.getCurrentZoom());
-            double pageWidth = firstPage.getWidth();
-            double pageHeight = firstPage.getHeight();
-
-            for (int i = 0; i < totalPages; i++) {
-                VBox pageBox = pageRenderer.createPagePlaceholder(i, pageWidth, pageHeight);
-                pagesContainer.getChildren().add(pageBox);
-            }
-
-            Platform.runLater(this::loadVisiblePages);
-
-        } catch (IOException e) {
-            logger.error("Error rendering page", e);
-            uiStateManager.showError("Rendering Error", "Could not render the page: " + e.getMessage());
-        }
-    }
-
-
-
-    /**
-     * Resets the page number field to display the current page number.
-     * <p>
-     * This is typically called after an invalid page number input to restore
-     * the field to a known good state.
-     * </p>
-     */
-    private void resetPageFieldToCurrentPage() {
-        if (currentDocument != null && pageNumberField != null) {
-            pageNumberField.setText(String.valueOf(currentDocument.getCurrentPage() + 1));
-        }
-    }
-
 
     public BorderPane getRootPane() { return rootPane; }
     public ScrollPane getScrollPane() { return scrollPane; }
@@ -613,7 +507,7 @@ public class MainController {
     public PDFDocument getCurrentDocument() { return currentDocument; }
     public double getCurrentZoom() { return zoomManager != null ? zoomManager.getCurrentZoom() : Constants.DEFAULT_ZOOM; }
     public boolean isHighlightModeActive() { return highlightModeActive; }
-    
+
     public int getTotalPages() {
         return currentDocument != null ? currentDocument.getTotalPages() : 0;
     }
