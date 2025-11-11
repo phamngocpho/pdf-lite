@@ -1,44 +1,106 @@
-name: Auto Move on Assign/Unassign
+name: Auto Move to In Progress
 
 on:
   issues:
-    types: [assigned, unassigned]
+    types: [assigned]
 
 jobs:
-  move-issue:
+  update-project-status:
     runs-on: ubuntu-latest
     permissions:
       issues: write
-      repository-projects: write
+      contents: read
     steps:
-      - name: Move issue
+      - name: Get Project Item ID
+        id: get_item
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const status = context.payload.action === 'assigned' ? 'In progress' : 'Ready';
-            
             const projectId = 'PVT_kwHOCIDT2c4BHopI';
-            const fieldId = 'PVTSSF_lAHOCIDT2c4BHopIzg4VP8U';
-            const optionIds = {
-              'Ready': '61e4505c',
-              'In progress': '47fc9ee4',
-              'In review': 'df73e18b',
-              'Done': '98236657'
+            const issueNodeId = context.payload.issue.node_id;
+            
+            const query = `
+              query($projectId: ID!, $issueNodeId: ID!) {
+                node(id: $projectId) {
+                  ... on ProjectV2 {
+                    items(first: 100) {
+                      nodes {
+                        id
+                        content {
+                          ... on Issue {
+                            id
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+            
+            const variables = {
+              projectId: projectId,
+              issueNodeId: issueNodeId
             };
             
-            const optionId = optionIds[status];
+            const result = await github.graphql(query, variables);
+            const items = result.node.items.nodes;
             
-            if (!optionId) {
-              throw new Error(`Status option "${status}" not found`);
+            // Find the item that matches our issue
+            const projectItem = items.find(item => 
+              item.content && item.content.id === issueNodeId
+            );
+            
+            if (!projectItem) {
+              console.log('Project item not found for this issue');
+              return;
             }
             
-            await github.graphql(`mutation {
-              updateProjectV2ItemFieldValue(
-                input: {
-                  projectId: "${projectId}"
-                  itemId: "${context.payload.issue.node_id}"
-                  fieldId: "${fieldId}"
-                  value: {singleSelectOptionId: "${optionId}"}
+            core.setOutput('itemId', projectItem.id);
+            console.log(`Found project item: ${projectItem.id}`);
+
+      - name: Update Status to In Progress
+        if: steps.get_item.outputs.itemId != ''
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const projectId = 'PVT_kwHOCIDT2c4BHopI';
+            const statusFieldId = 'PVTSSF_lAHOCIDT2c4BHopIzg4VP8U';
+            const inProgressOptionId = '47fc9ee4';
+            const itemId = '${{ steps.get_item.outputs.itemId }}';
+            
+            const mutation = `
+              mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                updateProjectV2ItemFieldValue(
+                  input: {
+                    projectId: $projectId
+                    itemId: $itemId
+                    fieldId: $fieldId
+                    value: {
+                      singleSelectOptionId: $optionId
+                    }
+                  }
+                ) {
+                  projectV2Item {
+                    id
+                  }
                 }
-              ) { projectV2Item { id } }
-            }`);
+              }
+            `;
+            
+            const variables = {
+              projectId: projectId,
+              itemId: itemId,
+              fieldId: statusFieldId,
+              optionId: inProgressOptionId
+            };
+            
+            try {
+              await github.graphql(mutation, variables);
+              console.log('Successfully updated status to "In progress"');
+            } catch (error) {
+              console.error('Error updating status:', error);
+              core.setFailed(error.message);
+            }
