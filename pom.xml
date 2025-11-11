@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.example</groupId>
+    <groupId>org.pdflite</groupId>
     <artifactId>pdf-lite</artifactId>
     <version>1.0-SNAPSHOT</version>
     <name>pdf-lite</name>
@@ -82,6 +82,7 @@
                 <version>3.13.0</version>
                 <configuration>
                     <release>21</release>
+                    <debug>true</debug>
                 </configuration>
             </plugin>
 
@@ -118,6 +119,28 @@
                                 </transformer>
                             </transformers>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Javadoc Plugin cho generate docs tự động -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.11.2</version>
+                <configuration>
+<!--                    <show>private</show> &lt;!&ndash; Hiển thị cả private methods &ndash;&gt;-->
+                    <failOnError>false</failOnError> <!-- Bỏ qua lỗi nếu comment thiếu -->
+                    <additionalOptions>
+                        <additionalOption>-Xdoclint:none</additionalOption> <!-- Tắt check strict -->
+                    </additionalOptions>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
