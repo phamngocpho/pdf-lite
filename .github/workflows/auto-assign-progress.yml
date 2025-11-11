@@ -9,22 +9,36 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       issues: write
-      contents: read
+      repository-projects: write
     steps:
-      - name: Move to In progress (on assign)
-        if: github.event.action == 'assigned'
-        uses: alex-page/github-project-automation-plus@v0.8.1
+      - name: Move issue
+        uses: actions/github-script@v7
         with:
-          project: PDF-Lite Feature Tracking v1.0
-          column: In progress
-          repo-token: ${{ secrets.PROJECT_TOKEN }}
-          issue-number: ${{ github.event.issue.number }}
-      
-      - name: Move to Ready (on unassign)
-        if: github.event.action == 'unassigned'
-        uses: alex-page/github-project-automation-plus@v0.8.1
-        with:
-          project: PDF-Lite Feature Tracking v1.0
-          column: Ready
-          repo-token: ${{ secrets.PROJECT_TOKEN }}
-          issue-number: ${{ github.event.issue.number }}
+          script: |
+            const status = context.payload.action === 'assigned' ? 'In progress' : 'Ready';
+            
+            const projectId = 'PVT_kwHOCIDT2c4BHopI';
+            const fieldId = 'PVTSSF_lAHOCIDT2c4BHopIzg4VP8U';
+            const optionIds = {
+              'Ready': '61e4505c',
+              'In progress': '47fc9ee4',
+              'In review': 'df73e18b',
+              'Done': '98236657'
+            };
+            
+            const optionId = optionIds[status];
+            
+            if (!optionId) {
+              throw new Error(`Status option "${status}" not found`);
+            }
+            
+            await github.graphql(`mutation {
+              updateProjectV2ItemFieldValue(
+                input: {
+                  projectId: "${projectId}"
+                  itemId: "${context.payload.issue.node_id}"
+                  fieldId: "${fieldId}"
+                  value: {singleSelectOptionId: "${optionId}"}
+                }
+              ) { projectV2Item { id } }
+            }`);
