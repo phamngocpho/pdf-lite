@@ -1,0 +1,216 @@
+package org.pdflite.manager;
+
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.image.Image;
+import org.pdflite.model.PDFDocument;
+import org.pdflite.service.PDFService;
+import org.pdflite.util.Constants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+
+/**
+ * Manages all zoom-related operations for the PDF viewer.
+ * Handles zoom in/out, fit to width/page, and zoom combo box.
+ */
+public class ZoomManager {
+    private static final Logger logger = LoggerFactory.getLogger(ZoomManager.class);
+
+    private final PDFService pdfService;
+    private final ZoomChangeListener zoomChangeListener;
+    
+    private double currentZoom = Constants.DEFAULT_ZOOM;
+    private ComboBox<String> zoomComboBox;
+    private ScrollPane scrollPane;
+    private PDFDocument currentDocument;
+
+    /**
+     * Interface for listening to zoom changes.
+     */
+    public interface ZoomChangeListener {
+        void onZoomChanged(double newZoom);
+        void onZoomApplied(double newZoom, String statusMessage);
+    }
+
+    /**
+     * Creates a new ZoomManager.
+     *
+     * @param pdfService the PDF service for rendering pages
+     * @param zoomChangeListener listener for zoom change events
+     */
+    public ZoomManager(PDFService pdfService, ZoomChangeListener zoomChangeListener) {
+        this.pdfService = pdfService;
+        this.zoomChangeListener = zoomChangeListener;
+    }
+
+    /**
+     * Initializes the zoom manager with UI components.
+     *
+     * @param zoomComboBox the zoom combo box
+     * @param scrollPane the scroll pane for viewport calculations
+     */
+    public void initialize(ComboBox<String> zoomComboBox, ScrollPane scrollPane) {
+        this.zoomComboBox = zoomComboBox;
+        this.scrollPane = scrollPane;
+
+        if (zoomComboBox != null) {
+            zoomComboBox.getItems().addAll("50%", "75%", "100%", "125%", "150%", "200%");
+            zoomComboBox.setValue("100%");
+        }
+    }
+
+    /**
+     * Sets the current document.
+     *
+     * @param document the PDF document
+     */
+    public void setDocument(PDFDocument document) {
+        this.currentDocument = document;
+    }
+
+    /**
+     * Gets the current zoom level.
+     *
+     * @return the current zoom level
+     */
+    public double getCurrentZoom() {
+        return currentZoom;
+    }
+
+    /**
+     * Sets the zoom level.
+     *
+     * @param zoom the new zoom level
+     */
+    public void setCurrentZoom(double zoom) {
+        this.currentZoom = zoom;
+    }
+
+    /**
+     * Handles zoom in action.
+     */
+    public void zoomIn() {
+        currentZoom = Math.min(Constants.MAX_ZOOM, currentZoom + Constants.ZOOM_STEP);
+        applyZoom(null);
+    }
+
+    /**
+     * Handles zoom out action.
+     */
+    public void zoomOut() {
+        currentZoom = Math.max(Constants.MIN_ZOOM, currentZoom - Constants.ZOOM_STEP);
+        applyZoom(null);
+    }
+
+    /**
+     * Handles zoom combo box change.
+     */
+    public void handleZoomComboBoxChange() {
+        if (zoomComboBox != null && currentDocument != null) {
+            String value = zoomComboBox.getValue();
+            if (value != null) {
+                try {
+                    currentZoom = Double.parseDouble(value.replace("%", "")) / 100.0;
+                    applyZoom(null);
+                } catch (NumberFormatException e) {
+                    logger.error("Invalid zoom value: {}", value);
+                }
+            }
+        }
+    }
+
+    /**
+     * Handles fit to width action.
+     */
+    public void fitToWidth() {
+        if (currentDocument != null && scrollPane != null) {
+            try {
+                Image image = pdfService.renderPage(currentDocument, currentDocument.getCurrentPage(), 1.0f);
+                double viewportWidth = scrollPane.getViewportBounds().getWidth() - 20;
+                double imageWidth = image.getWidth();
+                currentZoom = Math.min(1.0, viewportWidth / imageWidth);
+                applyZoom("Fit to Width");
+            } catch (IOException e) {
+                logger.error("Error fitting to width", e);
+            }
+        }
+    }
+
+    /**
+     * Handles fit to page action.
+     */
+    public void fitToPage() {
+        if (currentDocument != null && scrollPane != null) {
+            try {
+                Image image = pdfService.renderPage(currentDocument, currentDocument.getCurrentPage(), 1.0f);
+                currentZoom = calculateFitToPageZoom(image.getWidth(), image.getHeight());
+                applyZoom("Fit to Page");
+            } catch (IOException e) {
+                logger.error("Error fitting to page", e);
+            }
+        }
+    }
+
+    /**
+     * Calculates optimal zoom to fit page in viewport.
+     *
+     * @param imageWidth the image width
+     * @param imageHeight the image height
+     * @return the calculated zoom level
+     */
+    private double calculateFitToPageZoom(double imageWidth, double imageHeight) {
+        if (scrollPane == null) {
+            return Constants.DEFAULT_ZOOM;
+        }
+
+        double viewportWidth = scrollPane.getViewportBounds().getWidth() - 20;
+        double viewportHeight = scrollPane.getViewportBounds().getHeight() - 20;
+
+        double zoomWidth = viewportWidth / imageWidth;
+        double zoomHeight = viewportHeight / imageHeight;
+
+        return Math.min(1.0, Math.min(zoomWidth, zoomHeight));
+    }
+
+    /**
+     * Applies the current zoom level.
+     *
+     * @param prefix optional prefix for status message
+     */
+    private void applyZoom(String prefix) {
+        if (currentDocument != null) {
+            currentDocument.setZoomLevel(currentZoom);
+
+            if (zoomComboBox != null) {
+                zoomComboBox.setValue(String.format("%.0f%%", currentZoom * 100));
+            }
+
+            String statusMessage = prefix != null
+                ? String.format("%s - Zoom: %.0f%%", prefix, currentZoom * 100)
+                : String.format("Zoom: %.0f%%", currentZoom * 100);
+
+            if (zoomChangeListener != null) {
+                zoomChangeListener.onZoomChanged(currentZoom);
+                zoomChangeListener.onZoomApplied(currentZoom, statusMessage);
+            }
+        }
+    }
+
+    /**
+     * Calculates initial zoom to fit page when opening document.
+     *
+     * @param firstPageImage the first page image
+     * @return the calculated zoom level
+     */
+    public double calculateInitialZoom(Image firstPageImage) {
+        if (scrollPane != null && scrollPane.getViewportBounds().getWidth() > 0
+            && scrollPane.getViewportBounds().getHeight() > 0) {
+            return calculateFitToPageZoom(firstPageImage.getWidth(), firstPageImage.getHeight());
+        } else {
+            return 0.7;
+        }
+    }
+}
+
