@@ -1,5 +1,10 @@
 package org.pdflite.controller;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.application.Platform;
+import javafx.fxml.FXML;
+import javafx.scene.Group;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -13,8 +18,12 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.geometry.Pos;
+import javafx.scene.transform.Scale;
+import javafx.scene.transform.Translate;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import org.apache.pdfbox.pdmodel.PDPage;
 import javafx.stage.Window;
 import javafx.util.Duration;
 import javafx.scene.Scene;
@@ -27,6 +36,12 @@ import org.pdflite.util.NavigationHelper;
 import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javafx.animation.Interpolator;
+import javafx.animation.KeyValue;
+import javafx.util.Duration;
+import javafx.scene.control.TextFormatter;
+
 
 import java.io.File;
 import java.io.IOException;
@@ -189,9 +204,11 @@ public class MainController {
 
         // Setup page navigation
         if (pageNumberField != null) {
-            pageNumberField.setOnAction(e -> navigationHelper.jumpToPage(
-                Integer.parseInt(pageNumberField.getText())
-            ));
+            pageNumberField.setOnAction(e -> jumpToPage());
+            pageNumberField.setTextFormatter(new TextFormatter<>(change -> {
+                String next = change.getControlNewText();
+                return next.matches("\\d*") ? change : null;
+            }));
         }
 
         // Setup scroll listener
@@ -303,6 +320,23 @@ public class MainController {
             }
         }
     }
+    //Thêm hàm cuộn mượt
+    private void smoothScrollTo(double targetVValue, Duration duration) {
+        if (scrollPane == null) return;
+
+        double start = scrollPane.getVvalue();
+        double target = Math.max(0.0, Math.min(1.0, targetVValue));
+        if (Math.abs(target - start) < 1e-4) return;
+
+        Timeline timeline = new Timeline(
+                new KeyFrame(Duration.ZERO,
+                        new KeyValue(scrollPane.vvalueProperty(), start, Interpolator.EASE_BOTH)),
+                new KeyFrame(duration,
+                        new KeyValue(scrollPane.vvalueProperty(), target, Interpolator.EASE_BOTH))
+        );
+        timeline.play();
+    }
+
 
     /**
      * Handles the "Fit to Page" action.
@@ -526,6 +560,40 @@ public class MainController {
     }
 
 
+            if (zoomComboBox != null) {
+                zoomComboBox.setValue(String.format("%.0f%%", currentZoom * 100));
+            }
+
+            // Chỉ render lại nội dung của từng trang hiện có
+            pagesContainer.getChildren().forEach(node -> {
+                if (node instanceof VBox box) {
+                    int pageIndex = Integer.parseInt(box.getId().replace("page-", ""));
+                    ImageView img = (ImageView) ((StackPane) box.getChildren().get(0)).getChildren().get(0);
+                    try {
+                        Image newImg = pdfService.renderPage(currentDocument, pageIndex, (float) currentZoom);
+                        img.setImage(newImg);
+                    } catch (IOException e) {
+                        logger.error("Error updating page zoom", e);
+                    }
+                }
+            });
+
+            updateStatusLabel(String.format("Zoom: %.0f%%", currentZoom * 100));
+        }
+    }
+
+
+    /**
+     * Handles the "Previous Page" action.
+     * <p>
+     * Navigates to the previous page if not already on the first page.
+     * </p>
+     */
+    @FXML
+    private void handlePreviousPage() {
+        if (currentDocument != null && currentDocument.getCurrentPage() > 0) {
+            navigateToPage(currentDocument.getCurrentPage() - 1);
+        }
     @FXML
     private void handleSearchRight() {
         searchManager.togglePanel(SearchManager.SearchPanelPosition.RIGHT);
@@ -722,13 +790,15 @@ public class MainController {
         }
 
         try {
-            if (contentPane != null) {
-                contentPane.getChildren().clear();
-
+            if (pagesContainer == null) {
                 pagesContainer = new VBox(10);
                 pagesContainer.setAlignment(javafx.geometry.Pos.TOP_CENTER);
                 pagesContainer.setStyle("-fx-background-color: #808080; -fx-padding: 10;");
+                contentPane.getChildren().add(pagesContainer);
+            }
 
+            // Thay vì clear toàn bộ contentPane, chỉ xóa bên trong pagesContainer
+            pagesContainer.getChildren().clear();
                 int totalPages = currentDocument.getTotalPages();
 
                 Image firstPage = pdfService.renderPage(currentDocument, 0, (float) currentZoom);
@@ -742,8 +812,14 @@ public class MainController {
                     pagesContainer.getChildren().add(pageBox);
                 }
 
-                contentPane.getChildren().add(pagesContainer);
+            int totalPages = currentDocument.getTotalPages();
+            Image firstPage = pdfService.renderPage(currentDocument, 0, (float) currentZoom);
+            double pageWidth = firstPage.getWidth();
+            double pageHeight = firstPage.getHeight();
 
+            for (int i = 0; i < totalPages; i++) {
+                VBox pageBox = createPagePlaceholder(i, pageWidth, pageHeight);
+                pagesContainer.getChildren().add(pageBox);
                 // Update scroll handler with document and container
                 if (scrollHandler != null) {
                     scrollHandler.setDocument(currentDocument, pagesContainer);
@@ -756,12 +832,13 @@ public class MainController {
                 Platform.runLater(this::loadVisiblePages);
             }
 
+            Platform.runLater(this::loadVisiblePages);
+
         } catch (IOException e) {
             logger.error("Error rendering page", e);
             showError("Rendering Error", "Could not render the page: " + e.getMessage());
         }
     }
-
 
 
     /**
@@ -869,6 +946,202 @@ public class MainController {
         });
     }
 
+
+    /**
+     * Loads and renders a single page in the background.
+     * <p>
+     * This method marks the page as loading to prevent duplicate requests, renders the page
+     * using PDFService in a background thread, creates an ImageView and AnnotationLayer for
+     * the rendered page, replaces the placeholder with the actual content on the JavaFX thread,
+     * and handles errors by displaying an error message in the placeholder.
+     * </p>
+     *
+     * @param pageIndex the zero-based page index to load
+     * @param pageBox the VBox container that will hold the rendered page
+     */
+    private void loadPage(int pageIndex, VBox pageBox) {
+        // Mark as loading to prevent duplicate requests
+        loadingPages.add(pageIndex);
+
+        // Render in background thread to avoid blocking UI
+        renderExecutor.submit(() -> {
+            try {
+                Image image = pdfService.renderPage(
+                        currentDocument,
+                        pageIndex,
+                        (float) currentZoom
+                );
+
+                // Update UI on JavaFX thread
+                Platform.runLater(() -> {
+                    ImageView imageView = new ImageView(image);
+                    imageView.setPreserveRatio(true);
+                    imageView.setSmooth(true);
+                    imageView.setCache(true);
+
+                    // Create annotation layer on top of the image
+                    AnnotationLayer annotationLayer = new AnnotationLayer(image.getWidth(), image.getHeight());
+                    if (highlightModeActive) {
+                        annotationLayer.setAnnotationMode(AnnotationLayer.AnnotationMode.HIGHLIGHT);
+                    }
+
+                    // Stack the image and annotation layer
+                    StackPane imageStack = new StackPane(imageView, annotationLayer);
+                    imageStack.setAlignment(Pos.CENTER);
+
+                    // Replace placeholder with actual image
+                    if (!pageBox.getChildren().isEmpty()) {
+                        pageBox.getChildren().set(0, imageStack);
+                    }
+
+                    loadingPages.remove(pageIndex);
+                    logger.debug("Loaded page {}", pageIndex + 1);
+                });
+
+            } catch (IOException e) {
+                logger.error("Error loading page {}", pageIndex + 1, e);
+                loadingPages.remove(pageIndex);
+                // Keep placeholder with error message
+                Platform.runLater(() -> {
+                    if (!pageBox.getChildren().isEmpty() &&
+                            pageBox.getChildren().getFirst() instanceof StackPane) {
+                        Label errorLabel = new Label("Error loading page");
+                        errorLabel.setStyle("-fx-text-fill: red;");
+                        ((StackPane) pageBox.getChildren().getFirst()).getChildren().set(0, errorLabel);
+                    }
+                });
+            }
+        });
+    }
+
+
+    /**
+     * Updates the current page indicator based on scroll position.
+     * <p>
+     * This method determines which page is currently centered in the viewport
+     * by calculating the visible center position and finding the page that
+     * contains that position. It then updates the document's current page
+     * and the UI page information.
+     * </p>
+     * <p>
+     * This method is called immediately during scroll events (without debouncing)
+     * to provide responsive page number feedback to the user.
+     * </p>
+     */
+    private void updateCurrentPageFromScroll() {
+        if (currentDocument == null || pagesContainer == null || scrollPane == null) return;
+
+        try {
+            double viewportHeight = scrollPane.getViewportBounds().getHeight();
+            double scrollValue = scrollPane.getVvalue();
+            double contentHeight = pagesContainer.getHeight();
+
+            if (contentHeight <= viewportHeight) {
+                return; // All content visible, stay on current page
+            }
+
+            double visibleStart = scrollValue * (contentHeight - viewportHeight);
+            double visibleCenter = visibleStart + (viewportHeight / 2);
+
+            int totalPages = currentDocument.getTotalPages();
+            double currentY = 0;
+
+            for (int i = 0; i < totalPages; i++) {
+                VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
+                double pageHeight = pageBox.getPrefHeight();
+                double pageEnd = currentY + pageHeight;
+
+                if (visibleCenter >= currentY && visibleCenter < pageEnd) {
+                    currentDocument.setCurrentPage(i);
+                    updatePageInfo();
+                    break;
+                }
+
+                currentY = pageEnd + 10; // Add spacing
+            }
+        } catch (Exception e) {
+            logger.error("Error updating current page from scroll", e);
+        }
+    }
+
+    /**
+     * Scrolls the viewport to display the current page.
+     * <p>
+     * This method calculates the vertical position of the current page in the
+     * continuous scroll view and adjusts the scroll pane's vertical value to
+     * bring that page into view. The calculation accounts for page heights
+     * and spacing between pages.
+     * </p>
+     * <p>
+     * This method is typically called after programmatic page navigation
+     * (e.g., clicking previous/next buttons or jumping to a specific page).
+     * </p>
+     */
+    private void scrollToCurrentPage() {
+        if (currentDocument == null || pagesContainer == null || scrollPane == null) return;
+
+        Platform.runLater(() -> {
+            try {
+                int targetPage = currentDocument.getCurrentPage(); // 0-based hoặc 1-based tùy bạn đang dùng
+                double y = 0;
+
+                for (int i = 0; i < targetPage; i++) {
+                    VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
+                    y += pageBox.getPrefHeight() + 10; // 10 = spacing giữa các trang (điều chỉnh nếu khác)
+                }
+
+                double contentHeight  = pagesContainer.getHeight();
+                double viewportHeight = scrollPane.getViewportBounds().getHeight();
+
+                if (contentHeight > viewportHeight) {
+                    double targetV = y / (contentHeight - viewportHeight);
+                    smoothScrollTo(targetV, Duration.millis(350)); // 300–400ms là mượt
+                }
+            } catch (Exception ex) {
+                // logger.error("Error scrolling to page", ex);
+            }
+        });
+    }
+
+    /**
+     * Processes the page number field input and navigates to the specified page.
+     * <p>
+     * This method parses the page number from the text field (1-based), validates that
+     * the page number is within valid bounds, navigates to the page if valid, or shows
+     * an error dialog and resets the field if invalid.
+     * </p>
+     */
+    private void jumpToPage() {
+        if (currentDocument == null || pageNumberField == null) return;
+
+        try {
+            int pageNum = Integer.parseInt(pageNumberField.getText()) - 1;
+            if (pageNum >= 0 && pageNum < currentDocument.getTotalPages()) {
+                navigateToPage(pageNum);
+            } else {
+                showError("Invalid Page", "Page number must be between 1 and " +
+                         currentDocument.getTotalPages());
+                resetPageFieldToCurrentPage();
+            }
+        } catch (NumberFormatException e) {
+            showError("Invalid Input", "Please enter a valid page number");
+            resetPageFieldToCurrentPage();
+        }
+    }
+
+    /**
+     * Resets the page number field to display the current page number.
+     * <p>
+     * This is typically called after an invalid page number input to restore
+     * the field to a known good state.
+     * </p>
+     */
+    private void resetPageFieldToCurrentPage() {
+        if (currentDocument != null && pageNumberField != null) {
+            pageNumberField.setText(String.valueOf(currentDocument.getCurrentPage() + 1));
+        }
+    }
+
     /**
      * Updates the page information display in the UI.
      * <p>
@@ -896,6 +1169,11 @@ public class MainController {
             }
             if (nextButton != null) {
                 nextButton.setDisable(current == total);
+            }
+            if (prevButton != null) prevButton.setMinSize(40, 40);
+            if (nextButton != null) nextButton.setMinSize(40, 40);
+            if (pageNumberField != null) {
+                pageNumberField.setPrefColumnCount(4);
             }
         }
     }
