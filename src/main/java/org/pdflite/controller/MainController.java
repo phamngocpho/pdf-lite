@@ -525,12 +525,8 @@ public class MainController {
         toggleFullScreen();
     }
 
+
     @FXML
-    private void handleZoomIn() {
-        currentZoom = Math.min(Constants.MAX_ZOOM, currentZoom + Constants.ZOOM_STEP);
-        if (currentDocument != null) {
-            applyZoom(null);
-        }
     private void handleSearchRight() {
         searchManager.togglePanel(SearchManager.SearchPanelPosition.RIGHT);
     }
@@ -632,9 +628,11 @@ public class MainController {
     private void navigateToPage(int pageIndex) {
         if (currentDocument != null) {
             currentDocument.setCurrentPage(pageIndex);
-            scrollToCurrentPage();
+            navigationHelper.scrollToCurrentPage();
             updatePageInfo();
         }
+    }
+
     public void highlightSearchResult(SearchResult result) {
         searchManager.navigateToResult(result);
     }
@@ -1046,7 +1044,6 @@ public class MainController {
             toolbar.setManaged(false);
         }
     }
-}
 
     public BorderPane getRootPane() { return rootPane; }
     public ScrollPane getScrollPane() { return scrollPane; }
