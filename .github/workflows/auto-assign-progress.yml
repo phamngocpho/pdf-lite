@@ -1,17 +1,30 @@
-name: Auto Move on Assign
+name: Auto Move on Assign/Unassign
 
 on:
   issues:
-    types: [assigned]
+    types: [assigned, unassigned]
 
 jobs:
-  move-to-progress:
+  move-issue:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
     steps:
-      - name: Move issue to In progress
-        uses: tatsuya-koizumi/auto-move-issue@v1
+      - name: Move to In progress (on assign)
+        if: github.event.action == 'assigned'
+        uses: alex-page/github-project-automation-plus@v0.8.1
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          project-url: https://github.com/users/phamngocpho/projects/3
-          column-name: In progress
-          from-column: Ready
+          project: PDF-Lite Feature Tracking v1.0
+          column: In progress
+          repo-token: ${{ secrets.PROJECT_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
+      
+      - name: Move to Ready (on unassign)
+        if: github.event.action == 'unassigned'
+        uses: alex-page/github-project-automation-plus@v0.8.1
+        with:
+          project: PDF-Lite Feature Tracking v1.0
+          column: Ready
+          repo-token: ${{ secrets.PROJECT_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
