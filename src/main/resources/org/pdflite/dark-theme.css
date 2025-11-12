@@ -1,0 +1,13 @@
+.root {
+    -fx-base: #2b2b2b;
+    -fx-background-color: #2b2b2b;
+    -fx-text-fill: #ffffff;
+}
+
+.menu-bar {
+    -fx-background-color: #3a3a3a;
+}
+
+.menu, .menu-item {
+    -fx-text-fill: #ffffff;
+}
