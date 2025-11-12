@@ -25,7 +25,7 @@ public class ThemeManager {
 
         var resource = getClass().getResource(themePath);
         if (resource == null) {
-            System.err.println("Theme file not found: " + themePath);
+            System.err.println(" Theme file not found: " + themePath);
             return;
         }
 
