@@ -291,4 +291,50 @@ public class PageRenderer {
 
         return placeholder;
     }
+
+    /**
+     * Renders all pages of the document based on view mode (single/double page).
+     *
+     * @param document the PDF document to render
+     * @param container the VBox that holds all rendered pages
+     * @param zoom the current zoom level
+     * @param isDoublePage true to render two pages side-by-side
+     */
+    public void renderPages(PDFDocument document, VBox container, double zoom, boolean isDoublePage) {
+        if (document == null) return;
+
+        this.currentDocument = document;
+        this.currentZoom = zoom;
+        container.getChildren().clear();
+
+        int totalPages = document.getTotalPages();
+
+        if (isDoublePage) {
+            // 🔹 Hiển thị 2 trang cạnh nhau
+            for (int i = 0; i < totalPages; i += 2) {
+                javafx.scene.layout.HBox doublePageBox = new javafx.scene.layout.HBox(10);
+                doublePageBox.setAlignment(Pos.CENTER);
+
+                VBox leftPage = createPagePlaceholder(i, 600 * zoom, 800 * zoom);
+                loadPage(i, leftPage);
+                doublePageBox.getChildren().add(leftPage);
+
+                if (i + 1 < totalPages) {
+                    VBox rightPage = createPagePlaceholder(i + 1, 600 * zoom, 800 * zoom);
+                    loadPage(i + 1, rightPage);
+                    doublePageBox.getChildren().add(rightPage);
+                }
+
+                container.getChildren().add(doublePageBox);
+            }
+        } else {
+            // 🔹 Hiển thị từng trang đơn
+            for (int i = 0; i < totalPages; i++) {
+                VBox pageBox = createPagePlaceholder(i, 600 * zoom, 800 * zoom);
+                loadPage(i, pageBox);
+                container.getChildren().add(pageBox);
+            }
+        }
+    }
+
 }

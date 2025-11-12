@@ -66,6 +66,7 @@ public class MainController {
     private ZoomManager zoomManager;
     private FileManager fileManager;
     private FullscreenManager fullscreenManager;
+    private ViewModeManager viewModeManager;
     private UIStateManager uiStateManager;
     private PageInfoManager pageInfoManager;
     private RenderingManager renderingManager;
@@ -139,7 +140,8 @@ public class MainController {
         uiStateManager = new UIStateManager(statusLabel, prevButton, nextButton, pageNumberField, zoomComboBox);
 
         // Zoom Manager
-        zoomManager = new ZoomManager(pdfService, createZoomChangeListener());
+        viewModeManager = new ViewModeManager();
+        zoomManager = new ZoomManager(pdfService, createZoomChangeListener(), viewModeManager);
         zoomManager.initialize(zoomComboBox, scrollPane);
 
         // Rendering Manager
@@ -174,7 +176,19 @@ public class MainController {
             @Override
             public void onZoomApplied(double newZoom, String statusMessage) {
                 uiStateManager.updateStatus(statusMessage);
+                if (currentDocument != null) {
+                    boolean isDouble = viewModeManager.isDoublePage();
+
+                    if (pagesContainer != null) {
+                        pagesContainer.getChildren().clear();
+                    } else {
+                        pagesContainer = new VBox(10);
+                        scrollPane.setContent(pagesContainer);
+                    }
+                    pageRenderer.renderPages(currentDocument, pagesContainer, newZoom, isDouble);
+                }
             }
+
         };
     }
 
@@ -258,7 +272,8 @@ public class MainController {
 
             // Calculate initial zoom
             Image firstPage = pdfService.renderPage(currentDocument, 0, 1.0f);
-            double initialZoom = zoomManager.calculateInitialZoom(firstPage);
+            double fitZoom = zoomManager.calculateInitialZoom(firstPage);
+            double initialZoom = 1.0;
             zoomManager.setCurrentZoom(initialZoom);
             currentDocument.setZoomLevel(initialZoom);
 
@@ -269,10 +284,18 @@ public class MainController {
 
             // Update UI
             uiStateManager.updateUIState(true);
-            renderingManager.renderAllPages();
-            pagesContainer = renderingManager.getPagesContainer();
+
+            // Xác định chế độ xem dựa trên mức zoom
+            boolean isDouble = viewModeManager.isDoublePage();
+
+            // Tạo container trang và render theo chế độ
+            pagesContainer = new VBox(10);
+            pageRenderer.renderPages(currentDocument, pagesContainer, zoomManager.getCurrentZoom(), isDouble);
+            scrollPane.setContent(pagesContainer);
+
             pageInfoManager.updatePageInfo(currentDocument);
-            uiStateManager.updateStatus("Opened: " + file.getName());
+            uiStateManager.updateStatus("Opened: " + file.getName() + " - Zoom: 100%");
+
 
             logger.info("Successfully opened PDF: {}", file.getName());
         } catch (IOException e) {

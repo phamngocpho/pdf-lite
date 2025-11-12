@@ -20,7 +20,8 @@ public class ZoomManager {
 
     private final PDFService pdfService;
     private final ZoomChangeListener zoomChangeListener;
-    
+    private final ViewModeManager viewModeManager;
+
     private double currentZoom = Constants.DEFAULT_ZOOM;
     private ComboBox<String> zoomComboBox;
     private ScrollPane scrollPane;
@@ -40,9 +41,10 @@ public class ZoomManager {
      * @param pdfService the PDF service for rendering pages
      * @param zoomChangeListener listener for zoom change events
      */
-    public ZoomManager(PDFService pdfService, ZoomChangeListener zoomChangeListener) {
+    public ZoomManager(PDFService pdfService, ZoomChangeListener zoomChangeListener, ViewModeManager viewModeManager) {
         this.pdfService = pdfService;
         this.zoomChangeListener = zoomChangeListener;
+        this.viewModeManager = viewModeManager;
     }
 
     /**
@@ -54,7 +56,6 @@ public class ZoomManager {
     public void initialize(ComboBox<String> zoomComboBox, ScrollPane scrollPane) {
         this.zoomComboBox = zoomComboBox;
         this.scrollPane = scrollPane;
-
         if (zoomComboBox != null) {
             zoomComboBox.getItems().addAll("50%", "75%", "100%", "125%", "150%", "200%");
             zoomComboBox.setValue("100%");
@@ -86,6 +87,9 @@ public class ZoomManager {
      */
     public void setCurrentZoom(double zoom) {
         this.currentZoom = zoom;
+        if (viewModeManager != null) {
+            viewModeManager.updateViewMode(zoom);
+        }
     }
 
     /**
@@ -191,6 +195,9 @@ public class ZoomManager {
                 ? String.format("%s - Zoom: %.0f%%", prefix, currentZoom * 100)
                 : String.format("Zoom: %.0f%%", currentZoom * 100);
 
+            if (viewModeManager != null) {
+                viewModeManager.updateViewMode(currentZoom);
+            }
             if (zoomChangeListener != null) {
                 zoomChangeListener.onZoomChanged(currentZoom);
                 zoomChangeListener.onZoomApplied(currentZoom, statusMessage);
@@ -209,7 +216,7 @@ public class ZoomManager {
             && scrollPane.getViewportBounds().getHeight() > 0) {
             return calculateFitToPageZoom(firstPageImage.getWidth(), firstPageImage.getHeight());
         } else {
-            return 0.7;
+            return 1;
         }
     }
 }
