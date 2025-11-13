@@ -1,9 +1,6 @@
 package org.pdflite.manager;
 
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,31 +8,20 @@ import org.slf4j.LoggerFactory;
  * Manages UI state for the PDF viewer.
  * Handles enabling/disabling controls and status messages.
  */
-public class UIStateManager {
+public record UIStateManager(Label statusLabel, Button prevButton, Button nextButton, TextField pageNumberField,
+                             ComboBox<String> zoomComboBox) {
     private static final Logger logger = LoggerFactory.getLogger(UIStateManager.class);
-
-    private final Label statusLabel;
-    private final Button prevButton;
-    private final Button nextButton;
-    private final TextField pageNumberField;
-    private final ComboBox<String> zoomComboBox;
 
     /**
      * Creates a new UIStateManager.
      *
-     * @param statusLabel the status label
-     * @param prevButton the previous button
-     * @param nextButton the next button
+     * @param statusLabel     the status label
+     * @param prevButton      the previous button
+     * @param nextButton      the next button
      * @param pageNumberField the page number field
-     * @param zoomComboBox the zoom combo box
+     * @param zoomComboBox    the zoom combo box
      */
-    public UIStateManager(Label statusLabel, Button prevButton, Button nextButton,
-                         TextField pageNumberField, ComboBox<String> zoomComboBox) {
-        this.statusLabel = statusLabel;
-        this.prevButton = prevButton;
-        this.nextButton = nextButton;
-        this.pageNumberField = pageNumberField;
-        this.zoomComboBox = zoomComboBox;
+    public UIStateManager {
     }
 
     /**
@@ -64,11 +50,11 @@ public class UIStateManager {
     /**
      * Shows an error dialog.
      *
-     * @param title the error title
+     * @param title   the error title
      * @param message the error message
      */
     public void showError(String title, String message) {
-        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+        Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);

@@ -67,14 +67,7 @@ public class SearchService {
         stripper.setSortByPosition(true);
         StringWriter writer = new StringWriter();
         stripper.writeText(document, writer);
-
-        List<SearchResult> results = stripper.getResults();
-
-        for (SearchResult result : results) {
-            // Page number already set in CustomTextStripper
-        }
-
-        return results;
+        return stripper.getResults();
     }
 
     public void cancelSearch() {
@@ -86,16 +79,16 @@ public class SearchService {
         return cancelled;
     }
 
-    private String getContext(String text, int position, int length, boolean after) {
+    private String getContext(String text, int position, boolean after) {
         if (text == null || text.isEmpty()) {
             return "";
         }
 
         if (after) {
-            int end = Math.min(position + length, text.length());
+            int end = Math.min(position + SearchService.CONTEXT_LENGTH, text.length());
             return text.substring(position, end);
         } else {
-            int start = Math.max(0, position - length);
+            int start = Math.max(0, position - SearchService.CONTEXT_LENGTH);
             return text.substring(start, position);
         }
     }
@@ -108,10 +101,8 @@ public class SearchService {
         private final List<SearchResult> results = new ArrayList<>();
         private int currentPageNumber = 0;
         private String fullPageText;
-        private PDPage currentPage;
 
-        public CustomTextStripper(String keyword, boolean caseSensitive, boolean wholeWord)
-                throws IOException {
+        public CustomTextStripper(String keyword, boolean caseSensitive, boolean wholeWord) {
             super();
             this.keyword = caseSensitive ? keyword : keyword.toLowerCase();
             this.caseSensitive = caseSensitive;
@@ -121,7 +112,6 @@ public class SearchService {
         @Override
         protected void startPage(PDPage page) throws IOException {
             super.startPage(page);
-            this.currentPage = page;
             currentPageNumber = getCurrentPageNo();
             PDFTextStripper contextStripper = new PDFTextStripper();
             contextStripper.setStartPage(currentPageNumber);
@@ -148,9 +138,9 @@ public class SearchService {
                 if (bbox != null) {
                     String matchedText = text.substring(index, index + keyword.length());
 
-                    int globalIndex = fullPageText.indexOf(matchedText, 0);
-                    String contextBefore = getContext(fullPageText, globalIndex, CONTEXT_LENGTH, false);
-                    String contextAfter = getContext(fullPageText, globalIndex + matchedText.length(), CONTEXT_LENGTH, true);
+                    int globalIndex = fullPageText.indexOf(matchedText);
+                    String contextBefore = getContext(fullPageText, globalIndex, false);
+                    String contextAfter = getContext(fullPageText, globalIndex + matchedText.length(), true);
 
                     SearchResult result = new SearchResult(
                             currentPageNumber,
@@ -172,8 +162,8 @@ public class SearchService {
         }
 
         private BoundingBox calculateBoundingBoxForMatch(List<TextPosition> textPositions,
-                int matchStartIndex,
-                int matchLength) {
+                                                         int matchStartIndex,
+                                                         int matchLength) {
             if (textPositions.isEmpty()) {
                 return null;
             }
@@ -229,9 +219,7 @@ public class SearchService {
             int end = start + length;
             if (end < text.length()) {
                 char after = text.charAt(end);
-                if (Character.isLetterOrDigit(after)) {
-                    return false;
-                }
+                return !Character.isLetterOrDigit(after);
             }
 
             return true;
@@ -241,16 +229,6 @@ public class SearchService {
             return results;
         }
 
-        private static class BoundingBox {
-
-            final float x, y, width, height;
-
-            BoundingBox(float x, float y, float width, float height) {
-                this.x = x;
-                this.y = y;
-                this.width = width;
-                this.height = height;
-            }
-        }
+        private record BoundingBox(float x, float y, float width, float height) { }
     }
 }

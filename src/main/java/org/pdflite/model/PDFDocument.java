@@ -22,7 +22,7 @@ import java.util.Map;
  * </ul>
  * </p>
  * <p>
- * The image cache uses a Least Recently Used (LRU) eviction policy to limit
+ * The image cache uses the Least Recently Used (LRU) eviction policy to limit
  * memory usage while improving performance for frequently accessed pages.
  * </p>
  *

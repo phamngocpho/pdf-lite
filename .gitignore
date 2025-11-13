@@ -55,5 +55,7 @@ logs/
 docs/
 nb-configuration.xml
 
+query.json
 issues.json
+get-project-fields.cmd
 create-github-issues.ps1
