@@ -517,6 +517,10 @@ public class MainController {
             A lightweight PDF viewer with annotation features.
             
             Built with JavaFX and Apache PDFBox""");
+
+        if (themeManager != null)
+            themeManager.applyToDialog(alert.getDialogPane());
+
         alert.showAndWait();
     }
 
