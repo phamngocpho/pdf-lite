@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.pdflite.controller.SplitDialogController"
+            prefWidth="800" prefHeight="600">
+    
+    <!-- Top: Title and File Info -->
+    <top>
+        <VBox spacing="10" style="-fx-background-color: #f5f5f5; -fx-padding: 15;">
+            <Label text="Split PDF File" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+            <HBox spacing="10">
+                <Label text="File:" style="-fx-font-weight: bold;"/>
+                <Label fx:id="fileNameLabel" text="No file selected" style="-fx-text-fill: #333;"/>
+            </HBox>
+            <Label fx:id="totalPagesLabel" text="Total Pages: 0" style="-fx-text-fill: #666;"/>
+        </VBox>
+    </top>
+    
+    <!-- Center: Preview and Options -->
+    <center>
+        <SplitPane dividerPositions="0.5" VBox.vgrow="ALWAYS">
+            
+            <!-- Left: Page Preview -->
+            <VBox spacing="10">
+                <padding>
+                    <Insets top="15" right="10" bottom="15" left="15"/>
+                </padding>
+                
+                <Label text="Page Preview" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                
+                <ScrollPane fx:id="previewScrollPane" VBox.vgrow="ALWAYS" fitToWidth="true"
+                           style="-fx-background-color: #fafafa;">
+                    <FlowPane fx:id="previewPane" hgap="10" vgap="10" style="-fx-background-color: #fafafa;">
+                        <padding>
+                            <Insets top="10" right="10" bottom="10" left="10"/>
+                        </padding>
+                    </FlowPane>
+                </ScrollPane>
+            </VBox>
+            
+            <!-- Right: Split Options -->
+            <VBox spacing="15">
+                <padding>
+                    <Insets top="15" right="15" bottom="15" left="10"/>
+                </padding>
+                
+                <Label text="Split Options" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                
+                <!-- Split Mode Selection -->
+                <VBox spacing="10">
+                    
+                    <!-- Option 1: Split by Custom Ranges -->
+                    <RadioButton fx:id="splitByRangeRadio" text="Split by Custom Ranges"
+                                style="-fx-font-weight: bold;"/>
+                    
+                    <VBox fx:id="rangeInputBox" spacing="10" style="-fx-padding: 0 0 0 25;">
+                        <Label text="Enter page ranges (e.g., 1-5, 10-15):" style="-fx-text-fill: #666;"/>
+                        
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <TextField fx:id="rangeTextField" promptText="e.g., 1-5" prefWidth="200"/>
+                            <Button fx:id="addRangeButton" text="Add Range" onAction="#handleAddRange"/>
+                        </HBox>
+                        
+                        <Label text="Selected Ranges:" style="-fx-text-fill: #666; -fx-font-size: 11px;"/>
+                        <ListView fx:id="rangesListView" prefHeight="150" minHeight="100" VBox.vgrow="ALWAYS"/>
+                        
+                        <HBox spacing="10">
+                            <Button fx:id="removeRangeButton" text="Remove Selected" onAction="#handleRemoveRange"/>
+                        </HBox>
+                    </VBox>
+                    
+                    <Separator/>
+                    
+                    <!-- Option 2: Split by Page Count -->
+                    <RadioButton fx:id="splitByPagesRadio" text="Split by Page Count"
+                                style="-fx-font-weight: bold;"/>
+                    
+                    <VBox fx:id="pagesInputBox" spacing="10" style="-fx-padding: 0 0 0 25;">
+                        <Label text="Number of pages per file:" style="-fx-text-fill: #666;"/>
+                        <TextField fx:id="pagesPerFileTextField" promptText="e.g., 10" prefWidth="150"/>
+                    </VBox>
+                    
+                    <Separator/>
+                    
+                    <!-- Option 3: Split All Pages -->
+                    <RadioButton fx:id="splitAllPagesRadio" text="Split into Individual Pages"
+                                style="-fx-font-weight: bold;"/>
+                    
+                    <Label text="Each page will be saved as a separate PDF file."
+                          style="-fx-text-fill: #666; -fx-padding: 0 0 0 25;" wrapText="true"/>
+                </VBox>
+                
+                <Separator/>
+                
+                <!-- Output Options -->
+                <VBox spacing="10">
+                    <Label text="Output Options" style="-fx-font-weight: bold;"/>
+                    <CheckBox fx:id="zipOutputCheckBox" text="Create ZIP archive of split files"
+                             selected="false"/>
+                </VBox>
+                
+                <Region VBox.vgrow="ALWAYS"/>
+            </VBox>
+            
+        </SplitPane>
+    </center>
+    
+    <!-- Bottom: Status and Actions -->
+    <bottom>
+        <VBox spacing="10" style="-fx-background-color: #f5f5f5;">
+            <padding>
+                <Insets top="15" right="15" bottom="15" left="15"/>
+            </padding>
+            
+            <!-- Progress Bar -->
+            <ProgressBar fx:id="progressBar" prefWidth="Infinity" managed="false" visible="false"/>
+            
+            <!-- Status Label -->
+            <Label fx:id="statusLabel" text="Ready to split" style="-fx-text-fill: #666;"/>
+            
+            <!-- Action Buttons -->
+            <HBox spacing="10" alignment="CENTER_RIGHT">
+                <Button fx:id="splitButton" text="Split PDF" onAction="#handleSplit"
+                        style="-fx-font-weight: bold; -fx-background-color: #2196F3; -fx-text-fill: white;"
+                        prefWidth="120"/>
+                <Button fx:id="cancelButton" text="Cancel" onAction="#handleCancel" prefWidth="100"/>
+            </HBox>
+        </VBox>
+    </bottom>
+    
+</BorderPane>
+
