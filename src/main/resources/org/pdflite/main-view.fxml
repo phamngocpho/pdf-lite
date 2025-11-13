@@ -44,6 +44,10 @@
                 <Menu text="Help">
                     <MenuItem text="About" onAction="#handleAbout"/>
                 </Menu>
+                <Menu text="Theme">
+                    <MenuItem text ="Light" onAction="#setLightTheme" />
+                    <MenuItem text ="Dark" onAction="#setDarkTheme" />
+                </Menu>
             </MenuBar>
 
             <!-- Toolbar -->
