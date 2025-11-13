@@ -136,9 +136,7 @@ public class AnnotationLayer extends Canvas {
                     case HIGHLIGHT:
                         addHighlight(startX, startY, event.getX(), event.getY());
                         break;
-                    case DRAW:
-                        break;
-                    case TEXT:
+                    case DRAW, TEXT:
                         break;
                 }
                 isDrawing = false;
@@ -361,7 +359,7 @@ public class AnnotationLayer extends Canvas {
                 continue;
             }
             
-            boolean isActive = (activeSearchResult != null && result.equals(activeSearchResult));
+            boolean isActive = (result.equals(activeSearchResult));
 
             Color highlightColor = isActive ? ACTIVE_SEARCH_HIGHLIGHT_COLOR : SEARCH_HIGHLIGHT_COLOR;
             double opacity = isActive ? ACTIVE_SEARCH_HIGHLIGHT_OPACITY : SEARCH_HIGHLIGHT_OPACITY;

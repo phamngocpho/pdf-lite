@@ -9,27 +9,17 @@ import org.pdflite.model.PDFDocument;
  * Manages page information display and navigation buttons.
  * Handles updating page numbers and button states.
  */
-public class PageInfoManager {
-
-    private final Label totalPagesLabel;
-    private final TextField pageNumberField;
-    private final Button prevButton;
-    private final Button nextButton;
+public record PageInfoManager(Label totalPagesLabel, TextField pageNumberField, Button prevButton, Button nextButton) {
 
     /**
      * Creates a new PageInfoManager.
      *
      * @param totalPagesLabel the label showing total pages
      * @param pageNumberField the text field for page number
-     * @param prevButton the previous page button
-     * @param nextButton the next page button
+     * @param prevButton      the previous page button
+     * @param nextButton      the next page button
      */
-    public PageInfoManager(Label totalPagesLabel, TextField pageNumberField,
-                          Button prevButton, Button nextButton) {
-        this.totalPagesLabel = totalPagesLabel;
-        this.pageNumberField = pageNumberField;
-        this.prevButton = prevButton;
-        this.nextButton = nextButton;
+    public PageInfoManager {
     }
 
     /**

@@ -278,7 +278,7 @@ public class PDFService {
      * Delete pages from the PDF document. Indices are 0-based.
      * Pages are removed in descending order to keep indices stable.
      */
-    public void deletePages(PDFDocument pdfDoc, Collection<Integer> pageIndices) throws IOException {
+    public void deletePages(PDFDocument pdfDoc, Collection<Integer> pageIndices) {
         if (pdfDoc == null || pageIndices == null || pageIndices.isEmpty()) {
             return;
         }
