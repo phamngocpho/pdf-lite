@@ -2,15 +2,9 @@ package org.pdflite.manager;
 
 import javafx.scene.Scene;
 
-public class ThemeManager {
-    private final Scene scene;
-
+public record ThemeManager(Scene scene) {
     private static final String LIGHT_THEME = "/org/pdflite/light-theme.css";
     private static final String DARK_THEME = "/org/pdflite/dark-theme.css";
-
-    public ThemeManager(Scene scene) {
-        this.scene = scene;
-    }
 
     public void setLightTheme() {
         applyTheme(LIGHT_THEME);
