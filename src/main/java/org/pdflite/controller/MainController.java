@@ -71,6 +71,8 @@ public class MainController {
     private PageInfoManager pageInfoManager;
     private RenderingManager renderingManager;
     private SearchDialogManager searchDialogManager;
+    private ThemeManager themeManager;
+
 
     // ==================== Document State ====================
 
@@ -94,6 +96,13 @@ public class MainController {
         // Create helpers
         navigationHelper = new NavigationHelper(this, pdfService, renderExecutor, loadingPages);
         searchManager = new SearchManager(this, navigationHelper);
+
+        //Theme
+        rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                themeManager = new ThemeManager(newScene);
+            }
+        });
 
         // Initialize managers
         initializeManagers();
@@ -447,6 +456,17 @@ public class MainController {
             setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
         }
     }
+
+    @FXML
+    private void setLightTheme() {
+        themeManager.setLightTheme();
+    }
+
+    @FXML
+    private void setDarkTheme() {
+        themeManager.setDarkTheme();
+    }
+
 
     private void setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode mode) {
         if (pagesContainer != null) {
