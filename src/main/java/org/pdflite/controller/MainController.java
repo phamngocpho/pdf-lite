@@ -2,11 +2,15 @@ package org.pdflite.controller;
 
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.pdflite.manager.*;
 import org.pdflite.model.PDFDocument;
@@ -58,11 +62,11 @@ public class MainController {
 
     private PDFService pdfService;
     private NavigationHelper navigationHelper;
-    private SearchManager searchManager;
     private PageRenderer pageRenderer;
     private ScrollHandler scrollHandler;
 
     // Managers
+    private SearchManager searchManager;
     private ZoomManager zoomManager;
     private FileManager fileManager;
     private FullscreenManager fullscreenManager;
@@ -318,7 +322,14 @@ public class MainController {
         if (currentDocument != null) {
             fileManager.close(currentDocument);
         }
+        
+        // Shutdown executor service to prevent app from running in background
+        if (!renderExecutor.isShutdown()) {
+            renderExecutor.shutdownNow();
+        }
+        
         Platform.exit();
+        System.exit(0);
     }
 
     @FXML
@@ -522,6 +533,69 @@ public class MainController {
             themeManager.applyToDialog(alert.getDialogPane());
 
         alert.showAndWait();
+    }
+
+    // ==================== Merge and Split Operations ====================
+
+    @FXML
+    private void handleMergePDFs() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                getClass().getResource("/org/pdflite/merge-dialog.fxml")
+            );
+            Parent root = loader.load();
+            
+            MergeDialogController controller = loader.getController();
+            
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Merge PDF Files");
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+            dialogStage.initOwner(rootPane.getScene().getWindow());
+            dialogStage.setScene(new Scene(root));
+            
+            controller.setDialogStage(dialogStage);
+            
+            dialogStage.setOnCloseRequest(event -> controller.shutdown());
+            dialogStage.showAndWait();
+            
+        } catch (IOException e) {
+            logger.error("Error opening merge dialog", e);
+            uiStateManager.showError("Error", "Could not open merge dialog: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleSplitPDF() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No PDF Loaded", 
+                "Please open a PDF file first before splitting.");
+            return;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                getClass().getResource("/org/pdflite/split-dialog.fxml")
+            );
+            Parent root = loader.load();
+            
+            SplitDialogController controller = loader.getController();
+            
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Split PDF File");
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+            dialogStage.initOwner(rootPane.getScene().getWindow());
+            dialogStage.setScene(new Scene(root));
+            
+            controller.setDialogStage(dialogStage);
+            controller.setSourceFile(currentDocument.getFile());
+            
+            dialogStage.setOnCloseRequest(event -> controller.shutdown());
+            dialogStage.showAndWait();
+            
+        } catch (IOException e) {
+            logger.error("Error opening split dialog", e);
+            uiStateManager.showError("Error", "Could not open split dialog: " + e.getMessage());
+        }
     }
 
 
