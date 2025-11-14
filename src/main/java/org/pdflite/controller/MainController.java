@@ -531,7 +531,6 @@ public class MainController {
 
         if (themeManager != null)
             themeManager.applyToDialog(alert.getDialogPane());
-
         alert.showAndWait();
     }
 
