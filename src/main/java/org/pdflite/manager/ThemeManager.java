@@ -59,7 +59,6 @@ public class ThemeManager {
             return;
         }
 
-        // Xóa stylesheet cũ và thêm stylesheet mới
         scene.getStylesheets().clear();
         scene.getStylesheets().add(resource.toExternalForm());
         currentTheme = themePath;
