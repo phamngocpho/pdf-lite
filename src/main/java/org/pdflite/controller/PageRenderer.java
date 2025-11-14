@@ -12,6 +12,7 @@ import org.pdflite.service.PDFService;
 import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.function.Consumer;
 
 import java.io.IOException;
 import java.util.Map;
@@ -208,6 +209,35 @@ public class PageRenderer {
 
         // Track the future for potential cancellation
         pendingRenders.put(pageIndex, future);
+    }
+
+    /**
+     * [THÊM HÀM NÀY VÀO]
+     * Render một trang bất đồng bộ và gọi callback khi hoàn tất.
+     */
+    public void renderPageAsync(int pageIndex, double zoom, Consumer<Image> callback) {
+        if (currentDocument == null) {
+            return;
+        }
+        renderExecutor.submit(() -> {
+            try {
+                // (Hàm pdfService.renderPage sẽ render ảnh mới
+                // vì cache đã bị xóa bởi hàm rotatePage)
+                Image image = pdfService.renderPage(
+                        currentDocument,
+                        pageIndex,
+                        (float) zoom
+                );
+
+                // Trả ảnh về luồng UI
+                Platform.runLater(() -> callback.accept(image));
+
+            } catch (IOException e) {
+                logger.error("Error async rendering page {}", pageIndex + 1, e);
+                // Có thể gọi callback với null hoặc ảnh lỗi nếu muốn
+                Platform.runLater(() -> callback.accept(null));
+            }
+        });
     }
 
     /**

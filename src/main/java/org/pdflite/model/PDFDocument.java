@@ -249,4 +249,15 @@ public class PDFDocument {
     public void clearCache() {
         imageCache.clear();
     }
+
+    /**
+     * [THÊM HÀM NÀY VÀO]
+     * Xóa các phiên bản đã cache của một trang cụ thể.
+     */
+    public void clearCacheForPage(int pageIndex) {
+        if (imageCache == null) return;
+        String keyPrefix = pageIndex + "_";
+        imageCache.keySet().removeIf(key -> key.startsWith(keyPrefix));
+    }
 }
+

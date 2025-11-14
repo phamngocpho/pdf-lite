@@ -49,7 +49,8 @@ public class MainController {
     @FXML private ToolBar toolbar;
     @FXML private Button prevButton;
     @FXML private Button nextButton;
-
+    @FXML private Button rotateLeftButton;
+    @FXML private Button rotateRightButton;
     // === CÁC ĐIỀU KHIỂN VẼ MỚI ===
     @FXML private ComboBox<DrawingTool> drawingToolComboBox;
     @FXML private ColorPicker colorPicker;
@@ -482,6 +483,53 @@ public class MainController {
             uiStateManager.updateStatus("Highlight mode: Disabled");
         }
     }
+
+    // ... (Hàm disableHighlightMode() của bạn) ...
+
+// ==================== Rotation Operations (MỚI) ====================
+
+    @FXML
+    private void handleRotateLeft() {
+        rotateCurrentPage(-90); // Xoay ngược chiều kim đồng hồ
+    }
+
+    @FXML
+    private void handleRotateRight() {
+        rotateCurrentPage(90); // Xoay thuận chiều kim đồng hồ
+    }
+
+    /**
+     * Hàm trợ giúp để xoay trang hiện tại.
+     */
+    private void rotateCurrentPage(int degrees) {
+        if (currentDocument == null || renderingManager == null || pdfService == null || scrollHandler == null) {
+            return;
+        }
+
+        // Lấy trang hiện tại (từ logic scroll của bạn)
+        int currentPageIndex = scrollHandler.getCurrentPageFromScroll();
+        if (currentPageIndex < 0) {
+            // Fallback về trang trong model nếu scroll handler chưa sẵn sàng
+            currentPageIndex = currentDocument.getCurrentPage();
+        }
+
+        try {
+            // 1. Thay đổi dữ liệu trong PDF (bộ nhớ)
+            pdfService.rotatePage(currentDocument, currentPageIndex, degrees);
+
+            // 2. Yêu cầu RenderingManager render lại trang đó trên UI
+            renderingManager.rerenderPage(currentPageIndex);
+
+            uiStateManager.updateStatus("Rotated page " + (currentPageIndex + 1));
+
+        } catch (Exception e) {
+            logger.error("Error during page rotation", e);
+            uiStateManager.showError("Rotation Error", "Could not rotate page: " + e.getMessage());
+        }
+    }
+
+// ==================== Theme, Fullscreen, Search, Etc. ====================
+// ... (Các hàm setLightTheme, setDarkTheme, v.v. của bạn) ...
 
     // ==================== Theme Operations ====================
     @FXML private void setLightTheme() { themeManager.setLightTheme(); }

@@ -66,6 +66,14 @@
                 <Separator orientation="VERTICAL"/>
                 <Button text="Highlight" onAction="#handleHighlight"/>
 
+                <Button text="Highlight" onAction="#handleHighlight"/>
+
+                <Separator orientation="VERTICAL"/>
+                <Button fx:id="rotateLeftButton" text="↶ Left" onAction="#handleRotateLeft"/>
+                <Button fx:id="rotateRightButton" text="Right ↷" onAction="#handleRotateRight"/>
+                <Separator orientation="VERTICAL"/>
+                <Label text="Draw:"/>
+
                 <Separator orientation="VERTICAL"/>
                 <Label text="Draw:"/>
                 <ComboBox fx:id="drawingToolComboBox" prefWidth="100" promptText="Select Tool"/>

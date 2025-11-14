@@ -14,6 +14,7 @@ import org.pdflite.service.PDFService;
 import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import javafx.scene.image.ImageView;
 
 import java.io.IOException;
 
@@ -198,6 +199,72 @@ public class RenderingManager {
         }
     }
 
+    // ... (Hàm preserveScrollPositionAndApplyZoom(...) của bạn) ...
+
+    /**
+     * [THÊM HÀM NÀY VÀO]
+     * Render lại một trang cụ thể tại chỉ số index (sau khi xoay).
+     */
+    public void rerenderPage(int pageIndex) {
+        if (pagesContainer == null || pageIndex < 0 || pageIndex >= pagesContainer.getChildren().size()) {
+            logger.warn("Cannot rerender page: Invalid index or pagesContainer not set");
+            return;
+        }
+        try {
+            // Cấu trúc của bạn là VBox(Container) -> VBox(pageBox) -> StackPane
+            VBox pageBox = (VBox) pagesContainer.getChildren().get(pageIndex);
+            StackPane stackPane = (StackPane) pageBox.getChildren().getFirst();
+
+            ImageView imageView = null;
+            AnnotationLayer annotationLayer = null;
+            for (javafx.scene.Node child : stackPane.getChildren()) {
+                if (child instanceof ImageView) {
+                    imageView = (ImageView) child;
+                } else if (child instanceof AnnotationLayer) {
+                    annotationLayer = (AnnotationLayer) child;
+                }
+            }
+            if (imageView == null) {
+                logger.warn("Cannot rerender: ImageView not found");
+                return;
+            }
+
+            final ImageView finalImageView = imageView;
+            final AnnotationLayer finalAnnotationLayer = annotationLayer;
+            final StackPane finalStackPane = stackPane;
+
+            double currentZoom = zoomManager.getCurrentZoom();
+            pageRenderer.renderPageAsync(
+                    pageIndex,
+                    currentZoom,
+                    (newImage) -> {
+                        if (newImage == null) {
+                            logger.error("Failed to get new rendered image for page {}", pageIndex + 1);
+                            return;
+                        }
+
+                        finalImageView.setImage(newImage);
+                        finalImageView.setFitWidth(newImage.getWidth());
+                        finalImageView.setFitHeight(newImage.getHeight());
+
+                        finalStackPane.setPrefSize(newImage.getWidth(), newImage.getHeight());
+                        finalStackPane.setMinSize(newImage.getWidth(), newImage.getHeight());
+                        finalStackPane.setMaxSize(newImage.getWidth(), newImage.getHeight());
+
+                        if (finalAnnotationLayer != null) {
+                            finalAnnotationLayer.setWidth(newImage.getWidth());
+                            finalAnnotationLayer.setHeight(newImage.getHeight());
+                            finalAnnotationLayer.redraw();
+                        }
+                        logger.info("Rerendered page {} successfully.", pageIndex + 1);
+                    }
+            );
+        } catch (Exception e) {
+            logger.error("Error rerendering page " + pageIndex, e);
+        }
+    }
+
+// ... (Hàm getPagesContainer() của bạn) ...
     /**
      * Gets the pages container.
      *

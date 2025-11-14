@@ -314,4 +314,45 @@ public class PDFService {
 
         logger.info("Deleted {} page(s). New total pages: {}", toDelete, newTotal);
     }
+    // ... (Code của bạn, ví dụ hàm deletePages(...) ) ...
+
+    /**
+     * [THÊM HÀM NÀY VÀO]
+     * Xoay một trang cụ thể theo một góc.
+     */
+    public void rotatePage(PDFDocument pdfDoc, int pageIndex, int degrees) {
+        if (pdfDoc == null || pageIndex < 0 || pageIndex >= pdfDoc.getTotalPages()) {
+            return;
+        }
+        PDDocument document = pdfDoc.getDocument();
+        org.apache.pdfbox.pdmodel.PDPage page = document.getPage(pageIndex);
+        int currentRotation = page.getRotation();
+        int newRotation = (currentRotation + degrees) % 360;
+        if (newRotation < 0) {
+            newRotation += 360;
+        }
+        page.setRotation(newRotation);
+        logger.info("Rotated page {} to {} degrees", pageIndex + 1, newRotation);
+        pdfDoc.clearCacheForPage(pageIndex);
+    }
+
+    /**
+     * [THÊM HÀM NÀY VÀO]
+     * Xoay tất cả các trang.
+     */
+    public void rotateAllPages(PDFDocument pdfDoc, int degrees) {
+        if (pdfDoc == null) return;
+        for (int i = 0; i < pdfDoc.getTotalPages(); i++) {
+            org.apache.pdfbox.pdmodel.PDPage page = pdfDoc.getDocument().getPage(i);
+            int currentRotation = page.getRotation();
+            int newRotation = (currentRotation + degrees) % 360;
+            if (newRotation < 0) {
+                newRotation += 360;
+            }
+            page.setRotation(newRotation);
+        }
+        logger.info("Rotated all pages by {} degrees", degrees);
+        pdfDoc.clearCache();
+    }
 }
+
