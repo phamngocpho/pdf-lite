@@ -30,7 +30,7 @@ public class AnnotationLayer extends Canvas {
     private final List<Annotation> annotations = new ArrayList<>();
     private AnnotationMode currentMode = AnnotationMode.NONE;
 
-    // GIỮ NGUYÊN 'currentColor' cho logic HIGHLIGHT cũ của bạn
+    // GIỮ NGUYÊN 'currentColor' cho logic HIGHLIGHT
     private Color currentColor = Color.YELLOW;
 
     // Tọa độ vẽ
@@ -59,14 +59,14 @@ public class AnnotationLayer extends Canvas {
 
     // === CÁC HÀM SETTER MỚI ===
     /**
-     * [QUAN TRỌNG] Inject DrawingManager từ MainController.
+     * Inject DrawingManager từ MainController.
      */
     public void setDrawingManager(DrawingManager drawingManager) {
         this.drawingManager = drawingManager;
     }
 
     /**
-     * [QUAN TRỌNG] Set số trang cho lớp này.
+     * Set số trang.
      * Cần gọi khi tạo AnnotationLayer (trong MainController).
      */
     public void setPageNumber(int pageNumber) {
@@ -104,7 +104,7 @@ public class AnnotationLayer extends Canvas {
             if (!isDrawing) return;
 
             if (currentMode == AnnotationMode.HIGHLIGHT) {
-                // Logic HIGHLIGHT (Giữ nguyên)
+                // Logic HIGHLIGHT
                 redraw(); // Xóa và vẽ lại
                 GraphicsContext gc = getGraphicsContext2D();
                 gc.setFill(getColorWithAlpha(currentColor, 0.4));
@@ -396,7 +396,9 @@ public class AnnotationLayer extends Canvas {
                 logger.warn("Invalid coordinates for search result: {}", result);
                 continue;
             }
+            
             boolean isActive = (result.equals(activeSearchResult));
+
             Color highlightColor = isActive ? ACTIVE_SEARCH_HIGHLIGHT_COLOR : SEARCH_HIGHLIGHT_COLOR;
             double opacity = isActive ? ACTIVE_SEARCH_HIGHLIGHT_OPACITY : SEARCH_HIGHLIGHT_OPACITY;
             gc.setFill(Color.color(

@@ -89,6 +89,9 @@
                 <Button text="Merge PDFs" onAction="#handleMergePDFs" style="-fx-background-color: #4CAF50; -fx-text-fill: white;"/>
                 <Button text="Split PDF" onAction="#handleSplitPDF" style="-fx-background-color: #2196F3; -fx-text-fill: white;"/>
                 <Separator orientation="VERTICAL"/>
+                <Button text="Merge PDFs" onAction="#handleMergePDFs" style="-fx-background-color: #4CAF50; -fx-text-fill: white;"/>
+                <Button text="Split PDF" onAction="#handleSplitPDF" style="-fx-background-color: #2196F3; -fx-text-fill: white;"/>
+                <Separator orientation="VERTICAL"/>
                 <Button text="Delete Page" onAction="#handleDeletePage"/>
                 <Button text="Full Screen" onAction="#handleToggleFullScreen"/>
 
