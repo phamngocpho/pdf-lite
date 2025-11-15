@@ -16,7 +16,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Comparator;
 import java.util.Collection;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -53,7 +52,7 @@ public class PDFService {
      * </p>
      */
     private static final float DEFAULT_DPI = 150f;
-
+    private PDFRenderer pdfRenderer;
     /**
      * Opens a PDF file and creates a PDFDocument wrapper.
      * <p>
@@ -68,11 +67,14 @@ public class PDFService {
      * @throws IllegalArgumentException if the file is null
      */
     public PDFDocument openPDF(File file) throws IOException {
-        logger.info("Opening PDF file: {}", file.getAbsolutePath());
-        PDDocument document = Loader.loadPDF(file);
-        return new PDFDocument(document, file);
-    }
-
+    logger.info("Opening PDF file: {}", file.getAbsolutePath());
+    PDDocument document = Loader.loadPDF(file);
+    
+    // Tạo lại PDFRenderer mỗi khi mở file mới
+    this.pdfRenderer = new PDFRenderer(document);
+    
+    return new PDFDocument(document, file);
+}
     /**
      * Renders a specific page of the PDF as a JavaFX Image with optimized settings.
      * <p>
@@ -97,33 +99,28 @@ public class PDFService {
      * @see PDFDocument#cacheImage(int, float, Image)
      */
     public Image renderPage(PDFDocument pdfDoc, int pageIndex, float scale) throws IOException {
-        if (pageIndex < 0 || pageIndex >= pdfDoc.getTotalPages()) {
-            throw new IllegalArgumentException("Invalid page index: " + pageIndex);
-        }
-
-        // Check cache first
-        Image cachedImage = pdfDoc.getCachedImage(pageIndex, scale);
-        if (cachedImage != null) {
-            logger.debug("Using cached image for page {}", pageIndex);
-            return cachedImage;
-        }
-
-        // Create renderer with optimized settings
-        PDFRenderer renderer = new PDFRenderer(pdfDoc.getDocument());
-        float dpi = DEFAULT_DPI * scale;
-
-        logger.debug("Rendering page {} with DPI {}", pageIndex, dpi);
-        
-        // Render with RGB image type for better performance (no alpha channel overhead)
-        BufferedImage bufferedImage = renderer.renderImageWithDPI(pageIndex, dpi, ImageType.RGB);
-
-        Image image = SwingFXUtils.toFXImage(bufferedImage, null);
-
-        // Cache the rendered image
-        pdfDoc.cacheImage(pageIndex, scale, image);
-
-        return image;
+    if (pageIndex < 0 || pageIndex >= pdfDoc.getTotalPages()) {
+        throw new IllegalArgumentException("Invalid page index: " + pageIndex);
     }
+
+    // Check cache first
+    Image cachedImage = pdfDoc.getCachedImage(pageIndex, scale);
+    if (cachedImage != null) {
+        logger.debug("Using cached image for page {}", pageIndex);
+        return cachedImage;
+    }
+
+    float dpi = DEFAULT_DPI * scale;
+    logger.debug("Rendering page {} with DPI {}", pageIndex, dpi);
+    
+    // Dùng pdfRenderer đã được tạo lại
+    BufferedImage bufferedImage = pdfRenderer.renderImageWithDPI(pageIndex, dpi, ImageType.RGB);
+
+    Image image = SwingFXUtils.toFXImage(bufferedImage, null);
+    pdfDoc.cacheImage(pageIndex, scale, image);
+
+    return image;
+}
 
     /**
      * Closes the PDF document and releases resources.
@@ -275,43 +272,128 @@ public class PDFService {
     }
 
     /**
-     * Delete pages from the PDF document. Indices are 0-based.
-     * Pages are removed in descending order to keep indices stable.
-     */
-    public void deletePages(PDFDocument pdfDoc, Collection<Integer> pageIndices) throws IOException {
-        if (pdfDoc == null || pageIndices == null || pageIndices.isEmpty()) {
-            return;
-        }
+ * Delete pages from the PDF document. Indices are 0-based.
+ * <p>
+ * This method creates a new PDDocument with only the pages that should be kept,
+ * rather than removing pages directly. This ensures proper cleanup of PDF objects
+ * and prevents corruption when saving large PDF files.
+ * </p>
+ */
+public void deletePages(PDFDocument pdfDoc, Collection<Integer> pageIndices) throws IOException {
+    if (pdfDoc == null || pageIndices == null || pageIndices.isEmpty()) {
+        return;
+    }
 
-        PDDocument doc = pdfDoc.getDocument();
-        int total = doc.getNumberOfPages();
+    PDDocument oldDoc = pdfDoc.getDocument();
+    int total = oldDoc.getNumberOfPages();
 
-        // Prevent deleting all pages
-        long toDelete = pageIndices.stream()
-                .filter(i -> i >= 0 && i < total)
-                .distinct()
-                .count();
-        if (toDelete >= total) {
-            throw new IllegalArgumentException("Cannot delete all pages of a PDF document.");
-        }
-
-        // Delete in descending order
+    // Create a set of pages to delete for quick lookup
+    java.util.Set<Integer> pagesToDelete = new java.util.HashSet<>(
         pageIndices.stream()
-                .filter(i -> i >= 0 && i < total)
-                .distinct()
-                .sorted(Comparator.reverseOrder())
-                .forEach(doc::removePage);
+            .filter(i -> i >= 0 && i < total)
+            .distinct()
+            .toList()
+    );
+
+    // Prevent deleting all pages
+    if (pagesToDelete.size() >= total) {
+        throw new IllegalArgumentException("Cannot delete all pages of a PDF document.");
+    }
+
+    if (pagesToDelete.isEmpty()) {
+        return; // No pages to delete
+    }
+
+    // Create a new document and copy only the pages we want to keep
+    PDDocument newDoc = new PDDocument();
+    PDDocument reloadedDoc = null;
+
+    try {
+        // Copy document information
+        if (oldDoc.getDocumentInformation() != null) {
+            newDoc.getDocumentInformation().setTitle(oldDoc.getDocumentInformation().getTitle());
+            newDoc.getDocumentInformation().setAuthor(oldDoc.getDocumentInformation().getAuthor());
+            newDoc.getDocumentInformation().setSubject(oldDoc.getDocumentInformation().getSubject());
+            newDoc.getDocumentInformation().setCreator(oldDoc.getDocumentInformation().getCreator());
+            newDoc.getDocumentInformation().setProducer(oldDoc.getDocumentInformation().getProducer());
+        }
+
+        // Copy pages that should be kept
+        int pagesCopied = 0;
+        for (int i = 0; i < total; i++) {
+            if (!pagesToDelete.contains(i)) {
+                newDoc.importPage(oldDoc.getPage(i));
+                pagesCopied++;
+                logger.debug("Copied page {} to new document", i + 1);
+            }
+        }
+
+        logger.info("Deleted {} page(s), copied {} page(s). New total pages: {}", 
+                   pagesToDelete.size(), pagesCopied, newDoc.getNumberOfPages());
+        
+        // Save to a temporary file first
+        File originalFile = pdfDoc.getFile();
+        File tempFile = File.createTempFile("pdf_lite_delete_", ".pdf", originalFile.getParentFile());
+        
+        try {
+            // Save new document to temp file
+            newDoc.save(tempFile);
+            newDoc.close();
+            newDoc = null; // Prevent double close
+            
+            // Close old document
+            oldDoc.close();
+            oldDoc = null;
+            
+            // Copy temp file to original location
+            Files.copy(tempFile.toPath(), originalFile.toPath(), 
+                      java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            
+            // Reload document from file to ensure it's in a valid state
+            reloadedDoc = Loader.loadPDF(originalFile);
+            
+            // Update PDFDocument's internal document reference using reflection
+            try {
+                java.lang.reflect.Field docField = PDFDocument.class.getDeclaredField("document");
+                docField.setAccessible(true);
+                docField.set(pdfDoc, reloadedDoc);
+                logger.debug("Updated PDFDocument with reloaded PDDocument");
+            } catch (Exception e) {
+                logger.error("Failed to update document reference, closing reloaded document", e);
+                if (reloadedDoc != null) {
+                    reloadedDoc.close();
+                }
+                throw new IOException("Failed to update document reference: " + e.getMessage(), e);
+            }
+            
+            // CRITICAL: Recreate PDFRenderer with the NEW reloaded document
+            this.pdfRenderer = new PDFRenderer(reloadedDoc);
+            logger.debug("Recreated PDFRenderer for updated document");
+
+        } finally {
+            // Clean up temp file
+            Files.deleteIfExists(tempFile.toPath());
+        }
 
         // Clear render cache since page indices/images changed
         pdfDoc.clearCache();
 
         // Clamp current page to valid range
-        int newTotal = doc.getNumberOfPages();
+        int newTotal = pdfDoc.getTotalPages();
         int current = pdfDoc.getCurrentPage();
         if (current >= newTotal) {
             pdfDoc.setCurrentPage(Math.max(0, newTotal - 1));
         }
 
-        logger.info("Deleted {} page(s). New total pages: {}", toDelete, newTotal);
+    } catch (Exception e) {
+        // Ensure resources are closed
+        if (newDoc != null) {
+            try { newDoc.close(); } catch (IOException ex) { logger.error("Error closing newDoc", ex); }
+        }
+        if (reloadedDoc != null) {
+            try { reloadedDoc.close(); } catch (IOException ex) { logger.error("Error closing reloadedDoc", ex); }
+        }
+        throw new IOException("Error deleting pages: " + e.getMessage(), e);
     }
+}
 }

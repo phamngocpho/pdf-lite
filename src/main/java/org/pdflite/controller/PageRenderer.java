@@ -291,4 +291,10 @@ public class PageRenderer {
 
         return placeholder;
     }
+   
+public void resetForDocumentChange() {
+    clearCache();
+    cancelAllPendingRenders();
+    loadingPages.clear();
+}
 }

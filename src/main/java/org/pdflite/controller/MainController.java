@@ -289,44 +289,62 @@ public class MainController {
         Platform.exit();
     }
 
-    @FXML
-    private void handleDeletePage() {
-        if (currentDocument == null) {
-            return;
-        }
-
-        int total = currentDocument.getTotalPages();
-        if (total <= 1) {
-            uiStateManager.showError("Delete Page", "Cannot delete the last remaining page.");
-            return;
-        }
-
-        int current = currentDocument.getCurrentPage();
-
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Delete Page");
-        confirm.setHeaderText("Delete current page?");
-        confirm.setContentText("This will remove page " + (current + 1) + " from the document.");
-        confirm.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
-        confirm.showAndWait().ifPresent(result -> {
-            if (result == ButtonType.OK) {
-                try {
-                    fileManager.deletePages(currentDocument, java.util.List.of(current));
-                    // Reset UI containers and re-render pages
-                    if (contentPane != null) {
-                        contentPane.getChildren().clear();
-                    }
-                    pagesContainer = null;
-                    loadingPages.clear();
-                    renderCurrentPage();
-                    pageInfoManager.updatePageInfo(currentDocument);
-                } catch (Exception e) {
-                    logger.error("Error deleting page {}", current + 1, e);
-                    uiStateManager.showError("Delete Page Error", "Could not delete the page: " + e.getMessage());
-                }
-            }
-        });
+@FXML
+private void handleDeletePage() {
+    if (currentDocument == null) {
+        return;
     }
+
+    int total = currentDocument.getTotalPages();
+    if (total <= 1) {
+        uiStateManager.showError("Delete Page", "Cannot delete the last remaining page.");
+        return;
+    }
+
+    int current = currentDocument.getCurrentPage();
+
+    Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+    confirm.setTitle("Delete Page");
+    confirm.setHeaderText("Delete current page?");
+    confirm.setContentText("This will permanently remove page " + (current + 1) + " from the document.");
+    confirm.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
+
+    confirm.showAndWait().ifPresent(result -> {
+        if (result == ButtonType.OK) {
+            try {
+                // Step 1: Delete page via FileManager
+                fileManager.deletePages(currentDocument, java.util.List.of(current));
+
+                // Step 2: CRITICAL - Clear rendering state
+                pageRenderer.clearCache();                    // Xóa cache hình ảnh cũ
+                pageRenderer.cancelAllPendingRenders();       // Hủy các render đang chạy
+                loadingPages.clear();                         // Xóa danh sách trang đang load
+
+                // Step 3: Reset UI containers
+                if (contentPane != null) {
+                    contentPane.getChildren().clear();
+                }
+                pagesContainer = null;  // Buộc tạo lại container
+
+                // Step 4: Re-render all pages with updated document
+                renderCurrentPage();
+
+                // Step 5: Update page info and UI
+                pageInfoManager.updatePageInfo(currentDocument);
+                uiStateManager.updateStatus("Deleted page " + (current + 1));
+
+                logger.info("Successfully deleted page {}", current + 1);
+
+            } catch (Exception e) {
+                logger.error("Error deleting page {}", current + 1, e);
+                uiStateManager.showError(
+                    "Delete Page Error",
+                    "Could not delete the page: " + e.getMessage()
+                );
+            }
+        }
+    });
+}
 
     // ==================== Zoom Operations ====================
 
