@@ -19,6 +19,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import org.pdflite.view.ContextMenuPane;
 
 /**
@@ -240,34 +242,37 @@ public class PageRenderer {
     imageView.setCache(true);
     
     imageView.setPickOnBounds(false);
+    imageView.setMouseTransparent(false);
 
-    // Create annotation layer on top of the image
+    // Create annotation layer
     AnnotationLayer annotationLayer = new AnnotationLayer(image.getWidth(), image.getHeight());
-    if (highlightModeActive) {
-        annotationLayer.setAnnotationMode(AnnotationLayer.AnnotationMode.HIGHLIGHT);
-    }
-    
     annotationLayer.setPickOnBounds(false);
+    annotationLayer.setOnContextMenuRequested(null);
+    annotationLayer.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
+        if (event.getButton() == MouseButton.SECONDARY) {
+            // return nothing
+        }
+    });
 
+    // Create context menu pane
     ContextMenuPane contextPane = new ContextMenuPane(contextMenuHandler);
     contextPane.setDocumentInfo(currentDocument, pageIndex, currentZoom);
     contextPane.setPrefSize(image.getWidth(), image.getHeight());
     contextPane.setMaxSize(image.getWidth(), image.getHeight());
+    
+    contextPane.toFront();
 
-    /**
-     * IMPORTANT NOTE
-     */
     // Stack layers: Image (bottom) -> Annotation -> ContextMenu (top)
     StackPane imageStack = new StackPane(imageView, annotationLayer, contextPane);
     imageStack.setAlignment(Pos.CENTER);
+    
+    imageStack.setPickOnBounds(false);
 
-    // Replace placeholder with actual image
     if (!pageBox.getChildren().isEmpty()) {
         pageBox.getChildren().set(0, imageStack);
     }
 
-    logger.debug("Page {} displayed with context menu support (layers: Image -> Annotation -> Context)", 
-        pageIndex + 1);
+    logger.debug("Page {} displayed - Context menu layer active", pageIndex + 1);
 }
 
     /**
