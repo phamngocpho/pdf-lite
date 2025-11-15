@@ -96,10 +96,10 @@ public class ContextMenuHandler {
             currentSelection = extractTextFromRegion(page, pdfRect, pageIndex);
             
             if (currentSelection.hasText()) {
-                logger.info("Length:   {} characters",currentSelection.getText().length());
+                logger.info("Length:   {} characters",currentSelection.text().length());
                 
-                String preview = currentSelection.getText().substring(0, 
-                    Math.min(50, currentSelection.getText().length()));
+                String preview = currentSelection.text().substring(0,
+                    Math.min(50, currentSelection.text().length()));
             } else {
                 logger.info("No text found in selection");
             }
@@ -160,11 +160,11 @@ public class ContextMenuHandler {
     public void handleCopyText() {
         if (currentSelection != null && currentSelection.hasText()) {
             ClipboardContent content = new ClipboardContent();
-            content.putString(currentSelection.getText());
+            content.putString(currentSelection.text());
             Clipboard.getSystemClipboard().setContent(content);
             
             logger.info("Copied {} characters to clipboard", 
-                currentSelection.getText().length());
+                currentSelection.text().length());
         } else {
             logger.warn("No text to copy");
         }
@@ -172,7 +172,6 @@ public class ContextMenuHandler {
     
     /**
      * Checks if text is available at last analyzed position.
-     * @return 
      */
     public boolean hasTextAtPosition() {
         return currentSelection != null && currentSelection.hasText();
@@ -180,43 +179,20 @@ public class ContextMenuHandler {
     
     /**
      * Gets current selection info (for debugging).
-     * @return 
      */
     public SelectionInfo getCurrentSelection() {
         return currentSelection;
     }
-    
+
     /**
      * Inner class to hold selection information.
+     *
+     * @param images TODO: Implement image extraction
      */
-    public static class SelectionInfo {
-        private final int pageIndex;
-        private final Rectangle2D.Float pdfRect;
-        private final String text;
-        private final List<Object> images; // TODO: Implement image extraction
-        
-        public SelectionInfo(int pageIndex, Rectangle2D.Float pdfRect, 
-                           String text, List<Object> images) {
-            this.pageIndex = pageIndex;
-            this.pdfRect = pdfRect;
-            this.text = text;
-            this.images = images;
-        }
-        
+        public record SelectionInfo(int pageIndex, Rectangle2D.Float pdfRect, String text, List<Object> images) {
+
         public boolean hasText() {
-            return text != null && !text.isEmpty();
+                return text != null && !text.isEmpty();
+            }
         }
-        
-        public String getText() {
-            return text;
-        }
-        
-        public int getPageIndex() {
-            return pageIndex;
-        }
-        
-        public Rectangle2D.Float getPdfRect() {
-            return pdfRect;
-        }
-    }
 }
