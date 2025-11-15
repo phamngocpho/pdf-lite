@@ -251,8 +251,7 @@ public class PDFDocument {
     }
 
     /**
-     * [THÊM HÀM NÀY VÀO]
-     * Xóa các phiên bản đã cache của một trang cụ thể.
+     * Clears all cached image versions for a specific page.
      */
     public void clearCacheForPage(int pageIndex) {
         if (imageCache == null) return;

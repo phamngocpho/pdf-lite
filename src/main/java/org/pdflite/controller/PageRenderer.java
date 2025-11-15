@@ -217,8 +217,7 @@ public class PageRenderer {
     }
 
     /**
-     * [THÊM HÀM NÀY VÀO]
-     * Render một trang bất đồng bộ và gọi callback khi hoàn tất.
+     * Asynchronously renders a single page and executes a callback on completion.
      */
     public void renderPageAsync(int pageIndex, double zoom, Consumer<Image> callback) {
         if (currentDocument == null) {

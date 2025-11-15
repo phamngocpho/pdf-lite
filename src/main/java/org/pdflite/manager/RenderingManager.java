@@ -202,8 +202,7 @@ public class RenderingManager {
     // ... (Hàm preserveScrollPositionAndApplyZoom(...) của bạn) ...
 
     /**
-     * [THÊM HÀM NÀY VÀO]
-     * Render lại một trang cụ thể tại chỉ số index (sau khi xoay).
+     * Re-renders a single page, updating its ImageView and resizing UI components.
      */
     public void rerenderPage(int pageIndex) {
         if (pagesContainer == null || pageIndex < 0 || pageIndex >= pagesContainer.getChildren().size()) {

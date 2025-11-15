@@ -317,8 +317,7 @@ public class PDFService {
     // ... (Code của bạn, ví dụ hàm deletePages(...) ) ...
 
     /**
-     * [THÊM HÀM NÀY VÀO]
-     * Xoay một trang cụ thể theo một góc.
+     * Rotates a single page in the document by a specified degree.
      */
     public void rotatePage(PDFDocument pdfDoc, int pageIndex, int degrees) {
         if (pdfDoc == null || pageIndex < 0 || pageIndex >= pdfDoc.getTotalPages()) {
@@ -337,8 +336,7 @@ public class PDFService {
     }
 
     /**
-     * [THÊM HÀM NÀY VÀO]
-     * Xoay tất cả các trang.
+     * Rotates all pages in the document by a specified degree.
      */
     public void rotateAllPages(PDFDocument pdfDoc, int degrees) {
         if (pdfDoc == null) return;

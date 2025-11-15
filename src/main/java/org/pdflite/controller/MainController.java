@@ -1,9 +1,6 @@
-// src/main/java/org/pdflite/controller/MainController.java
-
 package org.pdflite.controller;
 
 import javafx.application.Platform;
-import javafx.collections.FXCollections; // Thêm import
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -13,11 +10,9 @@ import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color; // Thêm import
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.pdflite.manager.*;
-import org.pdflite.model.DrawingTool; // Thêm import
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
 import org.pdflite.service.PDFService;
@@ -33,12 +28,28 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javafx.scene.control.TextFormatter;
+import javafx.collections.FXCollections;
+import javafx.scene.paint.Color;
+import org.pdflite.model.DrawingTool;
 
+/**
+ * Main Controller for the PDF Lite Application.
+ * <p>
+ * This controller coordinates all PDF viewing operations by delegating to specialized managers.
+ * It handles file operations, page navigation, zoom operations, continuous scrolling view with
+ * lazy loading, annotation mode toggling, and UI state management.
+ * </p>
+ *
+ * @author PDF Lite Team
+ * @version 1.0.0
+ * @since 1.0.0
+ */
 public class MainController {
 
     private static final Logger logger = LoggerFactory.getLogger(MainController.class);
 
     // ==================== FXML Injected UI Components ====================
+
     @FXML private BorderPane rootPane;
     @FXML private ScrollPane scrollPane;
     @FXML private StackPane contentPane;
@@ -49,14 +60,18 @@ public class MainController {
     @FXML private ToolBar toolbar;
     @FXML private Button prevButton;
     @FXML private Button nextButton;
-    @FXML private Button rotateLeftButton;
-    @FXML private Button rotateRightButton;
-    // === CÁC ĐIỀU KHIỂN VẼ MỚI ===
+
+    // === FXML CHO VẼ HÌNH ===
     @FXML private ComboBox<DrawingTool> drawingToolComboBox;
     @FXML private ColorPicker colorPicker;
     @FXML private Slider lineWidthSlider;
 
+    // === FXML CHO XOAY TRANG ===
+    @FXML private Button rotateLeftButton;
+    @FXML private Button rotateRightButton;
+
     // ==================== Services and Managers ====================
+
     private PDFService pdfService;
     private NavigationHelper navigationHelper;
     private PageRenderer pageRenderer;
@@ -72,45 +87,50 @@ public class MainController {
     private RenderingManager renderingManager;
     private SearchDialogManager searchDialogManager;
     private ThemeManager themeManager;
-
-    // === THÊM DRAWING MANAGER ===
     private DrawingManager drawingManager;
 
+
     // ==================== Document State ====================
+
     private PDFDocument currentDocument;
     private VBox pagesContainer;
     private final ExecutorService renderExecutor = Executors.newFixedThreadPool(6);
     private final java.util.Set<Integer> loadingPages = java.util.concurrent.ConcurrentHashMap.newKeySet();
-
-    // Giữ nguyên logic 'highlightModeActive' cho tính năng highlight cũ
     private boolean highlightModeActive = false;
 
     // ==================== Initialization ====================
+
     @FXML
     public void initialize() {
         logger.info("Initializing MainController");
         pdfService = new PDFService();
 
-        // === KHỞI TẠO DRAWING MANAGER (CHỈ DÙNG CHO HÌNH DẠNG MỚI) ===
         drawingManager = new DrawingManager();
 
-        // (Code khởi tạo khác của bạn...)
+        // Initialize page renderer and scroll handler
         pageRenderer = new PageRenderer(pdfService, renderExecutor);
         scrollHandler = new ScrollHandler(pageRenderer, scrollPane);
+
+        // Create helpers
         navigationHelper = new NavigationHelper(this, pdfService, renderExecutor, loadingPages);
         searchManager = new SearchManager(this, navigationHelper);
+
+        //Theme
         rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
                 themeManager = new ThemeManager(newScene);
             }
         });
 
+        // Initialize managers
         initializeManagers();
 
+        // Setup rendering manager with UI components
         if (renderingManager != null) {
             renderingManager.setUIComponents(pagesContainer, scrollPane, contentPane);
         }
 
+        // Setup page navigation
         if (pageNumberField != null) {
             pageNumberField.setOnAction(e -> handleGoToPage());
             pageNumberField.setTextFormatter(new TextFormatter<>(change -> {
@@ -119,9 +139,11 @@ public class MainController {
             }));
         }
 
+        // Setup scroll listener
         if (scrollPane != null) {
             scrollPane.vvalueProperty().addListener((obs, oldVal, newVal) -> {
                 scrollHandler.handleScroll();
+                // Update page info after scroll handler processes the scroll
                 Platform.runLater(() -> {
                     if (currentDocument != null) {
                         int currentPage = scrollHandler.getCurrentPageFromScroll();
@@ -134,39 +156,38 @@ public class MainController {
             });
         }
 
-        // === CÀI ĐẶT CÁC ĐIỀU KHIỂN VẼ MỚI ===
-        setupDrawingControls();
-
+        setupDrawingControls(); // Cài đặt các điều khiển vẽ
         uiStateManager.updateUIState(false);
     }
 
     /**
-     * Cài đặt listeners cho các công cụ vẽ mới.
+     * Sets up listeners and default values for the drawing tool UI controls
+     * (ComboBox, ColorPicker, Slider).
      */
     private void setupDrawingControls() {
-        // 1. Khởi tạo ComboBox
+        // 1. Initialize ComboBox
         if (drawingToolComboBox != null) {
-            // Lấy tất cả giá trị từ Enum, trừ HIGHLIGHT (vì bạn muốn tách riêng)
+            // Get all values from Enum, except HIGHLIGHT
             drawingToolComboBox.setItems(FXCollections.observableArrayList(
                     DrawingTool.NONE,
                     DrawingTool.RECTANGLE,
                     DrawingTool.CIRCLE,
                     DrawingTool.ARROW
             ));
-            drawingToolComboBox.setValue(DrawingTool.NONE); // Đặt giá trị mặc định
+            drawingToolComboBox.setValue(DrawingTool.NONE); // Set default
 
-            // 2. Listener cho ComboBox
+            // 2. ComboBox Listener
             drawingToolComboBox.valueProperty().addListener((obs, oldTool, newTool) -> {
                 if (newTool != null && newTool != DrawingTool.NONE) {
-                    // Nếu chọn 1 công cụ (Rect, Circle, Arrow)
-                    disableHighlightMode(); // Tắt chế độ highlight
+                    // If a tool (Rect, Circle, Arrow) is selected
+                    disableHighlightMode(); // Turn off highlight mode
                     drawingManager.setCurrentTool(newTool);
                     setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.SHAPE);
                     uiStateManager.updateStatus("Draw tool selected: " + newTool);
                 } else {
-                    // Nếu chọn "NONE"
+                    // If "NONE" is selected
                     drawingManager.setCurrentTool(DrawingTool.NONE);
-                    // Chỉ tắt chế độ SHAPE, không ảnh hưởng HIGHLIGHT
+                    // Only turn off SHAPE mode, don't affect HIGHLIGHT
                     if (!highlightModeActive) {
                         setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
                     }
@@ -175,19 +196,15 @@ public class MainController {
             });
         }
 
-        // 3. Listener cho ColorPicker
+        // 3. ColorPicker Listener
         if (colorPicker != null) {
-            // Đặt màu mặc định trong manager
             drawingManager.setCurrentColor(colorPicker.getValue());
-            // Thêm listener
             colorPicker.setOnAction(e -> drawingManager.setCurrentColor(colorPicker.getValue()));
         }
 
-        // 4. Listener cho Slider
+        // 4. Slider Listener
         if (lineWidthSlider != null) {
-            // Đặt độ rộng mặc định trong manager
             drawingManager.setCurrentLineWidth(lineWidthSlider.getValue());
-            // Thêm listener
             lineWidthSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
                 drawingManager.setCurrentLineWidth(newVal.doubleValue());
             });
@@ -195,21 +212,34 @@ public class MainController {
     }
 
     /**
-     * Khởi tạo tất cả manager (Code gốc của bạn)
+     * Initializes all manager classes.
      */
     private void initializeManagers() {
+        // UI State Manager (needed by other managers)
         uiStateManager = new UIStateManager(statusLabel, prevButton, nextButton, pageNumberField, zoomComboBox);
+
+        // Zoom Manager
         zoomManager = new ZoomManager(pdfService, createZoomChangeListener());
         zoomManager.initialize(zoomComboBox, scrollPane);
+
+        // Rendering Manager
         renderingManager = new RenderingManager(pdfService, pageRenderer, scrollHandler, zoomManager);
+
+        // File Manager
         fileManager = new FileManager(pdfService, createFileOperationListener());
+
+        // Fullscreen Manager
         fullscreenManager = new FullscreenManager(rootPane, toolbar, createFullscreenListener());
+
+        // Page Info Manager
         pageInfoManager = new PageInfoManager(totalPagesLabel, pageNumberField, prevButton, nextButton);
+
+        // Search Dialog Manager
         searchDialogManager = new SearchDialogManager(rootPane, pageRenderer, zoomManager, renderingManager, uiStateManager);
     }
 
     /**
-     * (Code gốc của bạn)
+     * Creates the zoom change listener.
      */
     private ZoomManager.ZoomChangeListener createZoomChangeListener() {
         return new ZoomManager.ZoomChangeListener() {
@@ -229,7 +259,7 @@ public class MainController {
     }
 
     /**
-     * (Code gốc của bạn)
+     * Creates the file operation listener.
      */
     private FileManager.FileOperationListener createFileOperationListener() {
         return new FileManager.FileOperationListener() {
@@ -261,7 +291,7 @@ public class MainController {
     }
 
     /**
-     * (Code gốc của bạn)
+     * Creates the fullscreen listener.
      */
     private FullscreenManager.FullscreenListener createFullscreenListener() {
         return new FullscreenManager.FullscreenListener() {
@@ -411,13 +441,34 @@ public class MainController {
     }
 
     // ==================== Zoom Operations ====================
-    @FXML private void handleZoomIn() { zoomManager.zoomIn(); }
-    @FXML private void handleZoomOut() { zoomManager.zoomOut(); }
-    @FXML private void handleZoomChange() { zoomManager.handleZoomComboBoxChange(); }
-    @FXML private void handleFitToWidth() { zoomManager.fitToWidth(); }
-    @FXML private void handleFitToPage() { zoomManager.fitToPage(); }
+
+    @FXML
+    private void handleZoomIn() {
+        zoomManager.zoomIn();
+    }
+
+    @FXML
+    private void handleZoomOut() {
+        zoomManager.zoomOut();
+    }
+
+    @FXML
+    private void handleZoomChange() {
+        zoomManager.handleZoomComboBoxChange();
+    }
+
+    @FXML
+    private void handleFitToWidth() {
+        zoomManager.fitToWidth();
+    }
+
+    @FXML
+    private void handleFitToPage() {
+        zoomManager.fitToPage();
+    }
 
     // ==================== Navigation Operations ====================
+
     @FXML
     private void handlePreviousPage() {
         if (currentDocument != null && currentDocument.getCurrentPage() > 0) {
@@ -444,29 +495,25 @@ public class MainController {
         }
     }
 
-    // ==================== Drawing & Highlight Operations ====================
+    // ==================== Highlight Operations ====================
 
-    /**
-     * Xử lý logic Highlight (Code gốc của bạn - ĐÃ SỬA ĐỔI)
-     * Thêm logic để tắt các công cụ vẽ hình dạng mới.
-     */
     @FXML
     private void handleHighlight() {
         highlightModeActive = !highlightModeActive;
 
         if (highlightModeActive) {
-            // Tắt các công cụ vẽ hình dạng mới
+            // [MỚI] Turn off drawing tools
             if (drawingToolComboBox != null) {
                 drawingToolComboBox.setValue(DrawingTool.NONE);
             }
             drawingManager.setCurrentTool(DrawingTool.NONE);
 
-            // Kích hoạt chế độ Highlight (logic cũ của bạn)
+            // (Code cũ của bạn)
             uiStateManager.updateStatus("Highlight mode: Active - Click and drag to highlight");
             pageRenderer.setHighlightModeActive(true);
             setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.HIGHLIGHT);
         } else {
-            // Tắt chế độ Highlight
+            // (Code cũ của bạn)
             uiStateManager.updateStatus("Highlight mode: Disabled");
             pageRenderer.setHighlightModeActive(false);
             setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
@@ -474,7 +521,7 @@ public class MainController {
     }
 
     /**
-     * Hàm trợ giúp: Tắt chế độ Highlight khi chọn công cụ vẽ mới.
+     * Helper method to turn off highlight mode when a new drawing tool is selected.
      */
     private void disableHighlightMode() {
         if (highlightModeActive) {
@@ -483,41 +530,48 @@ public class MainController {
             uiStateManager.updateStatus("Highlight mode: Disabled");
         }
     }
+    // ==================== Rotation Operations (MỚI) ====================
 
-    // ... (Hàm disableHighlightMode() của bạn) ...
-
-// ==================== Rotation Operations (MỚI) ====================
-
+    /**
+     * Handles the action event for the 'Rotate Left' button.
+     * Rotates the current page 90 degrees counter-clockwise.
+     */
     @FXML
     private void handleRotateLeft() {
-        rotateCurrentPage(-90); // Xoay ngược chiều kim đồng hồ
-    }
-
-    @FXML
-    private void handleRotateRight() {
-        rotateCurrentPage(90); // Xoay thuận chiều kim đồng hồ
+        rotateCurrentPage(-90); // Rotate counter-clockwise
     }
 
     /**
-     * Hàm trợ giúp để xoay trang hiện tại.
+     * Handles the action event for the 'Rotate Right' button.
+     * Rotates the current page 90 degrees clockwise.
+     */
+    @FXML
+    private void handleRotateRight() {
+        rotateCurrentPage(90); // Rotate clockwise
+    }
+
+    /**
+     * Helper method to rotate the currently viewed page.
+     *
+     * @param degrees The angle (90 or -90) to rotate the page.
      */
     private void rotateCurrentPage(int degrees) {
         if (currentDocument == null || renderingManager == null || pdfService == null || scrollHandler == null) {
             return;
         }
 
-        // Lấy trang hiện tại (từ logic scroll của bạn)
+        // Get current page (from your scroll logic)
         int currentPageIndex = scrollHandler.getCurrentPageFromScroll();
         if (currentPageIndex < 0) {
-            // Fallback về trang trong model nếu scroll handler chưa sẵn sàng
+            // Fallback to model's page if scroll handler isn't ready
             currentPageIndex = currentDocument.getCurrentPage();
         }
 
         try {
-            // 1. Thay đổi dữ liệu trong PDF (bộ nhớ)
+            // 1. Change data in PDF (in memory)
             pdfService.rotatePage(currentDocument, currentPageIndex, degrees);
 
-            // 2. Yêu cầu RenderingManager render lại trang đó trên UI
+            // 2. Tell RenderingManager to re-render this page on the UI
             renderingManager.rerenderPage(currentPageIndex);
 
             uiStateManager.updateStatus("Rotated page " + (currentPageIndex + 1));
@@ -528,30 +582,38 @@ public class MainController {
         }
     }
 
-// ==================== Theme, Fullscreen, Search, Etc. ====================
-// ... (Các hàm setLightTheme, setDarkTheme, v.v. của bạn) ...
+    @FXML
+    private void setLightTheme() {
+        themeManager.setLightTheme();
+    }
 
-    // ==================== Theme Operations ====================
-    @FXML private void setLightTheme() { themeManager.setLightTheme(); }
-    @FXML private void setDarkTheme() { themeManager.setDarkTheme(); }
+    @FXML
+    private void setDarkTheme() {
+        themeManager.setDarkTheme();
+    }
+
 
     /**
-     * Cập nhật `setAnnotationModeForAllPages` (ĐÃ SỬA ĐỔI)
-     * - Truyền DrawingManager xuống
-     * - [QUAN TRỌNG] Truyền cả pageNumber xuống
+     * Sets the annotation mode for all currently rendered pages.
+     * [MODIFIED] This now passes the DrawingManager and the correct page index
+     * down to each AnnotationLayer.
+     *
+     * @param mode The AnnotationMode to set (e.g., HIGHLIGHT, SHAPE, NONE).
      */
     private void setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode mode) {
         if (pagesContainer != null) {
-            // Chúng ta cần lấy page index (i)
+            // We must iterate with an index to get the page number
             for (int i = 0; i < pagesContainer.getChildren().size(); i++) {
                 javafx.scene.Node node = pagesContainer.getChildren().get(i);
+
                 if (node instanceof VBox pageBox) {
-                    final int pageIndex = i; // Page number (0-based)
+                    final int pageIndex = i; // The 0-based page number
+
                     pageBox.getChildren().forEach(child -> {
                         if (child instanceof StackPane stackPane) {
                             stackPane.getChildren().forEach(stackChild -> {
                                 if (stackChild instanceof AnnotationLayer annotationLayer) {
-                                    // Truyền các phụ thuộc cần thiết
+                                    // Pass down necessary dependencies
                                     annotationLayer.setDrawingManager(drawingManager);
                                     annotationLayer.setPageNumber(pageIndex);
                                     annotationLayer.setAnnotationMode(mode);
@@ -565,18 +627,48 @@ public class MainController {
     }
 
     // ==================== Fullscreen Operations ====================
-    @FXML private void handleToggleFullScreen() { fullscreenManager.toggleFullScreen(); }
+
+    @FXML
+    private void handleToggleFullScreen() {
+        fullscreenManager.toggleFullScreen();
+    }
 
     // ==================== Search Operations ====================
-    @FXML private void handleSearch() { handleSearchDialog(); }
-    @FXML private void handleSearchLeft() { searchManager.togglePanel(SearchManager.SearchPanelPosition.LEFT); }
-    @FXML private void handleSearchRight() { searchManager.togglePanel(SearchManager.SearchPanelPosition.RIGHT); }
-    @FXML private void handleHideSearch() { searchManager.clearSearch(); }
-    public void handleSearchDialog() { searchDialogManager.openSearchDialog(currentDocument, this); }
-    public void highlightSearchResults(List<SearchResult> results) { searchManager.showResults(results); }
-    public void highlightSearchResult(SearchResult result) { searchManager.navigateToResult(result); }
+
+    @FXML
+    private void handleSearch() {
+        handleSearchDialog();
+    }
+
+    @FXML
+    private void handleSearchLeft() {
+        searchManager.togglePanel(SearchManager.SearchPanelPosition.LEFT);
+    }
+
+    @FXML
+    private void handleSearchRight() {
+        searchManager.togglePanel(SearchManager.SearchPanelPosition.RIGHT);
+    }
+
+    @FXML
+    private void handleHideSearch() {
+        searchManager.clearSearch();
+    }
+
+    public void handleSearchDialog() {
+        searchDialogManager.openSearchDialog(currentDocument, this);
+    }
+
+    public void highlightSearchResults(List<SearchResult> results) {
+        searchManager.showResults(results);
+    }
+
+    public void highlightSearchResult(SearchResult result) {
+        searchManager.navigateToResult(result);
+    }
 
     // ==================== About Dialog ====================
+
     @FXML
     private void handleAbout() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -588,9 +680,6 @@ public class MainController {
             A lightweight PDF viewer with annotation features.
             
             Built with JavaFX and Apache PDFBox""");
-
-        if (themeManager != null)
-            themeManager.applyToDialog(alert.getDialogPane());
         alert.showAndWait();
     }
 
@@ -701,7 +790,7 @@ public class MainController {
         }
     }
 
-    // ==================== Getters ====================
+
     public BorderPane getRootPane() { return rootPane; }
     public ScrollPane getScrollPane() { return scrollPane; }
     public VBox getPagesContainer() { return pagesContainer; }
@@ -713,12 +802,18 @@ public class MainController {
         return currentDocument != null ? currentDocument.getTotalPages() : 0;
     }
 
+    /**
+     * Updates page info (called by NavigationHelper).
+     */
     public void updatePageInfo() {
         if (currentDocument != null) {
             pageInfoManager.updatePageInfo(currentDocument);
         }
     }
 
+    /**
+     * Shows an error dialog (for external classes like SearchManager).
+     */
     public void showError(String title, String message) {
         uiStateManager.showError(title, message);
     }
