@@ -263,20 +263,18 @@ public class PDFService {
      * This is REQUIRED when saving to the same file that was loaded.
      */
     public void save(PDFDocument pdfDoc) throws IOException {
-        if (pdfDoc == null || pdfDoc.getDocument() == null || pdfDoc.getFile() == null) {
-            throw new IOException("No document or target file to save.");
-        }
-
-        PDDocument pdDoc = pdfDoc.getDocument();
-        File file = pdfDoc.getFile();
-
-        // DÙNG INCREMENTAL SAVE ĐỂ TRÁNH CORRUPT KHI GHI ĐÈ FILE ĐANG MỞ
-        try (var fos = new java.io.FileOutputStream(file)) {
-            pdDoc.saveIncremental(fos);
-        }
-
-        logger.info("Saved PDF incrementally to {}", file.getAbsolutePath());
+    if (pdfDoc == null || pdfDoc.getDocument() == null || pdfDoc.getFile() == null) {
+        throw new IOException("No document or target file to save.");
     }
+
+    PDDocument pdDoc = pdfDoc.getDocument();
+    File file = pdfDoc.getFile();
+
+    // SỬ DỤNG SAVE THÔNG THƯỜNG - không dùng incremental khi đã xóa trang
+    pdDoc.save(file);
+
+    logger.info("Saved PDF to {}", file.getAbsolutePath());
+}
 
     /**
      * Save the current document to a specific path.
