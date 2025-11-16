@@ -73,11 +73,18 @@ public class PageRenderer {
 
     /**
      * Sets the current document and zoom level.
+     * Clears the image cache when switching to a new document.
      *
      * @param document the PDF document
      * @param zoom the zoom level
      */
     public void setDocument(PDFDocument document, double zoom) {
+        // Clear cache when switching documents to prevent showing old document's pages
+        if (this.currentDocument != document) {
+            clearCache();
+            cancelAllPendingRenders();
+            logger.info("Cleared cache and cancelled pending renders for new document");
+        }
         this.currentDocument = document;
         this.currentZoom = zoom;
     }
