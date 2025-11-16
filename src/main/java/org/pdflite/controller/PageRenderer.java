@@ -23,11 +23,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import org.pdflite.view.ContextMenuPane;
 
 /**
  * Handles page rendering, caching, and display management.
- * (Javadoc gốc của bạn)
  */
 public class PageRenderer {
     private static final Logger logger = LoggerFactory.getLogger(PageRenderer.class);
@@ -44,7 +45,6 @@ public class PageRenderer {
 
     private ContextMenuHandler contextMenuHandler;
 
-    // [THÊM BIẾN NÀY]
     private final DrawingManager drawingManager;
 
     /**
@@ -52,12 +52,12 @@ public class PageRenderer {
      *
      * @param pdfService the PDF service for rendering pages
      * @param renderExecutor the executor service for parallel rendering
-     * @param drawingManager The application's drawing manager (mới)
+     * @param drawingManager The application's drawing manager
      */
-    public PageRenderer(PDFService pdfService, ExecutorService renderExecutor, DrawingManager drawingManager) { // <-- SỬA CONSTRUCTOR
+    public PageRenderer(PDFService pdfService, ExecutorService renderExecutor, DrawingManager drawingManager) {
         this.pdfService = pdfService;
         this.renderExecutor = renderExecutor;
-        this.drawingManager = drawingManager; // <-- THÊM DÒNG NÀY
+        this.drawingManager = drawingManager;
         this.loadingPages = ConcurrentHashMap.newKeySet();
         this.pendingRenders = new ConcurrentHashMap<>();
         this.contextMenuHandler = new ContextMenuHandler();
@@ -191,7 +191,6 @@ public class PageRenderer {
 
     /**
      * Asynchronously renders a single page and executes a callback on completion.
-     * (Javadoc của bạn)
      */
     public void renderPageAsync(int pageIndex, double zoom, Consumer<Image> callback) {
         if (currentDocument == null) {
@@ -221,7 +220,7 @@ public class PageRenderer {
 
     /**
      * Displays an image in the page box with annotation layer.
-     * [MODIFIED] This method is updated to correctly set the annotation mode
+     * This method is updated to correctly set the annotation mode
      * on new layers based on the global DrawingManager state.
      *
      * @param image the image to display
@@ -237,9 +236,7 @@ public class PageRenderer {
 
         // Create annotation layer on top of the image
         AnnotationLayer annotationLayer = new AnnotationLayer(image.getWidth(), image.getHeight());
-        annotationLayer.setPickOnBounds(false);
-
-        // [SỬA LỖI] Đặt trạng thái chính xác cho layer MỚI
+        annotationLayer.setPickOnBounds(false
         annotationLayer.setDrawingManager(drawingManager);
         annotationLayer.setPageNumber(pageIndex);
 
@@ -253,7 +250,6 @@ public class PageRenderer {
             // Không ở chế độ nào
             annotationLayer.setAnnotationMode(AnnotationLayer.AnnotationMode.NONE);
         }
-        // [HẾT SỬA LỖI]
 
         ContextMenuPane contextPane = new ContextMenuPane(contextMenuHandler);
         contextPane.setDocumentInfo(currentDocument, pageIndex, currentZoom);
