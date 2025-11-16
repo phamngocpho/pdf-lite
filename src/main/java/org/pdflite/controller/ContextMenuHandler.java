@@ -109,10 +109,10 @@ public class ContextMenuHandler {
             currentSelection = extractTextFromRegion(page, pdfRect, pageIndex);
 
             if (currentSelection.hasText()) {
-                //logger.info("Length:   {} characters",currentSelection.getText().length());
-
-                String preview = currentSelection.getText().substring(0,
-                        Math.min(50, currentSelection.getText().length()));
+                logger.info("Length:   {} characters",currentSelection.text().length());
+                
+                String preview = currentSelection.text().substring(0,
+                    Math.min(50, currentSelection.text().length()));
             } else {
                 logger.info("No text found in selection");
             }
@@ -169,10 +169,11 @@ public class ContextMenuHandler {
     public void handleCopyText() {
         if (currentSelection != null && currentSelection.hasText()) {
             ClipboardContent content = new ClipboardContent();
-            content.putString(currentSelection.getText());
+            content.putString(currentSelection.text());
             Clipboard.getSystemClipboard().setContent(content);
-
-            //logger.info("Copied {} characters to clipboard",currentSelection.getText().length());
+            
+            logger.info("Copied {} characters to clipboard", 
+                currentSelection.text().length());
         } else {
             logger.warn("No text to copy");
         }
@@ -198,6 +199,8 @@ public class ContextMenuHandler {
 
     /**
      * Inner class to hold selection information.
+     *
+     * @param images TODO: Implement image extraction
      */
     public static class SelectionInfo {
 
