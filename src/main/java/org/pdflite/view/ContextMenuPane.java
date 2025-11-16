@@ -56,42 +56,68 @@ public class ContextMenuPane extends StackPane {
     }
 
     private void setupEventHandlers() {
-        setOnMousePressed(this::handleMousePressed);
-        setOnMouseDragged(this::handleMouseDragged);
-        setOnMouseReleased(this::handleMouseReleased);
-    }
-    
-    private void handleMousePressed(MouseEvent event) {
-        if (event.getButton() == MouseButton.PRIMARY) {
-            isSelecting = true;
-            
-            // Store local coordinates
-            selectionStartX = event.getX();
-            selectionStartY = event.getY();
-            
-            // Initialize rectangle at position
-            selectionRect.setX(selectionStartX);
-            selectionRect.setY(selectionStartY);
-            selectionRect.setWidth(0);
-            selectionRect.setHeight(0);
-            selectionRect.setVisible(true);
-            
-            logger.debug("Selection START at LOCAL ({:.1f}, {:.1f})", 
-                selectionStartX, selectionStartY);
-            
-            event.consume();
-            return;
+    setOnMousePressed(this::handleMousePressed);
+    setOnMouseDragged(this::handleMouseDragged);
+    setOnMouseReleased(this::handleMouseReleased);
+    setOnContextMenuRequested(event -> {
+        double x = event.getX();
+        double y = event.getY();
+        
+        //logger.debug("Context menu requested at ({:.1f}, {:.1f})", x, y);
+        
+        // Check for image at cursor
+        handler.analyzeCursorForImage(
+            currentDocument,
+            currentPageIndex,
+            x, y,
+            currentZoom
+        );
+        
+        // Check for text selection
+        boolean hasSelection = selectionRect.isVisible() && 
+                              selectionRect.getWidth() >= MIN_SELECTION_SIZE &&
+                              selectionRect.getHeight() >= MIN_SELECTION_SIZE;
+        
+        // Show menu if has text OR image
+        if (hasSelection || handler.hasImageAtPosition()) {
+            updateContextMenuItems();
+            contextMenu.show(this, event.getScreenX(), event.getScreenY());
+            //logger.info("Context menu shown (hasText={}, hasImage={})",hasSelection, handler.hasImageAtPosition());
+        } else {
+            logger.warn("Context menu blocked: no text or image");
         }
         
-        if (event.getButton() == MouseButton.SECONDARY) {
-            if (selectionRect.isVisible() && 
-                selectionRect.getWidth() >= MIN_SELECTION_SIZE &&
-                selectionRect.getHeight() >= MIN_SELECTION_SIZE) {
-                showContextMenuForSelection(event);
-            }
-            event.consume();
-        }
+        event.consume();
+    });
+}
+    
+    private void handleMousePressed(MouseEvent event) {
+    // LEFT CLICK: Start selection
+    if (event.getButton() == MouseButton.PRIMARY) {
+        isSelecting = true;
+        
+        selectionStartX = event.getX();
+        selectionStartY = event.getY();
+        
+        selectionRect.setX(selectionStartX);
+        selectionRect.setY(selectionStartY);
+        selectionRect.setWidth(0);
+        selectionRect.setHeight(0);
+        selectionRect.setVisible(true);
+        
+        //logger.debug("Selection START at ({:.1f}, {:.1f})",selectionStartX, selectionStartY);
+        
+        event.consume();
+        return;
     }
+    
+    // RIGHT CLICK: Fallback (if setOnContextMenuRequested doesn't work)
+    if (event.getButton() == MouseButton.SECONDARY) {
+        //logger.debug("RIGHT CLICK detected at ({:.1f}, {:.1f})",event.getX(), event.getY());
+        // Let setOnContextMenuRequested handle it
+        event.consume();
+    }
+}
     
     private void handleMouseDragged(MouseEvent event) {
         if (isSelecting) {
@@ -132,7 +158,7 @@ public class ContextMenuPane extends StackPane {
         double height = selectionRect.getHeight();
         
         if (width < MIN_SELECTION_SIZE || height < MIN_SELECTION_SIZE) {
-            logger.debug("Selection too small ({:.1f}x{:.1f}), ignored", width, height);
+            //logger.debug("Selection too small ({:.1f}x{:.1f}), ignored", width, height);
             selectionRect.setVisible(false);
             return;
         }
@@ -156,50 +182,55 @@ public class ContextMenuPane extends StackPane {
         updateContextMenuItems();
         contextMenu.show(this, event.getScreenX(), event.getScreenY());
         
-        logger.info("Context menu shown");
+        //logger.info("Context menu shown");
     }
     
     private void setupContextMenu() {
         contextMenu = new ContextMenu();
-        
+
         MenuItem copyText = new MenuItem("Copy Text");
         MenuItem copyImage = new MenuItem("Copy Image");
         MenuItem separator = new MenuItem("──────────");
         MenuItem clearSelection = new MenuItem("Clear Selection");
-        
+
         separator.setDisable(true);
-        
+
         copyText.setOnAction(e -> {
             handler.handleCopyText();
             clearSelection();
         });
-        
+
         copyImage.setOnAction(e -> {
-            logger.info("Copy Image - TODO");
+            handler.handleCopyImage();
+            logger.info("Image copied");
         });
-        
+
         clearSelection.setOnAction(e -> clearSelection());
-        
-        contextMenu.getItems().addAll(copyText, copyImage, separator, clearSelection);
+
+        contextMenu.getItems().addAll(copyText, copyImage, clearSelection);
     }
     
     private void updateContextMenuItems() {
         boolean hasText = handler.hasTextAtPosition();
-        contextMenu.getItems().get(0).setDisable(!hasText);
-        contextMenu.getItems().get(1).setDisable(true);
+        boolean hasImage = handler.hasImageAtPosition();
+
+        contextMenu.getItems().get(0).setDisable(!hasText);  // Copy Text
+        contextMenu.getItems().get(1).setDisable(!hasImage); // Copy Image
+
+        logger.debug("Context menu: text={}, image={}", hasText, hasImage);
     }
     
     public void setDocumentInfo(PDFDocument document, int pageIndex, double zoom) {
+        boolean pageChanged = (this.currentPageIndex != pageIndex);
+
         this.currentDocument = document;
         this.currentPageIndex = pageIndex;
         this.currentZoom = zoom;
-        
-        /**
-        logger.debug("Document info: Page {}/{}, Zoom {:.0f}%",
-            pageIndex + 1, 
-            document != null ? document.getTotalPages() : 0,
-            zoom * 100);
-        */
+
+        // Clear image cache when page changes
+        if (pageChanged) {
+            handler.clearImageCache();
+        }
     }
     
     public void clearSelection() {
