@@ -33,7 +33,7 @@ public class ImageExtractor extends PDFStreamEngine {
     private final List<ImageInfo> images = new ArrayList<>();
     private int currentPageIndex;
 
-    public ImageExtractor() throws IOException {
+    public ImageExtractor() {
         addOperator(new DrawObject(this));
         addOperator(new Concatenate(this));
         addOperator(new Save(this));
@@ -44,10 +44,6 @@ public class ImageExtractor extends PDFStreamEngine {
     
     /**
      * Extracts all images from a PDF page.
-     * @param page
-     * @param pageIndex
-     * @return 
-     * @throws java.io.IOException
      */
     public List<ImageInfo> extractImages(PDPage page, int pageIndex) throws IOException {
         this.currentPageIndex = pageIndex;
@@ -58,9 +54,6 @@ public class ImageExtractor extends PDFStreamEngine {
     
     /**
      *
-     * @param operator
-     * @param operands
-     * @throws java.io.IOException
      */
     @Override
     protected void processOperator(Operator operator, List<COSBase> operands) 
@@ -69,14 +62,13 @@ public class ImageExtractor extends PDFStreamEngine {
         String operatorName = operator.getName();
         
         if ("Do".equals(operatorName)) {
-            COSName objectName = (COSName) operands.get(0);
-            PDXObject xobject = getResources().getXObject(objectName);
+            COSName objectName = (COSName) operands.getFirst();
+            PDXObject pdxObject = getResources().getXObject(objectName);
             
-            if (xobject instanceof PDImageXObject) {
-                processImageXObject((PDImageXObject) xobject, objectName.getName());
+            if (pdxObject instanceof PDImageXObject) {
+                processImageXObject((PDImageXObject) pdxObject, objectName.getName());
                 
-            } else if (xobject instanceof PDFormXObject) {
-                PDFormXObject form = (PDFormXObject) xobject;
+            } else if (pdxObject instanceof PDFormXObject form) {
                 showForm(form);
             }
         } else {
@@ -118,12 +110,5 @@ public class ImageExtractor extends PDFStreamEngine {
         );
         
         images.add(imageInfo);
-        /*
-        logger.debug("Image '{}' extracted:", name);
-        logger.debug("Position (PDF Y=bottom): ({:.2f}, {:.2f}) pt", xPosition, yPosition);
-        logger.debug("Rendered Size: {:.2f} x {:.2f} pt", renderedWidth, renderedHeight);
-        logger.debug("Pixel Size: {} x {} px", 
-            bufferedImage.getWidth(), bufferedImage.getHeight());
-         */
     }
 }

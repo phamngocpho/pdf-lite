@@ -40,7 +40,7 @@ public class SearchManager {
     private final NavigationHelper navigationHelper;
 
     // Search panel state
-    private SearchPanel searchPanel;
+    private final SearchPanel searchPanel;
     private boolean searchPanelVisible = false;
     private SearchPanelPosition searchPanelPosition = SearchPanelPosition.FLOAT;
 
@@ -106,11 +106,11 @@ public class SearchManager {
         }
 
         this.activeResult = result;
-        int pageIndex = result.getPageNumber() - 1;
+        int pageIndex = result.pageNumber() - 1;
 
         logger.info("Navigating to search result: page={}, start={}, end={}, pos=({}, {})",
-                result.getPageNumber(), result.getStartIndex(), result.getEndIndex(),
-                result.getX(), result.getY());
+                result.pageNumber(), result.startIndex(), result.endIndex(),
+                result.x(), result.y());
 
         if (pageIndex >= 0 && pageIndex < mainController.getTotalPages()) {
             navigationHelper.ensurePageLoadedAndReady(pageIndex, () -> Platform.runLater(() -> {
@@ -119,7 +119,7 @@ public class SearchManager {
                 // Delay to ensure scroll completes
                 Platform.runLater(() -> {
                     updateAllHighlights();
-                    logger.info("Active result updated on page {}", result.getPageNumber());
+                    logger.info("Active result updated on page {}", result.pageNumber());
                 });
             }));
         }
@@ -202,7 +202,7 @@ public class SearchManager {
     private void groupResultsByPage(List<SearchResult> results) {
         resultsByPage.clear();
         for (SearchResult result : results) {
-            int pageIndex = result.getPageNumber() - 1;
+            int pageIndex = result.pageNumber() - 1;
             resultsByPage.computeIfAbsent(pageIndex, k -> new ArrayList<>())
                     .add(result);
         }
@@ -268,7 +268,7 @@ public class SearchManager {
                 layer.setSearchHighlights(pageResults);
                 highlightCount += pageResults.size();
 
-                if (activeResult != null && activeResult.getPageNumber() - 1 == pageIndex) {
+                if (activeResult != null && activeResult.pageNumber() - 1 == pageIndex) {
                     layer.setActiveSearchResult(activeResult);
                     activeSetCount++;
                     
@@ -377,18 +377,38 @@ public class SearchManager {
 
     // ==================== GETTERS ====================
 
+    /**
+     * Checks if the search panel is currently visible.
+     *
+     * @return true if the search panel is visible
+     */
     public boolean isSearchPanelVisible() {
         return searchPanelVisible;
     }
 
+    /**
+     * Gets the current search panel position.
+     *
+     * @return the current search panel position
+     */
     public SearchPanelPosition getSearchPanelPosition() {
         return searchPanelPosition;
     }
 
+    /**
+     * Gets all search results organized by page number.
+     *
+     * @return a map of page numbers to lists of search results
+     */
     public Map<Integer, List<SearchResult>> getResultsByPage() {
         return new HashMap<>(resultsByPage);
     }
 
+    /**
+     * Gets the currently active search result.
+     *
+     * @return the active search result, or null if none is active
+     */
     public SearchResult getActiveResult() {
         return activeResult;
     }

@@ -77,7 +77,10 @@ public class PDFMergeService {
             logger.error("Error merging PDF files", e);
             // Clean up partial output file if merge failed
             if (outputFile.exists()) {
-                outputFile.delete();
+                boolean deleted = outputFile.delete();
+                if (!deleted) {
+                    logger.warn("Failed to delete partial output file: {}", outputFile.getName());
+                }
             }
             throw new IOException("Failed to merge PDF files: " + e.getMessage(), e);
         }

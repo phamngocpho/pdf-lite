@@ -266,8 +266,8 @@ public class ContextMenuHandler {
                 Rectangle2D.Float canvasRect = CoordinateConverter.pdfToCanvasRect(
                         imageInfo.getXPosition(),
                         imageInfo.getYPosition(),
-                        imageInfo.getWidth(),
-                        imageInfo.getHeight(),
+                        imageInfo.width(),
+                        imageInfo.height(),
                         pageHeight,
                         zoom
                 );
@@ -295,7 +295,7 @@ public class ContextMenuHandler {
      */
     public void handleCopyImage() {
         if (currentImageUnderCursor != null) {
-            BufferedImage bufferedImage = currentImageUnderCursor.getImage();
+            BufferedImage bufferedImage = currentImageUnderCursor.image();
 
             // Convert BufferedImage to JavaFX Image
             Image fxImage = SwingFXUtils.toFXImage(bufferedImage, null);

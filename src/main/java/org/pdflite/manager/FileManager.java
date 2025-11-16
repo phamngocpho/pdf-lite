@@ -23,14 +23,41 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
      * Interface for listening to file operations.
      */
     public interface FileOperationListener {
+        /**
+         * Called when a PDF file is successfully opened.
+         *
+         * @param document the opened PDF document
+         * @param file     the file that was opened
+         */
         void onFileOpened(PDFDocument document, File file);
 
+        /**
+         * Called when a file is saved.
+         *
+         * @param fileName the name of the saved file
+         */
         void onFileSaved(String fileName);
 
+        /**
+         * Called when a file is saved with a new name.
+         *
+         * @param fileName the new file name
+         */
         void onFileSaveAs(String fileName);
 
+        /**
+         * Called when an error occurs during file operations.
+         *
+         * @param title   the error title
+         * @param message the error message
+         */
         void onError(String title, String message);
 
+        /**
+         * Called when a page is deleted from the document.
+         *
+         * @param pageNumber the page number that was deleted
+         */
         void onPageDeleted(int pageNumber);
     }
 
@@ -131,9 +158,8 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
      *
      * @param document    the document
      * @param pageIndices the page indices to delete (0-based)
-     * @throws IOException if pages cannot be deleted
      */
-    public void deletePages(PDFDocument document, Collection<Integer> pageIndices) throws IOException {
+    public void deletePages(PDFDocument document, Collection<Integer> pageIndices) {
         if (document == null || pageIndices == null || pageIndices.isEmpty()) {
             return;
         }
