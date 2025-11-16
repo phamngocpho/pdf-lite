@@ -388,16 +388,33 @@ public class MainController {
                     // Xóa trang trong document
                     fileManager.deletePages(currentDocument, java.util.List.of(current));
 
-                    // XÓA TRANG KHỎI UI (không render lại)
+                    // XÓA TRANG KHỎI UI VÀ CẬP NHẬT LẠI CÁC TRANG SAU
                     if (pagesContainer != null && pagesContainer.getChildren().size() > current) {
                         // Xóa VBox của trang đã chọn khỏi pagesContainer
                         pagesContainer.getChildren().remove(current);
 
-                        // Cập nhật lại ID của các trang sau trang bị xóa
+                        // Cập nhật lại ID và CLEAR CONTENT của các trang sau để trigger re-render
                         for (int i = current; i < pagesContainer.getChildren().size(); i++) {
                             if (pagesContainer.getChildren().get(i) instanceof VBox pageBox) {
-                                final int pageIndex = i; // Tạo biến final để dùng trong lambda
+                                final int pageIndex = i;
+
+                                // Đổi ID sang trang mới
                                 pageBox.setId("page-" + pageIndex);
+
+                                // Clear nội dung để buộc phải render lại
+                                if (!pageBox.getChildren().isEmpty() &&
+                                        pageBox.getChildren().get(0) instanceof StackPane stackPane) {
+
+                                    // Tạo lại placeholder "Loading..."
+                                    Label loadingLabel = new Label("Loading...");
+                                    loadingLabel.setStyle("-fx-text-fill: #cccccc; -fx-font-size: 14px;");
+                                    StackPane placeholder = new StackPane(loadingLabel);
+                                    placeholder.setPrefSize(stackPane.getWidth(), stackPane.getHeight());
+                                    placeholder.setStyle("-fx-background-color: #505050;");
+
+                                    // Thay thế nội dung cũ bằng placeholder
+                                    pageBox.getChildren().set(0, placeholder);
+                                }
 
                                 // Cập nhật label page number
                                 pageBox.getChildren().forEach(child -> {
@@ -405,33 +422,58 @@ public class MainController {
                                         label.setText("Page " + (pageIndex + 1));
                                     }
                                 });
+
+                                // Mark page as not loaded để ScrollHandler render lại
+                                loadingPages.remove(pageIndex);
                             }
                         }
                     }
 
-                    // Xóa trang khỏi cache của pageRenderer
-                    pageRenderer.clearCache();
+                    // XÓA TOÀN BỘ CACHE (quan trọng!)
+                    currentDocument.clearCache(); // Cache trong PDFDocument
+                    pageRenderer.clearCache(); // Cache trong PageRenderer
 
                     // Xóa khỏi loadingPages set
                     loadingPages.clear();
 
+                    // Cancel tất cả pending renders
+                    pageRenderer.cancelAllPendingRenders();
+
                     // Cập nhật currentPage nếu cần
                     int newTotal = currentDocument.getTotalPages();
+                    int newCurrentPage;
                     if (current >= newTotal) {
-                        currentDocument.setCurrentPage(Math.max(0, newTotal - 1));
+                        newCurrentPage = Math.max(0, newTotal - 1);
                     } else {
-                        currentDocument.setCurrentPage(current);
+                        newCurrentPage = current;
                     }
+                    currentDocument.setCurrentPage(newCurrentPage);
 
                     // Cập nhật UI info
                     pageInfoManager.updatePageInfo(currentDocument);
-                    uiStateManager.updateStatus("Deleted page " + (current + 1));
+                    uiStateManager.updateStatus("Deleted page " + (current + 1) + ". Total pages: " + newTotal);
 
-                    // Khôi phục vị trí scroll
+                    // Khôi phục vị trí scroll và reload visible pages
                     Platform.runLater(() -> {
-                        scrollPane.setVvalue(oldVValue);
-                        // Trigger scroll handler để load các trang visible nếu cần
-                        scrollHandler.handleScroll();
+                        // Force layout update
+                        pagesContainer.applyCss();
+                        pagesContainer.layout();
+
+                        // Điều chỉnh scroll position nếu cần
+                        if (pagesContainer != null && pagesContainer.getChildren().size() > 0) {
+                            // Nếu xóa trang cuối, scroll về trang trước đó
+                            if (newCurrentPage < current) {
+                                scrollPane.setVvalue(Math.max(0, oldVValue - 0.05));
+                            } else {
+                                scrollPane.setVvalue(oldVValue);
+                            }
+                        }
+
+                        // QUAN TRỌNG: Trigger scroll handler để load lại các trang visible
+                        // Delay một chút để đảm bảo layout đã hoàn tất
+                        Platform.runLater(() -> {
+                            scrollHandler.handleScroll();
+                        });
                     });
 
                     logger.info("Successfully deleted page {} without full re-render", current + 1);
