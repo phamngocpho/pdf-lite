@@ -14,6 +14,11 @@
             <MenuBar>
                 <Menu text="File">
                     <MenuItem text="Open PDF..." onAction="#handleOpenPDF" accelerator="Ctrl+O"/>
+                    <Menu fx:id="recentFilesMenu" text="Recent Files">
+                        <MenuItem text="No recent files" disable="true"/>
+                    </Menu>
+                    <MenuItem text="Clear Recent Files" onAction="#handleClearRecentFiles"/>
+                    <SeparatorMenuItem/>
                     <MenuItem text="Save" onAction="#handleSave"/>
                     <MenuItem text="Save As..." onAction="#handleSaveAs"/>
                     <SeparatorMenuItem/>

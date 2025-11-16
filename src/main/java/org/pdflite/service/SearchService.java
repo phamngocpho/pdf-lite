@@ -53,6 +53,18 @@ public class SearchService {
         return allResults;
     }
 
+    /**
+     * Searches for a keyword in a specific page.
+     *
+     * @param document      the PDF document
+     * @param pageIndex     the zero-based page index
+     * @param page          the PDPage object (unused in current implementation)
+     * @param keyword       the keyword to search for
+     * @param caseSensitive whether the search should be case-sensitive
+     * @param wholeWord     whether to match whole words only
+     * @return a list of search results found on the page
+     * @throws IOException if an error occurs during text extraction
+     */
     private List<SearchResult> searchInPage(
             PDDocument document,
             int pageIndex,
@@ -70,15 +82,31 @@ public class SearchService {
         return stripper.getResults();
     }
 
+    /**
+     * Cancels the current search operation.
+     */
     public void cancelSearch() {
         cancelled = true;
         logger.info("Search cancellation requested");
     }
 
+    /**
+     * Checks if the search operation has been cancelled.
+     *
+     * @return true if the search has been cancelled
+     */
     public boolean isCancelled() {
         return cancelled;
     }
 
+    /**
+     * Extracts context text around a position.
+     *
+     * @param text     the full text string
+     * @param position the position in the text
+     * @param after    true to get context after position, false to get context before
+     * @return the context string (up to CONTEXT_LENGTH characters)
+     */
     private String getContext(String text, int position, boolean after) {
         if (text == null || text.isEmpty()) {
             return "";
@@ -93,6 +121,9 @@ public class SearchService {
         }
     }
 
+    /**
+     * Custom PDFTextStripper that extracts search results with bounding boxes.
+     */
     private class CustomTextStripper extends PDFTextStripper {
 
         private final String keyword;
@@ -102,6 +133,13 @@ public class SearchService {
         private int currentPageNumber = 0;
         private String fullPageText;
 
+        /**
+         * Creates a new CustomTextStripper.
+         *
+         * @param keyword       the keyword to search for
+         * @param caseSensitive whether the search is case-sensitive
+         * @param wholeWord     whether to match whole words only
+         */
         public CustomTextStripper(String keyword, boolean caseSensitive, boolean wholeWord) {
             super();
             this.keyword = caseSensitive ? keyword : keyword.toLowerCase();
@@ -161,6 +199,14 @@ public class SearchService {
             super.writeString(text, textPositions);
         }
 
+        /**
+         * Calculates the bounding box for a matched text region.
+         *
+         * @param textPositions   list of text positions from PDFBox
+         * @param matchStartIndex start index of the match in the text string
+         * @param matchLength     length of the matched text
+         * @return the bounding box, or null if no match found
+         */
         private BoundingBox calculateBoundingBoxForMatch(List<TextPosition> textPositions,
                                                          int matchStartIndex,
                                                          int matchLength) {
@@ -208,6 +254,14 @@ public class SearchService {
             return new BoundingBox(minX, minY, maxX - minX, maxY - minY);
         }
 
+        /**
+         * Checks if a match represents a whole word.
+         *
+         * @param text   the full text string
+         * @param start  the start index of the match
+         * @param length the length of the match
+         * @return true if the match is a whole word
+         */
         private boolean isWholeWord(String text, int start, int length) {
             if (start > 0) {
                 char before = text.charAt(start - 1);
@@ -225,10 +279,23 @@ public class SearchService {
             return true;
         }
 
+        /**
+         * Gets the list of search results found.
+         *
+         * @return the list of search results
+         */
         public List<SearchResult> getResults() {
             return results;
         }
 
+        /**
+         * Simple record to hold bounding box coordinates.
+         *
+         * @param x      X coordinate in PDF points
+         * @param y      Y coordinate in PDF points
+         * @param width  Width in PDF points
+         * @param height Height in PDF points
+         */
         private record BoundingBox(float x, float y, float width, float height) { }
     }
 }

@@ -57,6 +57,7 @@ public class MainController {
     @FXML private ToolBar toolbar;
     @FXML private Button prevButton;
     @FXML private Button nextButton;
+    @FXML private Menu recentFilesMenu;
 
     // ==================== Services and Managers ====================
 
@@ -75,6 +76,7 @@ public class MainController {
     private RenderingManager renderingManager;
     private SearchDialogManager searchDialogManager;
     private ThemeManager themeManager;
+    private RecentFilesManager recentFilesManager;
 
 
     // ==================== Document State ====================
@@ -109,6 +111,10 @@ public class MainController {
 
         // Initialize managers
         initializeManagers();
+        
+        // Initialize recent files manager
+        recentFilesManager = new RecentFilesManager();
+        updateRecentFilesMenu();
 
         // Setup rendering manager with UI components
         if (renderingManager != null) {
@@ -286,6 +292,10 @@ public class MainController {
             pagesContainer = renderingManager.getPagesContainer();
             pageInfoManager.updatePageInfo(currentDocument);
             uiStateManager.updateStatus("Opened: " + file.getName());
+            
+            // Add to recent files
+            recentFilesManager.addRecentFile(file.getAbsolutePath());
+            updateRecentFilesMenu();
 
             logger.info("Successfully opened PDF: {}", file.getName());
         } catch (IOException e) {
@@ -319,6 +329,10 @@ public class MainController {
 
     @FXML
     private void handleExit() {
+        performExit();
+    }
+    
+    public void performExit() {
         if (currentDocument != null) {
             fileManager.close(currentDocument);
         }
@@ -620,5 +634,44 @@ public class MainController {
      */
     public void showError(String title, String message) {
         uiStateManager.showError(title, message);
+    }
+    
+    private void updateRecentFilesMenu() {
+        if (recentFilesMenu == null) {
+            return;
+        }
+        
+        recentFilesMenu.getItems().clear();
+        List<String> recentFiles = recentFilesManager.getRecentFiles();
+        
+        if (recentFiles.isEmpty()) {
+            MenuItem noFiles = new MenuItem("No recent files");
+            noFiles.setDisable(true);
+            recentFilesMenu.getItems().add(noFiles);
+        } else {
+            for (String filePath : recentFiles) {
+                File file = new File(filePath);
+                MenuItem item = new MenuItem(file.getName());
+                item.setOnAction(e -> openPDFFile(file));
+                recentFilesMenu.getItems().add(item);
+            }
+        }
+    }
+    
+    @FXML
+    private void handleClearRecentFiles() {
+        recentFilesManager.clearRecentFiles();
+        updateRecentFilesMenu();
+        uiStateManager.updateStatus("Recent files cleared");
+    }
+    
+    public void openLastFile() {
+        String lastFile = recentFilesManager.getLastOpenedFile();
+        if (lastFile != null) {
+            File file = new File(lastFile);
+            if (file.exists()) {
+                openPDFFile(file);
+            }
+        }
     }
 }

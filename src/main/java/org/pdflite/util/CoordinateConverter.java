@@ -73,12 +73,6 @@ public class CoordinateConverter {
         float pdfHeight = (float) (canvasHeight / finalScale);
 
         // (PDFTextStripperByArea expects Y=top coordinates)
-        /**
-         * logger.trace("Converted canvas->pdfJava:
-         * ({:.2f},{:.2f})+{:.2f}x{:.2f}px @ scale={:.4f} ->
-         * ({:.2f},{:.2f})+{:.2f}x{:.2f}pt", canvasX, canvasY, canvasWidth,
-         * canvasHeight, finalScale, pdfX, pdfY, pdfWidth, pdfHeight);
-         */
         return new Rectangle2D.Float(pdfX, pdfY, pdfWidth, pdfHeight);
     }
 
@@ -100,10 +94,6 @@ public class CoordinateConverter {
         float pdfX = (float) (canvasX / finalScale);
         float pdfY = (float) (canvasY / finalScale);
 
-        /*
-        logger.trace("Converted canvas->pdfJava point: ({:.2f},{:.2f})px @ scale={:.4f} -> ({:.2f},{:.2f})pt",
-                canvasX, canvasY, finalScale, pdfX, pdfY);
-         */
         return new Point2D.Float(pdfX, pdfY);
     }
 
@@ -124,22 +114,19 @@ public class CoordinateConverter {
         float canvasX = (float) (pdfX * finalScale);
         float canvasY = (float) ((pageHeight - pdfY) * finalScale);
 
-        /*
-        logger.trace("Converted PDF->Canvas: ({:.2f},{:.2f}) @ page_h={:.2f} → ({:.2f},{:.2f})px",
-                pdfX, pdfY, pageHeight, canvasX, canvasY);
-         */
         return new Point2D.Float(canvasX, canvasY);
     }
 
     /**
+     * Converts a PDF rectangle to canvas coordinates.
      *
-     * @param pdfX
-     * @param pdfY
-     * @param pdfWidth
-     * @param pdfHeight
-     * @param pageHeight
-     * @param zoom
-     * @return
+     * @param pdfX X coordinate in PDF points (bottom-origin)
+     * @param pdfY Y coordinate in PDF points (bottom-origin)
+     * @param pdfWidth Width in PDF points
+     * @param pdfHeight Height in PDF points
+     * @param pageHeight Page height in PDF points
+     * @param zoom Current zoom level
+     * @return Rectangle in canvas coordinates (pixels, Y=top)
      */
     public static Rectangle2D.Float pdfToCanvasRect(
             float pdfX, float pdfY, float pdfWidth, float pdfHeight,
@@ -154,11 +141,6 @@ public class CoordinateConverter {
         float canvasWidth = (float) (pdfWidth * finalScale);
         float canvasHeight = (float) (pdfHeight * finalScale);
 
-        /*
-        logger.trace("PDF rect ({:.2f},{:.2f})+{:.2f}x{:.2f} → Canvas ({:.2f},{:.2f})+{:.2f}x{:.2f}",
-                pdfX, pdfY, pdfWidth, pdfHeight,
-                canvasX, canvasY, canvasWidth, canvasHeight);
-         */
         return new Rectangle2D.Float(canvasX, canvasY, canvasWidth, canvasHeight);
     }
 
@@ -173,13 +155,10 @@ public class CoordinateConverter {
      */
     public static boolean isValidPdfCoordinate(float pdfX, float pdfY,
             float pageWidth, float pageHeight) {
-        boolean valid = pdfX >= 0 && pdfX <= pageWidth
+
+        //logger.warn("Invalid PDF coordinates: ({:.2f},{:.2f}) outside bounds (0,0)-({:.2f},{:.2f})",pdfX, pdfY, pageWidth, pageHeight);
+
+        return pdfX >= 0 && pdfX <= pageWidth
                 && pdfY >= 0 && pdfY <= pageHeight;
-
-        if (!valid) {
-            //logger.warn("Invalid PDF coordinates: ({:.2f},{:.2f}) outside bounds (0,0)-({:.2f},{:.2f})",pdfX, pdfY, pageWidth, pageHeight);
-        }
-
-        return valid;
     }
 }
