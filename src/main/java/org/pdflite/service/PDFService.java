@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,12 +25,13 @@ import java.nio.file.Path;
 /**
  * Service class for handling PDF operations and document management.
  * <p>
- * This service provides core functionality for working with PDF documents, including:
+ * This service provides core functionality for working with PDF documents,
+ * including:
  * <ul>
- *   <li>Opening and closing PDF files</li>
- *   <li>Rendering PDF pages as images with configurable DPI and scaling</li>
- *   <li>Caching rendered images for improved performance</li>
- *   <li>Text extraction and search functionality</li>
+ * <li>Opening and closing PDF files</li>
+ * <li>Rendering PDF pages as images with configurable DPI and scaling</li>
+ * <li>Caching rendered images for improved performance</li>
+ * <li>Text extraction and search functionality</li>
  * </ul>
  * </p>
  * <p>
@@ -64,7 +66,8 @@ public class PDFService {
      *
      * @param file the PDF file to open
      * @return a PDFDocument object representing the opened PDF
-     * @throws IOException if the file cannot be read or is not a valid PDF
+     * @throws IOException              if the file cannot be read or is not a valid
+     *                                  PDF
      * @throws IllegalArgumentException if the file is null
      */
     public PDFDocument openPDF(File file) throws IOException {
@@ -77,21 +80,23 @@ public class PDFService {
      * Renders a specific page of the PDF as a JavaFX Image with optimized settings.
      * <p>
      * This method renders the specified page at the given scale with RGB image type
-     * for better performance. It first checks the document's cache for a previously 
-     * rendered version of the page at the same scale. If a cached version exists, it is 
-     * returned immediately. Otherwise, the page is rendered using Apache PDFBox and 
+     * for better performance. It first checks the document's cache for a previously
+     * rendered version of the page at the same scale. If a cached version exists,
+     * it is
+     * returned immediately. Otherwise, the page is rendered using Apache PDFBox and
      * the result is cached for future use.
      * </p>
      * <p>
-     * The actual DPI used for rendering is calculated as: {@code DEFAULT_DPI * scale}.
+     * The actual DPI used for rendering is calculated as:
+     * {@code DEFAULT_DPI * scale}.
      * Higher scale values produce higher quality images but require more memory.
      * </p>
      *
-     * @param pdfDoc the PDF document containing the page to render
+     * @param pdfDoc    the PDF document containing the page to render
      * @param pageIndex the zero-based index of the page to render
-     * @param scale the scaling factor to apply (1.0 = 100%)
+     * @param scale     the scaling factor to apply (1.0 = 100%)
      * @return a JavaFX Image object containing the rendered page
-     * @throws IOException if an error occurs during rendering
+     * @throws IOException              if an error occurs during rendering
      * @throws IllegalArgumentException if the page index is invalid
      * @see PDFDocument#getCachedImage(int, float)
      * @see PDFDocument#cacheImage(int, float, Image)
@@ -113,7 +118,7 @@ public class PDFService {
         float dpi = DEFAULT_DPI * scale;
 
         logger.debug("Rendering page {} with DPI {}", pageIndex, dpi);
-        
+
         // Render with RGB image type for better performance (no alpha channel overhead)
         BufferedImage bufferedImage = renderer.renderImageWithDPI(pageIndex, dpi, ImageType.RGB);
 
@@ -162,7 +167,7 @@ public class PDFService {
      * {@link #searchTextInPages(PDFDocument, String)} instead.
      * </p>
      *
-     * @param pdfDoc the PDF document to search
+     * @param pdfDoc     the PDF document to search
      * @param searchTerm the text to search for (case-insensitive)
      * @return true if the search term is found, false otherwise
      * @throws IOException if an error occurs while extracting text
@@ -189,17 +194,17 @@ public class PDFService {
      * single string, preserving the layout as much as possible.
      * </p>
      *
-     * @param pdfDoc the PDF document
+     * @param pdfDoc    the PDF document
      * @param pageIndex the zero-based index of the page
      * @return the extracted text from the page
-     * @throws IOException if an error occurs during text extraction
+     * @throws IOException              if an error occurs during text extraction
      * @throws IllegalArgumentException if the page index is invalid
      */
     public String extractTextFromPage(PDFDocument pdfDoc, int pageIndex) throws IOException {
         if (pageIndex < 0 || pageIndex >= pdfDoc.getTotalPages()) {
             throw new IllegalArgumentException("Invalid page index: " + pageIndex);
         }
-        
+
         PDFTextStripper stripper = new PDFTextStripper();
         stripper.setStartPage(pageIndex + 1);
         stripper.setEndPage(pageIndex + 1);
@@ -207,21 +212,24 @@ public class PDFService {
     }
 
     /**
-     * Searches for text across all pages and returns the page numbers where it's found.
+     * Searches for text across all pages and returns the page numbers where it's
+     * found.
      * <p>
-     * This method performs a case-insensitive search across all pages of the document.
+     * This method performs a case-insensitive search across all pages of the
+     * document.
      * It returns a list of zero-based page indices where the search term appears.
      * The search is performed sequentially on each page.
      * </p>
      * <p>
      * Example usage:
+     * 
      * <pre>
      * List&lt;Integer&gt; pages = pdfService.searchTextInPages(document, "important");
      * // pages contains [0, 5, 12] if the term appears on pages 1, 6, and 13
      * </pre>
      * </p>
      *
-     * @param pdfDoc the PDF document to search
+     * @param pdfDoc     the PDF document to search
      * @param searchTerm the text to search for (case-insensitive)
      * @return a list of zero-based page indices where the search term is found
      * @throws IOException if an error occurs while extracting text from any page
@@ -250,13 +258,23 @@ public class PDFService {
     /**
      * Save the current document to its original file.
      */
+    /**
+     * Save the current document to its original file using INCREMENTAL SAVE.
+     * This is REQUIRED when saving to the same file that was loaded.
+     */
     public void save(PDFDocument pdfDoc) throws IOException {
-        if (pdfDoc == null || pdfDoc.getDocument() == null || pdfDoc.getFile() == null) {
-            throw new IOException("No document or target file to save.");
-        }
-        pdfDoc.getDocument().save(pdfDoc.getFile());
-        logger.info("Saved PDF to {}", pdfDoc.getFile().getAbsolutePath());
+    if (pdfDoc == null || pdfDoc.getDocument() == null || pdfDoc.getFile() == null) {
+        throw new IOException("No document or target file to save.");
     }
+
+    PDDocument pdDoc = pdfDoc.getDocument();
+    File file = pdfDoc.getFile();
+
+    // SỬ DỤNG SAVE THÔNG THƯỜNG - không dùng incremental khi đã xóa trang
+    pdDoc.save(file);
+
+    logger.info("Saved PDF to {}", file.getAbsolutePath());
+}
 
     /**
      * Save the current document to a specific path.
