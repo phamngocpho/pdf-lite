@@ -10,37 +10,64 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collection;
 
 /**
  * Manages file operations for PDF documents.
  * Handles opening, saving, and deleting pages.
  */
-public class FileManager {
+public record FileManager(PDFService pdfService, FileOperationListener fileOperationListener) {
     private static final Logger logger = LoggerFactory.getLogger(FileManager.class);
-
-    private final PDFService pdfService;
-    private final FileOperationListener fileOperationListener;
 
     /**
      * Interface for listening to file operations.
      */
     public interface FileOperationListener {
+        /**
+         * Called when a PDF file is successfully opened.
+         *
+         * @param document the opened PDF document
+         * @param file     the file that was opened
+         */
         void onFileOpened(PDFDocument document, File file);
+
+        /**
+         * Called when a file is saved.
+         *
+         * @param fileName the name of the saved file
+         */
         void onFileSaved(String fileName);
+
+        /**
+         * Called when a file is saved with a new name.
+         *
+         * @param fileName the new file name
+         */
         void onFileSaveAs(String fileName);
+
+        /**
+         * Called when an error occurs during file operations.
+         *
+         * @param title   the error title
+         * @param message the error message
+         */
         void onError(String title, String message);
+
+        /**
+         * Called when a page is deleted from the document.
+         *
+         * @param pageNumber the page number that was deleted
+         */
         void onPageDeleted(int pageNumber);
     }
 
     /**
      * Creates a new FileManager.
      *
-     * @param pdfService the PDF service
+     * @param pdfService            the PDF service
      * @param fileOperationListener listener for file operation events
      */
-    public FileManager(PDFService pdfService, FileOperationListener fileOperationListener) {
-        this.pdfService = pdfService;
-        this.fileOperationListener = fileOperationListener;
+    public FileManager {
     }
 
     /**
@@ -53,7 +80,7 @@ public class FileManager {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Open PDF File");
         fileChooser.getExtensionFilters().add(
-            new FileChooser.ExtensionFilter(Constants.PDF_DESCRIPTION, Constants.PDF_EXTENSION)
+                new FileChooser.ExtensionFilter(Constants.PDF_DESCRIPTION, Constants.PDF_EXTENSION)
         );
         return fileChooser.showOpenDialog(stage);
     }
@@ -100,7 +127,7 @@ public class FileManager {
      * Shows save as dialog and saves the document.
      *
      * @param document the document to save
-     * @param stage the parent stage
+     * @param stage    the parent stage
      * @throws IOException if the file cannot be saved
      */
     public void saveAs(PDFDocument document, Stage stage) throws IOException {
@@ -111,10 +138,10 @@ public class FileManager {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Save PDF As");
         fileChooser.getExtensionFilters().add(
-            new FileChooser.ExtensionFilter(Constants.PDF_DESCRIPTION, Constants.PDF_EXTENSION)
+                new FileChooser.ExtensionFilter(Constants.PDF_DESCRIPTION, Constants.PDF_EXTENSION)
         );
         File target = fileChooser.showSaveDialog(stage);
-        
+
         if (target == null) {
             return; // User cancelled
         }
@@ -129,11 +156,10 @@ public class FileManager {
     /**
      * Deletes pages from the document.
      *
-     * @param document the document
+     * @param document    the document
      * @param pageIndices the page indices to delete (0-based)
-     * @throws IOException if pages cannot be deleted
      */
-    public void deletePages(PDFDocument document, java.util.Collection<Integer> pageIndices) throws IOException {
+    public void deletePages(PDFDocument document, Collection<Integer> pageIndices) {
         if (document == null || pageIndices == null || pageIndices.isEmpty()) {
             return;
         }
@@ -144,14 +170,14 @@ public class FileManager {
         }
 
         pdfService.deletePages(document, pageIndices);
-        
+
         // Notify about deleted pages
         for (int pageIndex : pageIndices) {
             if (fileOperationListener != null) {
                 fileOperationListener.onPageDeleted(pageIndex + 1);
             }
         }
-        
+
         logger.info("Deleted {} page(s)", pageIndices.size());
     }
 

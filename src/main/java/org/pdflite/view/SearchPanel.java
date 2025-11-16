@@ -322,7 +322,7 @@ public class SearchPanel extends VBox {
         
         int position = resultsListView.getSelectionModel().getSelectedIndex() + 1;
         updateStatus(String.format("Result %d of %d on page %d", 
-                                 position, searchResults.size(), result.getPageNumber()));
+                                 position, searchResults.size(), result.pageNumber()));
         
         updateNavigationButtons();
         }

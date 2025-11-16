@@ -29,7 +29,18 @@ public class FullscreenManager {
      * Interface for listening to fullscreen events.
      */
     public interface FullscreenListener {
+        /**
+         * Called when fullscreen mode is toggled.
+         *
+         * @param isFullscreen true if entering fullscreen, false if exiting
+         */
         void onFullscreenChanged(boolean isFullscreen);
+
+        /**
+         * Updates the status message.
+         *
+         * @param message the status message to display
+         */
         void updateStatus(String message);
     }
 

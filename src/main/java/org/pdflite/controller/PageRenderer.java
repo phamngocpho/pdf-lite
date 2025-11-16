@@ -19,6 +19,9 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
+import org.pdflite.view.ContextMenuPane;
 
 /**
  * Handles page rendering, caching, and display management.
@@ -43,6 +46,8 @@ public class PageRenderer {
     private double currentZoom;
     private boolean highlightModeActive;
 
+    private ContextMenuHandler contextMenuHandler;
+
     /**
      * Creates a new PageRenderer with the specified service and executor.
      *
@@ -54,6 +59,8 @@ public class PageRenderer {
         this.renderExecutor = renderExecutor;
         this.loadingPages = ConcurrentHashMap.newKeySet();
         this.pendingRenders = new ConcurrentHashMap<>();
+        this.contextMenuHandler = new ContextMenuHandler();
+        logger.info("ContextMenuHandler integrated into PageRenderer");
         
         // LRU cache with max 50 pages
         this.imageCache = new java.util.LinkedHashMap<>(50, 0.75f, true) {
@@ -229,26 +236,44 @@ public class PageRenderer {
      * @param pageIndex the page index
      */
     private void displayImage(Image image, VBox pageBox, int pageIndex) {
-        ImageView imageView = new ImageView(image);
-        imageView.setPreserveRatio(true);
-        imageView.setSmooth(true);
-        imageView.setCache(true);
+    ImageView imageView = new ImageView(image);
+    imageView.setPreserveRatio(true);
+    imageView.setSmooth(true);
+    imageView.setCache(true);
+    
+    imageView.setPickOnBounds(false);
+    imageView.setMouseTransparent(false);
 
-        // Create annotation layer on top of the image
-        AnnotationLayer annotationLayer = new AnnotationLayer(image.getWidth(), image.getHeight());
-        if (highlightModeActive) {
-            annotationLayer.setAnnotationMode(AnnotationLayer.AnnotationMode.HIGHLIGHT);
+    // Create annotation layer
+    AnnotationLayer annotationLayer = new AnnotationLayer(image.getWidth(), image.getHeight());
+    annotationLayer.setPickOnBounds(false);
+    annotationLayer.setOnContextMenuRequested(null);
+    annotationLayer.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
+        if (event.getButton() == MouseButton.SECONDARY) {
+            // return nothing
         }
+    });
 
-        // Stack the image and annotation layer
-        StackPane imageStack = new StackPane(imageView, annotationLayer);
-        imageStack.setAlignment(Pos.CENTER);
+    // Create context menu pane
+    ContextMenuPane contextPane = new ContextMenuPane(contextMenuHandler);
+    contextPane.setDocumentInfo(currentDocument, pageIndex, currentZoom);
+    contextPane.setPrefSize(image.getWidth(), image.getHeight());
+    contextPane.setMaxSize(image.getWidth(), image.getHeight());
+    
+    contextPane.toFront();
 
-        // Replace placeholder with actual image
-        if (!pageBox.getChildren().isEmpty()) {
-            pageBox.getChildren().set(0, imageStack);
-        }
+    // Stack layers: Image (bottom) -> Annotation -> ContextMenu (top)
+    StackPane imageStack = new StackPane(imageView, annotationLayer, contextPane);
+    imageStack.setAlignment(Pos.CENTER);
+    
+    imageStack.setPickOnBounds(false);
+
+    if (!pageBox.getChildren().isEmpty()) {
+        pageBox.getChildren().set(0, imageStack);
     }
+
+    logger.debug("Page {} displayed - Context menu layer active", pageIndex + 1);
+}
 
     /**
      * Creates a placeholder VBox for a PDF page before it's loaded.

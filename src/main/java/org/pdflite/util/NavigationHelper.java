@@ -1,5 +1,9 @@
 package org.pdflite.util;
 
+import javafx.animation.Interpolator;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
@@ -9,6 +13,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.geometry.Pos;
+import javafx.util.Duration;
 import org.pdflite.controller.MainController;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
@@ -29,28 +34,18 @@ import java.util.concurrent.ExecutorService;
  * - Lazy page loading
  * - Page render checking
  * - Scroll coordination
+ *
+ * @param mainController Dependencies
  */
-public class NavigationHelper {
+public record NavigationHelper(MainController mainController, PDFService pdfService, ExecutorService renderExecutor,
+                               Set<Integer> loadingPages) {
 
     private static final Logger logger = LoggerFactory.getLogger(NavigationHelper.class);
-
-    // Dependencies
-    private final MainController mainController;
-    private final PDFService pdfService;
-    private final ExecutorService renderExecutor;
-    private final Set<Integer> loadingPages;
 
     /**
      * Constructor with dependency injection
      */
-    public NavigationHelper(MainController mainController,
-                            PDFService pdfService,
-                            ExecutorService renderExecutor,
-                            Set<Integer> loadingPages) {
-        this.mainController = mainController;
-        this.pdfService = pdfService;
-        this.renderExecutor = renderExecutor;
-        this.loadingPages = loadingPages;
+    public NavigationHelper {
     }
 
     // ==================== PUBLIC API ====================
@@ -95,7 +90,7 @@ public class NavigationHelper {
     }
 
     /**
-     * Scroll to current page in document
+     * Scroll to current page in document with smooth animation
      */
     public void scrollToCurrentPage() {
         PDFDocument currentDocument = mainController.getCurrentDocument();
@@ -120,8 +115,8 @@ public class NavigationHelper {
                 double viewportHeight = scrollPane.getViewportBounds().getHeight();
 
                 if (contentHeight > viewportHeight) {
-                    double scrollPosition = currentY / (contentHeight - viewportHeight);
-                    scrollPane.setVvalue(Math.min(1.0, Math.max(0.0, scrollPosition)));
+                    double targetV = currentY / (contentHeight - viewportHeight);
+                    smoothScrollTo(scrollPane, targetV, Duration.millis(350));
                 }
             } catch (Exception e) {
                 logger.error("Error scrolling to page", e);
@@ -130,7 +125,26 @@ public class NavigationHelper {
     }
 
     /**
-     * Scroll to specific page index with centering
+     * Smooth scroll to target position with animation
+     */
+    private void smoothScrollTo(ScrollPane scrollPane, double targetVValue, Duration duration) {
+        if (scrollPane == null) return;
+
+        double start = scrollPane.getVvalue();
+        double target = Math.max(0.0, Math.min(1.0, targetVValue));
+        if (Math.abs(target - start) < 1e-4) return;
+
+        Timeline timeline = new Timeline(
+                new KeyFrame(Duration.ZERO,
+                        new KeyValue(scrollPane.vvalueProperty(), start, Interpolator.EASE_BOTH)),
+                new KeyFrame(duration,
+                        new KeyValue(scrollPane.vvalueProperty(), target, Interpolator.EASE_BOTH))
+        );
+        timeline.play();
+    }
+
+    /**
+     * Scroll to specific page index with centering and smooth animation
      */
     public void scrollToPage(int pageIndex) {
         VBox pagesContainer = mainController.getPagesContainer();
@@ -164,7 +178,7 @@ public class NavigationHelper {
                     double maxScroll = contentHeight - viewportHeight;
                     double scrollPosition = adjustedY / maxScroll;
 
-                    scrollPane.setVvalue(Math.min(1.0, Math.max(0.0, scrollPosition)));
+                    smoothScrollTo(scrollPane, scrollPosition, Duration.millis(350));
 
                     logger.debug("Scrolled to page {} at position {} (targetY={}, adjustedY={})",
                             pageIndex + 1, scrollPosition, targetY, adjustedY);
@@ -174,30 +188,6 @@ public class NavigationHelper {
                 logger.error("Error scrolling to page {}", pageIndex + 1, e);
             }
         });
-    }
-
-    /**
-     * Ensure page is loaded before executing callback
-     */
-    public void ensurePageLoaded(int pageIndex, Runnable callback) {
-        VBox pagesContainer = mainController.getPagesContainer();
-        if (pagesContainer == null || pageIndex < 0 || pageIndex >= pagesContainer.getChildren().size()) {
-            logger.warn("Invalid page index or container: {}", pageIndex);
-            return;
-        }
-
-        VBox pageBox = (VBox) pagesContainer.getChildren().get(pageIndex);
-
-        if (isPageRendered(pageBox)) {
-            if (callback != null) {
-                callback.run();
-            }
-            logger.debug("Page {} already rendered", pageIndex + 1);
-            return;
-        }
-
-        logger.info("Force loading page {} before navigation", pageIndex + 1);
-        loadPageAndWait(pageIndex, pageBox, callback);
     }
 
     /**
@@ -222,7 +212,7 @@ public class NavigationHelper {
                             pageBox.layout();
 
                             if (!pageBox.getChildren().isEmpty()
-                                    && pageBox.getChildren().get(0) instanceof StackPane stackPane) {
+                                    && pageBox.getChildren().getFirst() instanceof StackPane stackPane) {
                                 stackPane.layout();
                             }
 
@@ -320,60 +310,15 @@ public class NavigationHelper {
             return false;
         }
 
-        Node firstChild = pageBox.getChildren().get(0);
+        Node firstChild = pageBox.getChildren().getFirst();
 
         if (firstChild instanceof StackPane stackPane) {
             if (!stackPane.getChildren().isEmpty()) {
-                Node content = stackPane.getChildren().get(0);
+                Node content = stackPane.getChildren().getFirst();
                 return content instanceof ImageView;
             }
         }
 
         return false;
-    }
-
-    /**
-     * Update current page indicator from scroll position
-     */
-    public void updateCurrentPageFromScroll() {
-        PDFDocument currentDocument = mainController.getCurrentDocument();
-        VBox pagesContainer = mainController.getPagesContainer();
-        ScrollPane scrollPane = mainController.getScrollPane();
-
-        if (currentDocument == null || pagesContainer == null || scrollPane == null) {
-            return;
-        }
-
-        try {
-            double viewportHeight = scrollPane.getViewportBounds().getHeight();
-            double scrollValue = scrollPane.getVvalue();
-            double contentHeight = pagesContainer.getHeight();
-
-            if (contentHeight <= viewportHeight) {
-                return;
-            }
-
-            double visibleStart = scrollValue * (contentHeight - viewportHeight);
-            double visibleCenter = visibleStart + (viewportHeight / 2);
-
-            int totalPages = currentDocument.getTotalPages();
-            double currentY = 0;
-
-            for (int i = 0; i < totalPages; i++) {
-                VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
-                double pageHeight = pageBox.getPrefHeight();
-                double pageEnd = currentY + pageHeight;
-
-                if (visibleCenter >= currentY && visibleCenter < pageEnd) {
-                    currentDocument.setCurrentPage(i);
-                    mainController.updatePageInfo();
-                    break;
-                }
-
-                currentY = pageEnd + 10;
-            }
-        } catch (Exception e) {
-            logger.error("Error updating current page from scroll", e);
-        }
     }
 }

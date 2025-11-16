@@ -136,9 +136,7 @@ public class AnnotationLayer extends Canvas {
                     case HIGHLIGHT:
                         addHighlight(startX, startY, event.getX(), event.getY());
                         break;
-                    case DRAW:
-                        break;
-                    case TEXT:
+                    case DRAW, TEXT:
                         break;
                 }
                 isDrawing = false;
@@ -325,8 +323,8 @@ public class AnnotationLayer extends Canvas {
         
         if (result != null) {
             logger.debug("Set active search result: page={}, start={}, end={}, pos=({}, {})",
-                    result.getPageNumber(), result.getStartIndex(), result.getEndIndex(),
-                    result.getX(), result.getY());
+                    result.pageNumber(), result.startIndex(), result.endIndex(),
+                    result.x(), result.y());
         } else {
             logger.debug("Cleared active search result");
         }
@@ -356,12 +354,12 @@ public class AnnotationLayer extends Canvas {
         int activeCount = 0;
 
         for (SearchResult result : searchHighlights) {
-            if (result.getWidth() <= 0 || result.getHeight() <= 0) {
+            if (result.width() <= 0 || result.height() <= 0) {
                 logger.warn("Invalid coordinates for search result: {}", result);
                 continue;
             }
             
-            boolean isActive = (activeSearchResult != null && result.equals(activeSearchResult));
+            boolean isActive = (result.equals(activeSearchResult));
 
             Color highlightColor = isActive ? ACTIVE_SEARCH_HIGHLIGHT_COLOR : SEARCH_HIGHLIGHT_COLOR;
             double opacity = isActive ? ACTIVE_SEARCH_HIGHLIGHT_OPACITY : SEARCH_HIGHLIGHT_OPACITY;
@@ -374,10 +372,10 @@ public class AnnotationLayer extends Canvas {
             ));
 
             double finalScale = this.scale * LOW_RENDER_SCALE;
-            double x = result.getX() * finalScale;
-            double y = result.getY() * finalScale;
-            double width = result.getWidth() * finalScale;
-            double height = result.getHeight() * finalScale;
+            double x = result.x() * finalScale;
+            double y = result.y() * finalScale;
+            double width = result.width() * finalScale;
+            double height = result.height() * finalScale;
 
             gc.fillRect(x, y, width, height);
 
@@ -388,7 +386,7 @@ public class AnnotationLayer extends Canvas {
                 activeCount++;
                 
                 logger.trace("Drew ACTIVE highlight at ({}, {}) size {}x{} - page={}, start={}",
-                        x, y, width, height, result.getPageNumber(), result.getStartIndex());
+                        x, y, width, height, result.pageNumber(), result.startIndex());
             } else {
                 normalCount++;
             }

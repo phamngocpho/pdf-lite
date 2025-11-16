@@ -14,6 +14,11 @@
             <MenuBar>
                 <Menu text="File">
                     <MenuItem text="Open PDF..." onAction="#handleOpenPDF" accelerator="Ctrl+O"/>
+                    <Menu fx:id="recentFilesMenu" text="Recent Files">
+                        <MenuItem text="No recent files" disable="true"/>
+                    </Menu>
+                    <MenuItem text="Clear Recent Files" onAction="#handleClearRecentFiles"/>
+                    <SeparatorMenuItem/>
                     <MenuItem text="Save" onAction="#handleSave"/>
                     <MenuItem text="Save As..." onAction="#handleSaveAs"/>
                     <SeparatorMenuItem/>
@@ -38,11 +43,18 @@
                 <Menu text="Tools">
                     <MenuItem text="Highlight" onAction="#handleHighlight"/>
                     <SeparatorMenuItem/>
+                    <MenuItem text="Merge PDFs..." onAction="#handleMergePDFs"/>
+                    <MenuItem text="Split PDF..." onAction="#handleSplitPDF"/>
+                    <SeparatorMenuItem/>
                     <MenuItem text="Delete Page" onAction="#handleDeletePage"/>
                 </Menu>
     
                 <Menu text="Help">
                     <MenuItem text="About" onAction="#handleAbout"/>
+                </Menu>
+                <Menu text="Theme">
+                    <MenuItem text ="Light" onAction="#setLightTheme" />
+                    <MenuItem text ="Dark" onAction="#setDarkTheme" />
                 </Menu>
             </MenuBar>
 
@@ -62,6 +74,9 @@
                 <ComboBox fx:id="zoomComboBox" onAction="#handleZoomChange" prefWidth="100"/>
                 <Separator orientation="VERTICAL"/>
                 <Button text="Highlight" onAction="#handleHighlight"/>
+                <Separator orientation="VERTICAL"/>
+                <Button text="Merge PDFs" onAction="#handleMergePDFs" style="-fx-background-color: #4CAF50; -fx-text-fill: white;"/>
+                <Button text="Split PDF" onAction="#handleSplitPDF" style="-fx-background-color: #2196F3; -fx-text-fill: white;"/>
                 <Separator orientation="VERTICAL"/>
                 <Button text="Delete Page" onAction="#handleDeletePage"/>
                 <Button text="Full Screen" onAction="#handleToggleFullScreen"/>

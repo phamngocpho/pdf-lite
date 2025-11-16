@@ -1,0 +1,98 @@
+name: Auto Move Project Items
+
+on:
+  issues:
+    types: [assigned, unassigned]
+
+jobs:
+  update-project-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Project Data
+        id: project_data
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GH_TOKEN }}
+          script: |
+            const projectId = 'PVT_kwHOCIDT2c4BHopI';
+            const statusFieldId = 'PVTSSF_lAHOCIDT2c4BHopIzg4VP8U';
+            const readyOptionId = '61e4505c';
+            const inProgressOptionId = '47fc9ee4';
+            const issueNodeId = context.payload.issue.node_id;
+            const action = context.payload.action;
+                        const query = `
+              query($projectId: ID!) {
+                node(id: $projectId) {
+                  ... on ProjectV2 {
+                    items(first: 100) {
+                      nodes {
+                        id
+                        content {
+                          ... on Issue {
+                            id
+                            number
+                            title
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+            
+            try {
+              const result = await github.graphql(query, { projectId });
+              
+              const projectItem = result.node.items.nodes.find(
+                item => item.content && item.content.id === issueNodeId
+              );
+              
+              if (!projectItem) {
+                core.setOutput('found', 'false');
+                return;
+              }
+              
+              let newStatusId;
+              let newStatusName;
+              
+              if (action === 'assigned') {
+                newStatusId = inProgressOptionId;
+                newStatusName = 'In progress';
+              } else if (action === 'unassigned' && context.payload.issue.assignees.length === 0) {
+                newStatusId = readyOptionId;
+                newStatusName = 'Ready';
+              } else {
+                core.setOutput('found', 'false');
+                return;
+              }
+              
+              const mutation = `
+                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                  updateProjectV2ItemFieldValue(
+                    input: {
+                      projectId: $projectId
+                      itemId: $itemId
+                      fieldId: $fieldId
+                      value: { singleSelectOptionId: $optionId }
+                    }
+                  ) {
+                    projectV2Item {
+                      id
+                    }
+                  }
+                }
+              `;
+              
+              await github.graphql(mutation, {
+                projectId: projectId,
+                itemId: projectItem.id,
+                fieldId: statusFieldId,
+                optionId: newStatusId
+              });
+              
+              core.setOutput('found', 'true');
+              
+            } catch (error) {
+              core.setFailed(error.message);
+            }

@@ -1,4 +1,4 @@
-package org.pdflite.controller;
+package org.pdflite.manager;
 
 import javafx.application.Platform;
 import javafx.scene.Node;
@@ -7,6 +7,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import org.pdflite.controller.MainController;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
 import org.pdflite.view.AnnotationLayer;
@@ -39,7 +40,7 @@ public class SearchManager {
     private final NavigationHelper navigationHelper;
 
     // Search panel state
-    private SearchPanel searchPanel;
+    private final SearchPanel searchPanel;
     private boolean searchPanelVisible = false;
     private SearchPanelPosition searchPanelPosition = SearchPanelPosition.FLOAT;
 
@@ -72,7 +73,7 @@ public class SearchManager {
     public void togglePanel(SearchPanelPosition position) {
         this.searchPanelPosition = position;
 
-        if (searchPanelVisible && this.searchPanelPosition == position) {
+        if (searchPanelVisible) {
             hidePanel();
         } else {
             showPanel(position);
@@ -91,13 +92,11 @@ public class SearchManager {
 
         logger.info("Loading {} pages with search results...", resultsByPage.size());
 
-        loadPagesWithResults(new ArrayList<>(resultsByPage.keySet()), () -> {
-            Platform.runLater(() -> {
-                updateAllHighlights();
-                logger.info("Highlighted {} search results across {} pages",
-                        results.size(), resultsByPage.size());
-            });
-        });
+        loadPagesWithResults(new ArrayList<>(resultsByPage.keySet()), () -> Platform.runLater(() -> {
+            updateAllHighlights();
+            logger.info("Highlighted {} search results across {} pages",
+                    results.size(), resultsByPage.size());
+        }));
     }
 
     public void navigateToResult(SearchResult result) {
@@ -107,24 +106,22 @@ public class SearchManager {
         }
 
         this.activeResult = result;
-        int pageIndex = result.getPageNumber() - 1;
+        int pageIndex = result.pageNumber() - 1;
 
         logger.info("Navigating to search result: page={}, start={}, end={}, pos=({}, {})",
-                result.getPageNumber(), result.getStartIndex(), result.getEndIndex(),
-                result.getX(), result.getY());
+                result.pageNumber(), result.startIndex(), result.endIndex(),
+                result.x(), result.y());
 
         if (pageIndex >= 0 && pageIndex < mainController.getTotalPages()) {
-            navigationHelper.ensurePageLoadedAndReady(pageIndex, () -> {
-                Platform.runLater(() -> {
-                    navigationHelper.navigateToPage(pageIndex);
+            navigationHelper.ensurePageLoadedAndReady(pageIndex, () -> Platform.runLater(() -> {
+                navigationHelper.navigateToPage(pageIndex);
 
-                    // Delay to ensure scroll completes
-                    Platform.runLater(() -> {
-                        updateAllHighlights();
-                        logger.info("Active result updated on page {}", result.getPageNumber());
-                    });
+                // Delay to ensure scroll completes
+                Platform.runLater(() -> {
+                    updateAllHighlights();
+                    logger.info("Active result updated on page {}", result.pageNumber());
                 });
-            });
+            }));
         }
     }
 
@@ -205,7 +202,7 @@ public class SearchManager {
     private void groupResultsByPage(List<SearchResult> results) {
         resultsByPage.clear();
         for (SearchResult result : results) {
-            int pageIndex = result.getPageNumber() - 1;
+            int pageIndex = result.pageNumber() - 1;
             resultsByPage.computeIfAbsent(pageIndex, k -> new ArrayList<>())
                     .add(result);
         }
@@ -238,9 +235,7 @@ public class SearchManager {
             loadPagesRecursive(pageIndices, currentIndex + 1, onComplete);
         } else {
             logger.debug("Loading page {} for search highlights", pageIndex + 1);
-            navigationHelper.loadPageAndWait(pageIndex, pageBox, () -> {
-                loadPagesRecursive(pageIndices, currentIndex + 1, onComplete);
-            });
+            navigationHelper.loadPageAndWait(pageIndex, pageBox, () -> loadPagesRecursive(pageIndices, currentIndex + 1, onComplete));
         }
     }
 
@@ -273,7 +268,7 @@ public class SearchManager {
                 layer.setSearchHighlights(pageResults);
                 highlightCount += pageResults.size();
 
-                if (activeResult != null && activeResult.getPageNumber() - 1 == pageIndex) {
+                if (activeResult != null && activeResult.pageNumber() - 1 == pageIndex) {
                     layer.setActiveSearchResult(activeResult);
                     activeSetCount++;
                     
@@ -332,7 +327,7 @@ public class SearchManager {
             return null;
         }
 
-        if (pageBox.getChildren().get(0) instanceof StackPane stackPane) {
+        if (pageBox.getChildren().getFirst() instanceof StackPane stackPane) {
             for (Node node : stackPane.getChildren()) {
                 if (node instanceof AnnotationLayer layer) {
                     syncLayerWithImage(stackPane, layer);
@@ -345,7 +340,7 @@ public class SearchManager {
 
     private void syncLayerWithImage(StackPane stackPane, AnnotationLayer layer) {
         if (!stackPane.getChildren().isEmpty()
-                && stackPane.getChildren().get(0) instanceof ImageView imageView) {
+                && stackPane.getChildren().getFirst() instanceof ImageView imageView) {
             Image image = imageView.getImage();
             if (image != null) {
                 double imageWidth = image.getWidth();
@@ -382,18 +377,38 @@ public class SearchManager {
 
     // ==================== GETTERS ====================
 
+    /**
+     * Checks if the search panel is currently visible.
+     *
+     * @return true if the search panel is visible
+     */
     public boolean isSearchPanelVisible() {
         return searchPanelVisible;
     }
 
+    /**
+     * Gets the current search panel position.
+     *
+     * @return the current search panel position
+     */
     public SearchPanelPosition getSearchPanelPosition() {
         return searchPanelPosition;
     }
 
+    /**
+     * Gets all search results organized by page number.
+     *
+     * @return a map of page numbers to lists of search results
+     */
     public Map<Integer, List<SearchResult>> getResultsByPage() {
         return new HashMap<>(resultsByPage);
     }
 
+    /**
+     * Gets the currently active search result.
+     *
+     * @return the active search result, or null if none is active
+     */
     public SearchResult getActiveResult() {
         return activeResult;
     }

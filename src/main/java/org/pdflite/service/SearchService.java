@@ -53,6 +53,18 @@ public class SearchService {
         return allResults;
     }
 
+    /**
+     * Searches for a keyword in a specific page.
+     *
+     * @param document      the PDF document
+     * @param pageIndex     the zero-based page index
+     * @param page          the PDPage object (unused in current implementation)
+     * @param keyword       the keyword to search for
+     * @param caseSensitive whether the search should be case-sensitive
+     * @param wholeWord     whether to match whole words only
+     * @return a list of search results found on the page
+     * @throws IOException if an error occurs during text extraction
+     */
     private List<SearchResult> searchInPage(
             PDDocument document,
             int pageIndex,
@@ -67,39 +79,51 @@ public class SearchService {
         stripper.setSortByPosition(true);
         StringWriter writer = new StringWriter();
         stripper.writeText(document, writer);
-
-        List<SearchResult> results = stripper.getResults();
-
-        for (SearchResult result : results) {
-            // Page number already set in CustomTextStripper
-        }
-
-        return results;
+        return stripper.getResults();
     }
 
+    /**
+     * Cancels the current search operation.
+     */
     public void cancelSearch() {
         cancelled = true;
         logger.info("Search cancellation requested");
     }
 
+    /**
+     * Checks if the search operation has been cancelled.
+     *
+     * @return true if the search has been cancelled
+     */
     public boolean isCancelled() {
         return cancelled;
     }
 
-    private String getContext(String text, int position, int length, boolean after) {
+    /**
+     * Extracts context text around a position.
+     *
+     * @param text     the full text string
+     * @param position the position in the text
+     * @param after    true to get context after position, false to get context before
+     * @return the context string (up to CONTEXT_LENGTH characters)
+     */
+    private String getContext(String text, int position, boolean after) {
         if (text == null || text.isEmpty()) {
             return "";
         }
 
         if (after) {
-            int end = Math.min(position + length, text.length());
+            int end = Math.min(position + SearchService.CONTEXT_LENGTH, text.length());
             return text.substring(position, end);
         } else {
-            int start = Math.max(0, position - length);
+            int start = Math.max(0, position - SearchService.CONTEXT_LENGTH);
             return text.substring(start, position);
         }
     }
 
+    /**
+     * Custom PDFTextStripper that extracts search results with bounding boxes.
+     */
     private class CustomTextStripper extends PDFTextStripper {
 
         private final String keyword;
@@ -108,10 +132,15 @@ public class SearchService {
         private final List<SearchResult> results = new ArrayList<>();
         private int currentPageNumber = 0;
         private String fullPageText;
-        private PDPage currentPage;
 
-        public CustomTextStripper(String keyword, boolean caseSensitive, boolean wholeWord)
-                throws IOException {
+        /**
+         * Creates a new CustomTextStripper.
+         *
+         * @param keyword       the keyword to search for
+         * @param caseSensitive whether the search is case-sensitive
+         * @param wholeWord     whether to match whole words only
+         */
+        public CustomTextStripper(String keyword, boolean caseSensitive, boolean wholeWord) {
             super();
             this.keyword = caseSensitive ? keyword : keyword.toLowerCase();
             this.caseSensitive = caseSensitive;
@@ -121,7 +150,6 @@ public class SearchService {
         @Override
         protected void startPage(PDPage page) throws IOException {
             super.startPage(page);
-            this.currentPage = page;
             currentPageNumber = getCurrentPageNo();
             PDFTextStripper contextStripper = new PDFTextStripper();
             contextStripper.setStartPage(currentPageNumber);
@@ -148,9 +176,9 @@ public class SearchService {
                 if (bbox != null) {
                     String matchedText = text.substring(index, index + keyword.length());
 
-                    int globalIndex = fullPageText.indexOf(matchedText, 0);
-                    String contextBefore = getContext(fullPageText, globalIndex, CONTEXT_LENGTH, false);
-                    String contextAfter = getContext(fullPageText, globalIndex + matchedText.length(), CONTEXT_LENGTH, true);
+                    int globalIndex = fullPageText.indexOf(matchedText);
+                    String contextBefore = getContext(fullPageText, globalIndex, false);
+                    String contextAfter = getContext(fullPageText, globalIndex + matchedText.length(), true);
 
                     SearchResult result = new SearchResult(
                             currentPageNumber,
@@ -171,9 +199,17 @@ public class SearchService {
             super.writeString(text, textPositions);
         }
 
+        /**
+         * Calculates the bounding box for a matched text region.
+         *
+         * @param textPositions   list of text positions from PDFBox
+         * @param matchStartIndex start index of the match in the text string
+         * @param matchLength     length of the matched text
+         * @return the bounding box, or null if no match found
+         */
         private BoundingBox calculateBoundingBoxForMatch(List<TextPosition> textPositions,
-                int matchStartIndex,
-                int matchLength) {
+                                                         int matchStartIndex,
+                                                         int matchLength) {
             if (textPositions.isEmpty()) {
                 return null;
             }
@@ -218,6 +254,14 @@ public class SearchService {
             return new BoundingBox(minX, minY, maxX - minX, maxY - minY);
         }
 
+        /**
+         * Checks if a match represents a whole word.
+         *
+         * @param text   the full text string
+         * @param start  the start index of the match
+         * @param length the length of the match
+         * @return true if the match is a whole word
+         */
         private boolean isWholeWord(String text, int start, int length) {
             if (start > 0) {
                 char before = text.charAt(start - 1);
@@ -229,28 +273,29 @@ public class SearchService {
             int end = start + length;
             if (end < text.length()) {
                 char after = text.charAt(end);
-                if (Character.isLetterOrDigit(after)) {
-                    return false;
-                }
+                return !Character.isLetterOrDigit(after);
             }
 
             return true;
         }
 
+        /**
+         * Gets the list of search results found.
+         *
+         * @return the list of search results
+         */
         public List<SearchResult> getResults() {
             return results;
         }
 
-        private static class BoundingBox {
-
-            final float x, y, width, height;
-
-            BoundingBox(float x, float y, float width, float height) {
-                this.x = x;
-                this.y = y;
-                this.width = width;
-                this.height = height;
-            }
-        }
+        /**
+         * Simple record to hold bounding box coordinates.
+         *
+         * @param x      X coordinate in PDF points
+         * @param y      Y coordinate in PDF points
+         * @param width  Width in PDF points
+         * @param height Height in PDF points
+         */
+        private record BoundingBox(float x, float y, float width, float height) { }
     }
 }
