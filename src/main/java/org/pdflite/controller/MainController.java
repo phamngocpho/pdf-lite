@@ -27,13 +27,14 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import javafx.scene.control.TextFormatter;
 
 /**
  * Main Controller for the PDF Lite Application.
  * <p>
- * This controller coordinates all PDF viewing operations by delegating to specialized managers.
- * It handles file operations, page navigation, zoom operations, continuous scrolling view with
+ * This controller coordinates all PDF viewing operations by delegating to
+ * specialized managers.
+ * It handles file operations, page navigation, zoom operations, continuous
+ * scrolling view with
  * lazy loading, annotation mode toggling, and UI state management.
  * </p>
  *
@@ -47,17 +48,28 @@ public class MainController {
 
     // ==================== FXML Injected UI Components ====================
 
-    @FXML private BorderPane rootPane;
-    @FXML private ScrollPane scrollPane;
-    @FXML private StackPane contentPane;
-    @FXML private Label statusLabel;
-    @FXML private Label totalPagesLabel;
-    @FXML private TextField pageNumberField;
-    @FXML private ComboBox<String> zoomComboBox;
-    @FXML private ToolBar toolbar;
-    @FXML private Button prevButton;
-    @FXML private Button nextButton;
-    @FXML private Menu recentFilesMenu;
+    @FXML
+    private BorderPane rootPane;
+    @FXML
+    private ScrollPane scrollPane;
+    @FXML
+    private StackPane contentPane;
+    @FXML
+    private Label statusLabel;
+    @FXML
+    private Label totalPagesLabel;
+    @FXML
+    private TextField pageNumberField;
+    @FXML
+    private ComboBox<String> zoomComboBox;
+    @FXML
+    private ToolBar toolbar;
+    @FXML
+    private Button prevButton;
+    @FXML
+    private Button nextButton;
+    @FXML
+    private Menu recentFilesMenu;
 
     // ==================== Services and Managers ====================
 
@@ -77,7 +89,6 @@ public class MainController {
     private SearchDialogManager searchDialogManager;
     private ThemeManager themeManager;
     private RecentFilesManager recentFilesManager;
-
 
     // ==================== Document State ====================
 
@@ -102,7 +113,7 @@ public class MainController {
         navigationHelper = new NavigationHelper(this, pdfService, renderExecutor, loadingPages);
         searchManager = new SearchManager(this, navigationHelper);
 
-        //Theme
+        // Theme
         rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
                 themeManager = new ThemeManager(newScene);
@@ -111,7 +122,7 @@ public class MainController {
 
         // Initialize managers
         initializeManagers();
-        
+
         // Initialize recent files manager
         recentFilesManager = new RecentFilesManager();
         updateRecentFilesMenu();
@@ -174,7 +185,8 @@ public class MainController {
         pageInfoManager = new PageInfoManager(totalPagesLabel, pageNumberField, prevButton, nextButton);
 
         // Search Dialog Manager
-        searchDialogManager = new SearchDialogManager(rootPane, pageRenderer, zoomManager, renderingManager, uiStateManager);
+        searchDialogManager = new SearchDialogManager(rootPane, pageRenderer, zoomManager, renderingManager,
+                uiStateManager);
     }
 
     /**
@@ -292,7 +304,7 @@ public class MainController {
             pagesContainer = renderingManager.getPagesContainer();
             pageInfoManager.updatePageInfo(currentDocument);
             uiStateManager.updateStatus("Opened: " + file.getName());
-            
+
             // Add to recent files
             recentFilesManager.addRecentFile(file.getAbsolutePath());
             updateRecentFilesMenu();
@@ -306,7 +318,8 @@ public class MainController {
 
     @FXML
     private void handleSave() {
-        if (currentDocument == null) return;
+        if (currentDocument == null)
+            return;
         try {
             fileManager.save(currentDocument);
         } catch (IOException e) {
@@ -317,7 +330,8 @@ public class MainController {
 
     @FXML
     private void handleSaveAs() {
-        if (currentDocument == null) return;
+        if (currentDocument == null)
+            return;
         try {
             Stage stage = (Stage) rootPane.getScene().getWindow();
             fileManager.saveAs(currentDocument, stage);
@@ -331,17 +345,17 @@ public class MainController {
     private void handleExit() {
         performExit();
     }
-    
+
     public void performExit() {
         if (currentDocument != null) {
             fileManager.close(currentDocument);
         }
-        
+
         // Shutdown executor service to prevent app from running in background
         if (!renderExecutor.isShutdown()) {
             renderExecutor.shutdownNow();
         }
-        
+
         Platform.exit();
         System.exit(0);
     }
@@ -368,17 +382,60 @@ public class MainController {
         confirm.showAndWait().ifPresent(result -> {
             if (result == ButtonType.OK) {
                 try {
+                    // Lưu vị trí scroll trước khi xóa
+                    double oldVValue = scrollPane.getVvalue();
+
+                    // Xóa trang trong document
                     fileManager.deletePages(currentDocument, java.util.List.of(current));
-                    // Reset UI containers and re-render pages
-                    if (contentPane != null) {
-                        contentPane.getChildren().clear();
+
+                    // XÓA TRANG KHỎI UI (không render lại)
+                    if (pagesContainer != null && pagesContainer.getChildren().size() > current) {
+                        // Xóa VBox của trang đã chọn khỏi pagesContainer
+                        pagesContainer.getChildren().remove(current);
+
+                        // Cập nhật lại ID của các trang sau trang bị xóa
+                        for (int i = current; i < pagesContainer.getChildren().size(); i++) {
+                            if (pagesContainer.getChildren().get(i) instanceof VBox pageBox) {
+                                final int pageIndex = i; // Tạo biến final để dùng trong lambda
+                                pageBox.setId("page-" + pageIndex);
+
+                                // Cập nhật label page number
+                                pageBox.getChildren().forEach(child -> {
+                                    if (child instanceof Label label) {
+                                        label.setText("Page " + (pageIndex + 1));
+                                    }
+                                });
+                            }
+                        }
                     }
-                    pagesContainer = null;
+
+                    // Xóa trang khỏi cache của pageRenderer
+                    pageRenderer.clearCache();
+
+                    // Xóa khỏi loadingPages set
                     loadingPages.clear();
-                    renderingManager.setUIComponents(null, scrollPane, contentPane);
-                    renderingManager.renderAllPages();
-                    pagesContainer = renderingManager.getPagesContainer();
+
+                    // Cập nhật currentPage nếu cần
+                    int newTotal = currentDocument.getTotalPages();
+                    if (current >= newTotal) {
+                        currentDocument.setCurrentPage(Math.max(0, newTotal - 1));
+                    } else {
+                        currentDocument.setCurrentPage(current);
+                    }
+
+                    // Cập nhật UI info
                     pageInfoManager.updatePageInfo(currentDocument);
+                    uiStateManager.updateStatus("Deleted page " + (current + 1));
+
+                    // Khôi phục vị trí scroll
+                    Platform.runLater(() -> {
+                        scrollPane.setVvalue(oldVValue);
+                        // Trigger scroll handler để load các trang visible nếu cần
+                        scrollHandler.handleScroll();
+                    });
+
+                    logger.info("Successfully deleted page {} without full re-render", current + 1);
+
                 } catch (Exception e) {
                     logger.error("Error deleting page {}", current + 1, e);
                     uiStateManager.showError("Delete Page Error", "Could not delete the page: " + e.getMessage());
@@ -469,7 +526,6 @@ public class MainController {
         themeManager.setDarkTheme();
     }
 
-
     private void setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode mode) {
         if (pagesContainer != null) {
             pagesContainer.getChildren().forEach(node -> {
@@ -537,11 +593,11 @@ public class MainController {
         alert.setTitle("About PDF Lite");
         alert.setHeaderText("PDF Lite - PDF Viewer & Editor");
         alert.setContentText("""
-            Version 1.0
-            
-            A lightweight PDF viewer with annotation features.
-            
-            Built with JavaFX and Apache PDFBox""");
+                Version 1.0
+
+                A lightweight PDF viewer with annotation features.
+
+                Built with JavaFX and Apache PDFBox""");
         alert.showAndWait();
     }
 
@@ -551,23 +607,22 @@ public class MainController {
     private void handleMergePDFs() {
         try {
             FXMLLoader loader = new FXMLLoader(
-                getClass().getResource("/org/pdflite/merge-dialog.fxml")
-            );
+                    getClass().getResource("/org/pdflite/merge-dialog.fxml"));
             Parent root = loader.load();
-            
+
             MergeDialogController controller = loader.getController();
-            
+
             Stage dialogStage = new Stage();
             dialogStage.setTitle("Merge PDF Files");
             dialogStage.initModality(Modality.APPLICATION_MODAL);
             dialogStage.initOwner(rootPane.getScene().getWindow());
             dialogStage.setScene(new Scene(root));
-            
+
             controller.setDialogStage(dialogStage);
-            
+
             dialogStage.setOnCloseRequest(event -> controller.shutdown());
             dialogStage.showAndWait();
-            
+
         } catch (IOException e) {
             logger.error("Error opening merge dialog", e);
             uiStateManager.showError("Error", "Could not open merge dialog: " + e.getMessage());
@@ -577,44 +632,59 @@ public class MainController {
     @FXML
     private void handleSplitPDF() {
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF Loaded", 
-                "Please open a PDF file first before splitting.");
+            uiStateManager.showError("No PDF Loaded",
+                    "Please open a PDF file first before splitting.");
             return;
         }
 
         try {
             FXMLLoader loader = new FXMLLoader(
-                getClass().getResource("/org/pdflite/split-dialog.fxml")
-            );
+                    getClass().getResource("/org/pdflite/split-dialog.fxml"));
             Parent root = loader.load();
-            
+
             SplitDialogController controller = loader.getController();
-            
+
             Stage dialogStage = new Stage();
             dialogStage.setTitle("Split PDF File");
             dialogStage.initModality(Modality.APPLICATION_MODAL);
             dialogStage.initOwner(rootPane.getScene().getWindow());
             dialogStage.setScene(new Scene(root));
-            
+
             controller.setDialogStage(dialogStage);
             controller.setSourceFile(currentDocument.getFile());
-            
+
             dialogStage.setOnCloseRequest(event -> controller.shutdown());
             dialogStage.showAndWait();
-            
+
         } catch (IOException e) {
             logger.error("Error opening split dialog", e);
             uiStateManager.showError("Error", "Could not open split dialog: " + e.getMessage());
         }
     }
 
+    public BorderPane getRootPane() {
+        return rootPane;
+    }
 
-    public BorderPane getRootPane() { return rootPane; }
-    public ScrollPane getScrollPane() { return scrollPane; }
-    public VBox getPagesContainer() { return pagesContainer; }
-    public PDFDocument getCurrentDocument() { return currentDocument; }
-    public double getCurrentZoom() { return zoomManager != null ? zoomManager.getCurrentZoom() : Constants.DEFAULT_ZOOM; }
-    public boolean isHighlightModeActive() { return highlightModeActive; }
+    public ScrollPane getScrollPane() {
+        return scrollPane;
+    }
+
+    public VBox getPagesContainer() {
+        return pagesContainer;
+    }
+
+    public PDFDocument getCurrentDocument() {
+        return currentDocument;
+    }
+
+    public double getCurrentZoom() {
+        return zoomManager != null ? zoomManager.getCurrentZoom() : Constants.DEFAULT_ZOOM;
+    }
+
+    public boolean isHighlightModeActive() {
+        return highlightModeActive;
+    }
 
     public int getTotalPages() {
         return currentDocument != null ? currentDocument.getTotalPages() : 0;
@@ -635,15 +705,15 @@ public class MainController {
     public void showError(String title, String message) {
         uiStateManager.showError(title, message);
     }
-    
+
     private void updateRecentFilesMenu() {
         if (recentFilesMenu == null) {
             return;
         }
-        
+
         recentFilesMenu.getItems().clear();
         List<String> recentFiles = recentFilesManager.getRecentFiles();
-        
+
         if (recentFiles.isEmpty()) {
             MenuItem noFiles = new MenuItem("No recent files");
             noFiles.setDisable(true);
@@ -657,14 +727,14 @@ public class MainController {
             }
         }
     }
-    
+
     @FXML
     private void handleClearRecentFiles() {
         recentFilesManager.clearRecentFiles();
         updateRecentFilesMenu();
         uiStateManager.updateStatus("Recent files cleared");
     }
-    
+
     public void openLastFile() {
         String lastFile = recentFilesManager.getLastOpenedFile();
         if (lastFile != null) {
