@@ -4,16 +4,14 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.geometry.Pos;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import org.pdflite.service.PDFService;
 import org.pdflite.service.PDFSplitService;
+import org.pdflite.util.ThumbnailLoader;
 import org.pdflite.util.ZipUtility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,8 +34,6 @@ import java.util.concurrent.Executors;
 public class SplitDialogController {
 
     private static final Logger logger = LoggerFactory.getLogger(SplitDialogController.class);
-    private static final double THUMBNAIL_SIZE = 120.0;
-    private static final double PREVIEW_SCALE = 0.3;
 
     @FXML private Label fileNameLabel;
     @FXML private Label totalPagesLabel;
@@ -84,9 +80,7 @@ public class SplitDialogController {
         splitByRangeRadio.setSelected(true);
 
         // Setup listeners for radio buttons
-        splitModeGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
-            updateInputVisibility();
-        });
+        splitModeGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> updateInputVisibility());
 
         // Setup ranges list view
         rangesListView.setItems(rangesList);
@@ -141,54 +135,8 @@ public class SplitDialogController {
      * Loads thumbnail previews for all pages.
      */
     private void loadThumbnails() {
-        previewPane.getChildren().clear();
-        updateStatus("Loading thumbnails...");
-
-        executorService.submit(() -> {
-            try {
-                org.pdflite.model.PDFDocument doc = new org.pdflite.model.PDFDocument(
-                    org.apache.pdfbox.Loader.loadPDF(sourceFile),
-                    sourceFile
-                );
-
-                for (int i = 0; i < totalPages; i++) {
-                    final int pageNum = i;
-                    
-                    // Render thumbnail
-                    Image thumbnail = pdfService.renderPage(doc, pageNum, (float) PREVIEW_SCALE);
-                    
-                    Platform.runLater(() -> {
-                        VBox pageBox = createThumbnailBox(thumbnail, pageNum + 1);
-                        previewPane.getChildren().add(pageBox);
-                    });
-                }
-
-                Platform.runLater(() -> updateStatus("Thumbnails loaded"));
-                
-            } catch (IOException e) {
-                logger.error("Error loading thumbnails", e);
-                Platform.runLater(() -> updateStatus("Error loading thumbnails"));
-            }
-        });
-    }
-
-    /**
-     * Creates a thumbnail box with page number.
-     */
-    private VBox createThumbnailBox(Image thumbnail, int pageNumber) {
-        ImageView imageView = new ImageView(thumbnail);
-        imageView.setFitWidth(THUMBNAIL_SIZE);
-        imageView.setFitHeight(THUMBNAIL_SIZE);
-        imageView.setPreserveRatio(true);
-
-        Label pageLabel = new Label("Page " + pageNumber);
-        pageLabel.setStyle("-fx-font-size: 10px;");
-
-        VBox box = new VBox(5, imageView, pageLabel);
-        box.setAlignment(Pos.CENTER);
-        box.setStyle("-fx-border-color: #ccc; -fx-border-width: 1; -fx-padding: 5;");
-        
-        return box;
+        ThumbnailLoader.loadThumbnails(sourceFile, totalPages, previewPane, 
+            pdfService, executorService, this::updateStatus);
     }
 
     /**
