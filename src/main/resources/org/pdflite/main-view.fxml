@@ -45,6 +45,7 @@
                     <SeparatorMenuItem/>
                     <MenuItem text="Merge PDFs..." onAction="#handleMergePDFs"/>
                     <MenuItem text="Split PDF..." onAction="#handleSplitPDF"/>
+                    <MenuItem text="Extract Pages..." onAction="#handleExtractPages"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Delete Page" onAction="#handleDeletePage"/>
                 </Menu>
@@ -59,41 +60,79 @@
             </MenuBar>
 
             <!-- Toolbar -->
-            <ToolBar fx:id="toolbar">
-                <Button text="Open" onAction="#handleOpenPDF"/>
-                <Button text="Save" onAction="#handleSave"/>
+            <ToolBar fx:id="toolbar" style="-fx-padding: 5;">
+                <!-- File Operations -->
+                <Button text="Open" onAction="#handleOpenPDF" style="-fx-font-size: 11px;"/>
+                <Button text="Save" onAction="#handleSave" style="-fx-font-size: 11px;"/>
                 <Separator orientation="VERTICAL"/>
-                <Button fx:id="prevButton" text="Previous" onAction="#handlePreviousPage"/>
-                <Label text="Page:"/>
-                <TextField fx:id="pageNumberField" prefWidth="50" onAction="#handleGoToPage"/>
-                <Label fx:id="totalPagesLabel" text="/ 0"/>
-                <Button fx:id="nextButton" text="Next" onAction="#handleNextPage"/>
-                <Separator orientation="VERTICAL"/>
-                <Button text="Zoom In" onAction="#handleZoomIn"/>
-                <Button text="Zoom Out" onAction="#handleZoomOut"/>
-                <ComboBox fx:id="zoomComboBox" onAction="#handleZoomChange" prefWidth="100"/>
-                <Separator orientation="VERTICAL"/>
-                <Button text="Highlight" onAction="#handleHighlight"/>
-                <Separator orientation="VERTICAL"/>
-                <Button text="Merge PDFs" onAction="#handleMergePDFs" style="-fx-background-color: #4CAF50; -fx-text-fill: white;"/>
-                <Button text="Split PDF" onAction="#handleSplitPDF" style="-fx-background-color: #2196F3; -fx-text-fill: white;"/>
-                <Separator orientation="VERTICAL"/>
-                <Button text="Delete Page" onAction="#handleDeletePage"/>
-                <Button text="Full Screen" onAction="#handleToggleFullScreen"/>
                 
-                <!-- Search button with menu -->
-                <MenuButton text="🔍" style="-fx-font-size: 14px;">
-                    <tooltip>
-                        <Tooltip text="Search in document"/>
-                    </tooltip>
+                <!-- Navigation -->
+                <Button fx:id="prevButton" text="◀" onAction="#handlePreviousPage" 
+                        style="-fx-font-size: 12px; -fx-min-width: 30px;">
+                    <tooltip><Tooltip text="Previous Page (Ctrl+Left)"/></tooltip>
+                </Button>
+                <TextField fx:id="pageNumberField" prefWidth="45" onAction="#handleGoToPage" 
+                          style="-fx-font-size: 11px;"/>
+                <Label fx:id="totalPagesLabel" text="/ 0" style="-fx-font-size: 11px;"/>
+                <Button fx:id="nextButton" text="▶" onAction="#handleNextPage" 
+                        style="-fx-font-size: 12px; -fx-min-width: 30px;">
+                    <tooltip><Tooltip text="Next Page (Ctrl+Right)"/></tooltip>
+                </Button>
+                <Separator orientation="VERTICAL"/>
+                
+                <!-- Zoom Controls -->
+                <Button text="−" onAction="#handleZoomOut" 
+                        style="-fx-font-size: 14px; -fx-min-width: 30px;">
+                    <tooltip><Tooltip text="Zoom Out (Ctrl+-)"/></tooltip>
+                </Button>
+                <ComboBox fx:id="zoomComboBox" onAction="#handleZoomChange" 
+                         prefWidth="85" style="-fx-font-size: 11px;"/>
+                <Button text="+" onAction="#handleZoomIn" 
+                        style="-fx-font-size: 14px; -fx-min-width: 30px;">
+                    <tooltip><Tooltip text="Zoom In (Ctrl++)"/></tooltip>
+                </Button>
+                <Separator orientation="VERTICAL"/>
+                
+                <!-- PDF Tools -->
+                <Button text="Merge" onAction="#handleMergePDFs" 
+                        style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-size: 11px;">
+                    <tooltip><Tooltip text="Merge multiple PDFs into one"/></tooltip>
+                </Button>
+                <Button text="Split" onAction="#handleSplitPDF" 
+                        style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-size: 11px;">
+                    <tooltip><Tooltip text="Split PDF into multiple files"/></tooltip>
+                </Button>
+                <Button text="Extract" onAction="#handleExtractPages" 
+                        style="-fx-background-color: #FF9800; -fx-text-fill: white; -fx-font-size: 11px;">
+                    <tooltip><Tooltip text="Extract specific pages"/></tooltip>
+                </Button>
+                <Separator orientation="VERTICAL"/>
+                
+                <!-- Edit Tools -->
+                <Button text="Highlight" onAction="#handleHighlight" style="-fx-font-size: 11px;">
+                    <tooltip><Tooltip text="Toggle Highlight Mode"/></tooltip>
+                </Button>
+                <Button text="Delete Page" onAction="#handleDeletePage" 
+                        style="-fx-font-size: 11px; -fx-text-fill: #f44336;">
+                    <tooltip><Tooltip text="Delete current page"/></tooltip>
+                </Button>
+                <Separator orientation="VERTICAL"/>
+                
+                <!-- Search -->
+                <MenuButton text="🔍 Search" style="-fx-font-size: 11px;">
+                    <tooltip><Tooltip text="Search in document (Ctrl+F)"/></tooltip>
                     <items>
-                        <MenuItem text="Float" onAction="#handleSearch"/>
-                        <MenuItem text="Left" onAction="#handleSearchLeft"/>
-                        <MenuItem text="Right" onAction="#handleSearchRight"/>
+                        <MenuItem text="Search Dialog..." onAction="#handleSearch"/>
+                        <MenuItem text="Search Panel (Left)" onAction="#handleSearchLeft"/>
+                        <MenuItem text="Search Panel (Right)" onAction="#handleSearchRight"/>
                     </items>
                 </MenuButton>
-                
                 <Separator orientation="VERTICAL"/>
+                
+                <!-- View -->
+                <Button text="Fullscreen" onAction="#handleToggleFullScreen" style="-fx-font-size: 11px;">
+                    <tooltip><Tooltip text="Toggle Fullscreen (F11)"/></tooltip>
+                </Button>
             </ToolBar>
         </VBox>
     </top>

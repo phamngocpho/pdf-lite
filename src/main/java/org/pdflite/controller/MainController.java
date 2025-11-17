@@ -697,6 +697,39 @@ private void handleDeletePage() {
         }
     }
 
+    @FXML
+    private void handleExtractPages() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No PDF Loaded",
+                    "Please open a PDF file first before extracting pages.");
+            return;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/org/pdflite/extract-dialog.fxml"));
+            Parent root = loader.load();
+
+            ExtractDialogController controller = loader.getController();
+
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Extract PDF Pages");
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+            dialogStage.initOwner(rootPane.getScene().getWindow());
+            dialogStage.setScene(new Scene(root));
+
+            controller.setDialogStage(dialogStage);
+            controller.setSourceFile(currentDocument.getFile());
+
+            dialogStage.setOnCloseRequest(event -> controller.shutdown());
+            dialogStage.showAndWait();
+
+        } catch (IOException e) {
+            logger.error("Error opening extract dialog", e);
+            uiStateManager.showError("Error", "Could not open extract dialog: " + e.getMessage());
+        }
+    }
+
     public BorderPane getRootPane() {
         return rootPane;
     }
