@@ -425,6 +425,10 @@ public class MainController {
         confirm.setHeaderText("Delete current page?");
         confirm.setContentText("This will remove page " + (current + 1) + " from the document.");
         confirm.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
+        DialogPane confirmDialogPane = confirm.getDialogPane();
+        if (themeManager != null) {
+            themeManager.applyThemeToScene(confirmDialogPane.getScene());
+        }
         confirm.showAndWait().ifPresent(result -> {
             if (result == ButtonType.OK) {
                 try {
@@ -685,8 +689,14 @@ public class MainController {
                 A lightweight PDF viewer with annotation features.
 
                 Built with JavaFX and Apache PDFBox""");
+
+        DialogPane dialogPane = alert.getDialogPane();
+        if (themeManager != null) {
+            themeManager.applyThemeToScene(dialogPane.getScene());
+        }
+
         alert.showAndWait();
-    }
+        }
 
     // ==================== Merge and Split Operations ====================
 
@@ -703,7 +713,13 @@ public class MainController {
             dialogStage.setTitle("Merge PDF Files");
             dialogStage.initModality(Modality.APPLICATION_MODAL);
             dialogStage.initOwner(rootPane.getScene().getWindow());
-            dialogStage.setScene(new Scene(root));
+
+            Scene dialogScene = new Scene(root);
+            dialogStage.setScene(dialogScene);
+
+            if (themeManager != null) {
+                themeManager.applyThemeToScene(dialogScene);
+            }
 
             controller.setDialogStage(dialogStage);
 
@@ -735,9 +751,15 @@ public class MainController {
             dialogStage.setTitle("Split PDF File");
             dialogStage.initModality(Modality.APPLICATION_MODAL);
             dialogStage.initOwner(rootPane.getScene().getWindow());
-            dialogStage.setScene(new Scene(root));
             controller.setDialogStage(dialogStage);
             controller.setSourceFile(currentDocument.getFile());
+
+            Scene dialogScene = new Scene(root);
+            dialogStage.setScene(dialogScene);
+
+            if (themeManager != null) {
+                themeManager.applyThemeToScene(dialogScene);
+            }
 
             dialogStage.setOnCloseRequest(event -> controller.shutdown());
             dialogStage.showAndWait();
@@ -795,10 +817,13 @@ public class MainController {
             dialogStage.setTitle("Extract PDF Pages");
             dialogStage.initModality(Modality.APPLICATION_MODAL);
             dialogStage.initOwner(rootPane.getScene().getWindow());
-            dialogStage.setScene(new Scene(root));
-
             controller.setDialogStage(dialogStage);
             controller.setSourceFile(currentDocument.getFile());
+            Scene dialogScene = new Scene(root);
+            dialogStage.setScene(dialogScene);
+            if (themeManager != null) {
+                themeManager.applyThemeToScene(dialogScene); // Gọi phương thức đã sửa trong ThemeManager
+            }
 
             dialogStage.setOnCloseRequest(event -> controller.shutdown());
             dialogStage.showAndWait();
