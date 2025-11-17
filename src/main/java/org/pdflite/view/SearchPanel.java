@@ -245,7 +245,7 @@ public class SearchPanel extends VBox {
                     searchResults.addAll(results);
                     updateStatus(String.format("Found %d result(s)", results.size()));
 
-                    // ✅ FIX: Apply highlights to main viewer
+                    // Apply highlights to main viewer
                     if (mainController != null && !results.isEmpty()) {
                         mainController.highlightSearchResults(results);
                         logger.info("Applied {} highlights from search panel", results.size());
