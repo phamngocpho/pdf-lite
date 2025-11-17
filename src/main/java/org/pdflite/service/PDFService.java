@@ -340,7 +340,6 @@ public class PDFService {
             throw new IOException("Failed to save document: " + e.getMessage(), e);
         }
     }
-}
 
     /**
      * Save the current document to a specific path.

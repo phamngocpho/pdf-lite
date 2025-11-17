@@ -201,26 +201,6 @@ public class PageRenderer {
                     }
                 });
 
-                // Render the page
-                Image image = pdfService.renderPage(
-                    currentDocument,
-                    pageIndex,
-                    (float) currentZoom
-                );
-
-                // Cache with CONSISTENT key format
-                imageCache.put(cacheKey, image);
-                logger.debug("Rendered and cached page {} (key: {})", pageIndex + 1, cacheKey);
-
-                // Update UI on JavaFX thread
-                Platform.runLater(() -> {
-                    if (!Thread.currentThread().isInterrupted()) {
-                        displayImage(image, pageBox, pageIndex);
-                        loadingPages.remove(pageIndex);
-                        logger.debug("Displayed page {}", pageIndex + 1);
-                    }
-                });
-
             } catch (IOException e) {
                 logger.error("Error loading page {}", pageIndex + 1, e);
                 loadingPages.remove(pageIndex);
