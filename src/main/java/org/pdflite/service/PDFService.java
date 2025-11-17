@@ -262,18 +262,65 @@ public class PDFService {
      * Save the current document to its original file using INCREMENTAL SAVE.
      * This is REQUIRED when saving to the same file that was loaded.
      */
-    public void save(PDFDocument pdfDoc) throws IOException {
+    /**
+ * Save the current document to its original file.
+ * IMPORTANT: Uses temporary file approach to avoid corruption.
+ */
+public void save(PDFDocument pdfDoc) throws IOException {
     if (pdfDoc == null || pdfDoc.getDocument() == null || pdfDoc.getFile() == null) {
         throw new IOException("No document or target file to save.");
     }
 
     PDDocument pdDoc = pdfDoc.getDocument();
-    File file = pdfDoc.getFile();
+    File originalFile = pdfDoc.getFile();
 
-    // SỬ DỤNG SAVE THÔNG THƯỜNG - không dùng incremental khi đã xóa trang
-    pdDoc.save(file);
+    // CRITICAL: Save to temporary file first to avoid corruption
+    // when overwriting the file we're reading from
+    File tempFile = new File(originalFile.getParent(), 
+        originalFile.getName() + ".tmp_" + System.currentTimeMillis());
 
-    logger.info("Saved PDF to {}", file.getAbsolutePath());
+    try {
+        // Save to temp file
+        pdDoc.save(tempFile);
+        logger.info("Saved to temporary file: {}", tempFile.getName());
+
+        // Close the document to release file locks
+        pdDoc.close();
+        logger.info("Document closed, ready to replace original file");
+
+        // Delete original file
+        if (originalFile.exists()) {
+            boolean deleted = originalFile.delete();
+            if (!deleted) {
+                throw new IOException("Could not delete original file: " + originalFile.getName());
+            }
+            logger.info("Original file deleted");
+        }
+
+        // Rename temp file to original name
+        boolean renamed = tempFile.renameTo(originalFile);
+        if (!renamed) {
+            // Try copy instead of rename (works better on some systems)
+            java.nio.file.Files.copy(
+                tempFile.toPath(), 
+                originalFile.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING
+            );
+            tempFile.delete();
+            logger.info("Temp file copied to original location");
+        } else {
+            logger.info("Temp file renamed to original name");
+        }
+
+        logger.info("Saved PDF to {}", originalFile.getAbsolutePath());
+
+    } catch (Exception e) {
+        // Cleanup temp file if something goes wrong
+        if (tempFile.exists()) {
+            tempFile.delete();
+        }
+        throw new IOException("Failed to save document: " + e.getMessage(), e);
+    }
 }
 
     /**

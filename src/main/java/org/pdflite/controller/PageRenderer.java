@@ -25,13 +25,6 @@ import org.pdflite.view.ContextMenuPane;
 
 /**
  * Handles page rendering, caching, and display management.
- * <p>
- * This class is responsible for rendering PDF pages asynchronously, managing
- * an LRU cache for rendered images, and updating the UI with rendered pages.
- * </p>
- *
- * @author PDF Lite Team
- * @version 1.0.0
  */
 public class PageRenderer {
     private static final Logger logger = LoggerFactory.getLogger(PageRenderer.class);
@@ -50,9 +43,6 @@ public class PageRenderer {
 
     /**
      * Creates a new PageRenderer with the specified service and executor.
-     *
-     * @param pdfService the PDF service for rendering pages
-     * @param renderExecutor the executor service for parallel rendering
      */
     public PageRenderer(PDFService pdfService, ExecutorService renderExecutor) {
         this.pdfService = pdfService;
@@ -60,7 +50,6 @@ public class PageRenderer {
         this.loadingPages = ConcurrentHashMap.newKeySet();
         this.pendingRenders = new ConcurrentHashMap<>();
         this.contextMenuHandler = new ContextMenuHandler();
-        logger.info("ContextMenuHandler integrated into PageRenderer");
         
         // LRU cache with max 50 pages
         this.imageCache = new java.util.LinkedHashMap<>(50, 0.75f, true) {
@@ -69,23 +58,21 @@ public class PageRenderer {
                 return size() > 50;
             }
         };
+        
+        logger.info("PageRenderer initialized with new cache");
     }
 
     /**
      * Sets the current document and zoom level.
-     *
-     * @param document the PDF document
-     * @param zoom the zoom level
      */
     public void setDocument(PDFDocument document, double zoom) {
         this.currentDocument = document;
         this.currentZoom = zoom;
+        logger.info("PageRenderer: Document set with zoom {}", zoom);
     }
 
     /**
      * Sets the zoom level.
-     *
-     * @param zoom the zoom level
      */
     public void setZoom(double zoom) {
         this.currentZoom = zoom;
@@ -93,18 +80,19 @@ public class PageRenderer {
 
     /**
      * Sets whether highlight mode is active.
-     *
-     * @param active true if highlight mode is active
      */
     public void setHighlightModeActive(boolean active) {
         this.highlightModeActive = active;
     }
 
     /**
-     * Clears all cached images.
+     * Clears all cached images and resets state.
+     * CRITICAL: This clears PageRenderer's cache completely.
      */
     public void clearCache() {
         imageCache.clear();
+        loadingPages.clear();
+        logger.info("PageRenderer cache cleared. Size: {}", imageCache.size());
     }
 
     /**
@@ -118,12 +106,11 @@ public class PageRenderer {
         });
         pendingRenders.clear();
         loadingPages.clear();
+        logger.info("All pending renders cancelled");
     }
 
     /**
      * Cancels pending render tasks for pages outside the specified range.
-     *
-     * @param pagesInRange set of page indices that should be kept
      */
     public void cancelOutOfRangePendingRenders(java.util.Set<Integer> pagesInRange) {
         pendingRenders.forEach((pageIndex, future) -> {
@@ -137,10 +124,8 @@ public class PageRenderer {
     }
 
     /**
-     * Checks if a page is currently loading.
-     *
-     * @param pageIndex the page index
-     * @return true if the page is loading
+     * Checks if a page can be loaded (not currently loading).
+     * FIXED: Returns true if page is NOT being loaded.
      */
     public boolean isPageLoading(int pageIndex) {
         return !loadingPages.contains(pageIndex);
@@ -148,24 +133,29 @@ public class PageRenderer {
 
     /**
      * Loads and renders a single page in the background.
-     *
-     * @param pageIndex the zero-based page index to load
-     * @param pageBox the VBox container that will hold the rendered page
      */
     public void loadPage(int pageIndex, VBox pageBox) {
         if (currentDocument == null) {
+            logger.warn("Cannot load page {}: currentDocument is null", pageIndex);
             return;
         }
 
-        // Mark as loading to prevent duplicate requests
-        loadingPages.add(pageIndex);
+        // Prevent duplicate requests
+        if (loadingPages.contains(pageIndex)) {
+            logger.debug("Page {} already loading, skipping", pageIndex + 1);
+            return;
+        }
 
-        // Check cache first
+        // Mark as loading
+        loadingPages.add(pageIndex);
+        logger.debug("Starting to load page {}", pageIndex + 1);
+
+        // Check cache first - use CONSISTENT cache key format
         String cacheKey = getCacheKey(pageIndex, currentZoom);
         Image cachedImage = imageCache.get(cacheKey);
         
         if (cachedImage != null) {
-            // Use cached image immediately
+            logger.debug("Using cached image for page {} (key: {})", pageIndex + 1, cacheKey);
             Platform.runLater(() -> {
                 displayImage(cachedImage, pageBox, pageIndex);
                 loadingPages.remove(pageIndex);
@@ -173,41 +163,51 @@ public class PageRenderer {
             return;
         }
 
-        // Render in background thread to avoid blocking UI
+        // Render in background thread
         Future<?> future = renderExecutor.submit(() -> {
             try {
-                if (!Thread.currentThread().isInterrupted()) {
-                    Image image = pdfService.renderPage(
-                        currentDocument,
-                        pageIndex,
-                        (float) currentZoom
-                    );
-
-                    // Cache the rendered image
-                    imageCache.put(cacheKey, image);
-
-                    // Update UI on JavaFX thread
-                    Platform.runLater(() -> {
-                        if (!Thread.currentThread().isInterrupted()) {
-                            displayImage(image, pageBox, pageIndex);
-                            loadingPages.remove(pageIndex);
-                            logger.debug("Loaded page {}", pageIndex + 1);
-                        }
-                    });
+                if (Thread.currentThread().isInterrupted()) {
+                    logger.debug("Render interrupted for page {}", pageIndex + 1);
+                    return;
                 }
+
+                // Render the page
+                Image image = pdfService.renderPage(
+                    currentDocument,
+                    pageIndex,
+                    (float) currentZoom
+                );
+
+                // Cache with CONSISTENT key format
+                imageCache.put(cacheKey, image);
+                logger.debug("Rendered and cached page {} (key: {})", pageIndex + 1, cacheKey);
+
+                // Update UI on JavaFX thread
+                Platform.runLater(() -> {
+                    if (!Thread.currentThread().isInterrupted()) {
+                        displayImage(image, pageBox, pageIndex);
+                        loadingPages.remove(pageIndex);
+                        logger.debug("Displayed page {}", pageIndex + 1);
+                    }
+                });
 
             } catch (IOException e) {
                 logger.error("Error loading page {}", pageIndex + 1, e);
                 loadingPages.remove(pageIndex);
-                // Keep placeholder with error message
+                
+                // Show error in UI
                 Platform.runLater(() -> {
                     if (!pageBox.getChildren().isEmpty() &&
-                        pageBox.getChildren().getFirst() instanceof StackPane) {
-                        Label errorLabel = new Label("Error loading page");
+                        pageBox.getChildren().getFirst() instanceof StackPane stackPane) {
+                        Label errorLabel = new Label("Error loading page " + (pageIndex + 1));
                         errorLabel.setStyle("-fx-text-fill: red;");
-                        ((StackPane) pageBox.getChildren().getFirst()).getChildren().set(0, errorLabel);
+                        stackPane.getChildren().clear();
+                        stackPane.getChildren().add(errorLabel);
                     }
                 });
+            } catch (Exception e) {
+                logger.error("Unexpected error loading page {}", pageIndex + 1, e);
+                loadingPages.remove(pageIndex);
             } finally {
                 pendingRenders.remove(pageIndex);
             }
@@ -218,70 +218,61 @@ public class PageRenderer {
     }
 
     /**
-     * Generates a cache key for a page image.
-     *
-     * @param pageIndex the page index
-     * @param zoom the zoom level
-     * @return cache key string
+     * Generates a CONSISTENT cache key for a page image.
+     * CRITICAL: Must match format used everywhere.
      */
     private String getCacheKey(int pageIndex, double zoom) {
-        return String.format("page_%d_zoom_%.2f", pageIndex, zoom);
+        // Use simple format that's easy to debug
+        return pageIndex + "_" + String.format("%.2f", zoom);
     }
 
     /**
      * Displays an image in the page box with annotation layer.
-     *
-     * @param image the image to display
-     * @param pageBox the container for the page
-     * @param pageIndex the page index
      */
     private void displayImage(Image image, VBox pageBox, int pageIndex) {
-    ImageView imageView = new ImageView(image);
-    imageView.setPreserveRatio(true);
-    imageView.setSmooth(true);
-    imageView.setCache(true);
-    
-    imageView.setPickOnBounds(false);
-    imageView.setMouseTransparent(false);
+        ImageView imageView = new ImageView(image);
+        imageView.setPreserveRatio(true);
+        imageView.setSmooth(true);
+        imageView.setCache(true);
+        
+        imageView.setPickOnBounds(false);
+        imageView.setMouseTransparent(false);
 
-    // Create annotation layer
-    AnnotationLayer annotationLayer = new AnnotationLayer(image.getWidth(), image.getHeight());
-    annotationLayer.setPickOnBounds(false);
-    annotationLayer.setOnContextMenuRequested(null);
-    annotationLayer.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
-        if (event.getButton() == MouseButton.SECONDARY) {
-            // return nothing
+        // Create annotation layer
+        AnnotationLayer annotationLayer = new AnnotationLayer(image.getWidth(), image.getHeight());
+        annotationLayer.setPickOnBounds(false);
+        annotationLayer.setOnContextMenuRequested(null);
+        annotationLayer.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
+            if (event.getButton() == MouseButton.SECONDARY) {
+                // Do nothing - let context menu handle it
+            }
+        });
+
+        // Create context menu pane
+        ContextMenuPane contextPane = new ContextMenuPane(contextMenuHandler);
+        contextPane.setDocumentInfo(currentDocument, pageIndex, currentZoom);
+        contextPane.setPrefSize(image.getWidth(), image.getHeight());
+        contextPane.setMaxSize(image.getWidth(), image.getHeight());
+        
+        contextPane.toFront();
+
+        // Stack layers: Image (bottom) -> Annotation -> ContextMenu (top)
+        StackPane imageStack = new StackPane(imageView, annotationLayer, contextPane);
+        imageStack.setAlignment(Pos.CENTER);
+        imageStack.setPickOnBounds(false);
+
+        // Replace placeholder with rendered image
+        if (!pageBox.getChildren().isEmpty()) {
+            pageBox.getChildren().set(0, imageStack);
+        } else {
+            pageBox.getChildren().add(imageStack);
         }
-    });
 
-    // Create context menu pane
-    ContextMenuPane contextPane = new ContextMenuPane(contextMenuHandler);
-    contextPane.setDocumentInfo(currentDocument, pageIndex, currentZoom);
-    contextPane.setPrefSize(image.getWidth(), image.getHeight());
-    contextPane.setMaxSize(image.getWidth(), image.getHeight());
-    
-    contextPane.toFront();
-
-    // Stack layers: Image (bottom) -> Annotation -> ContextMenu (top)
-    StackPane imageStack = new StackPane(imageView, annotationLayer, contextPane);
-    imageStack.setAlignment(Pos.CENTER);
-    
-    imageStack.setPickOnBounds(false);
-
-    if (!pageBox.getChildren().isEmpty()) {
-        pageBox.getChildren().set(0, imageStack);
+        logger.debug("Page {} displayed successfully", pageIndex + 1);
     }
-
-    logger.debug("Page {} displayed - Context menu layer active", pageIndex + 1);
-}
 
     /**
      * Creates a placeholder VBox for a PDF page before it's loaded.
-     *
-     * @param pageIndex the zero-based page index
-     * @param width the expected page width in pixels
-     * @param height the expected page height in pixels
-     * @return a VBox placeholder for the page
      */
     public VBox createPagePlaceholder(int pageIndex, double width, double height) {
         VBox pageBox = new VBox(5);
@@ -301,10 +292,6 @@ public class PageRenderer {
 
     /**
      * Creates a loading placeholder stack pane with "Loading..." text.
-     *
-     * @param width the width of the placeholder in pixels
-     * @param height the height of the placeholder in pixels
-     * @return a StackPane with a centered loading label
      */
     private StackPane createLoadingPlaceholder(double width, double height) {
         Label loadingLabel = new Label("Loading...");

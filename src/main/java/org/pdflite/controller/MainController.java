@@ -361,131 +361,124 @@ public class MainController {
     }
 
     @FXML
-    private void handleDeletePage() {
-        if (currentDocument == null) {
-            return;
-        }
-
-        int total = currentDocument.getTotalPages();
-        if (total <= 1) {
-            uiStateManager.showError("Delete Page", "Cannot delete the last remaining page.");
-            return;
-        }
-
-        int current = currentDocument.getCurrentPage();
-
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Delete Page");
-        confirm.setHeaderText("Delete current page?");
-        confirm.setContentText("This will remove page " + (current + 1) + " from the document.");
-        confirm.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
-        confirm.showAndWait().ifPresent(result -> {
-            if (result == ButtonType.OK) {
-                try {
-                    // Lưu vị trí scroll trước khi xóa
-                    double oldVValue = scrollPane.getVvalue();
-
-                    // Xóa trang trong document
-                    fileManager.deletePages(currentDocument, java.util.List.of(current));
-
-                    // XÓA TRANG KHỎI UI VÀ CẬP NHẬT LẠI CÁC TRANG SAU
-                    if (pagesContainer != null && pagesContainer.getChildren().size() > current) {
-                        // Xóa VBox của trang đã chọn khỏi pagesContainer
-                        pagesContainer.getChildren().remove(current);
-
-                        // Cập nhật lại ID và CLEAR CONTENT của các trang sau để trigger re-render
-                        for (int i = current; i < pagesContainer.getChildren().size(); i++) {
-                            if (pagesContainer.getChildren().get(i) instanceof VBox pageBox) {
-                                final int pageIndex = i;
-
-                                // Đổi ID sang trang mới
-                                pageBox.setId("page-" + pageIndex);
-
-                                // Clear nội dung để buộc phải render lại
-                                if (!pageBox.getChildren().isEmpty() &&
-                                        pageBox.getChildren().get(0) instanceof StackPane stackPane) {
-
-                                    // Tạo lại placeholder "Loading..."
-                                    Label loadingLabel = new Label("Loading...");
-                                    loadingLabel.setStyle("-fx-text-fill: #cccccc; -fx-font-size: 14px;");
-                                    StackPane placeholder = new StackPane(loadingLabel);
-                                    placeholder.setPrefSize(stackPane.getWidth(), stackPane.getHeight());
-                                    placeholder.setStyle("-fx-background-color: #505050;");
-
-                                    // Thay thế nội dung cũ bằng placeholder
-                                    pageBox.getChildren().set(0, placeholder);
-                                }
-
-                                // Cập nhật label page number
-                                pageBox.getChildren().forEach(child -> {
-                                    if (child instanceof Label label) {
-                                        label.setText("Page " + (pageIndex + 1));
-                                    }
-                                });
-
-                                // Mark page as not loaded để ScrollHandler render lại
-                                loadingPages.remove(pageIndex);
-                            }
-                        }
-                    }
-
-                    // XÓA TOÀN BỘ CACHE (quan trọng!)
-                    currentDocument.clearCache(); // Cache trong PDFDocument
-                    pageRenderer.clearCache(); // Cache trong PageRenderer
-
-                    // Xóa khỏi loadingPages set
-                    loadingPages.clear();
-
-                    // Cancel tất cả pending renders
-                    pageRenderer.cancelAllPendingRenders();
-
-                    // Cập nhật currentPage nếu cần
-                    int newTotal = currentDocument.getTotalPages();
-                    int newCurrentPage;
-                    if (current >= newTotal) {
-                        newCurrentPage = Math.max(0, newTotal - 1);
-                    } else {
-                        newCurrentPage = current;
-                    }
-                    currentDocument.setCurrentPage(newCurrentPage);
-
-                    // Cập nhật UI info
-                    pageInfoManager.updatePageInfo(currentDocument);
-                    uiStateManager.updateStatus("Deleted page " + (current + 1) + ". Total pages: " + newTotal);
-
-                    // Khôi phục vị trí scroll và reload visible pages
-                    Platform.runLater(() -> {
-                        // Force layout update
-                        pagesContainer.applyCss();
-                        pagesContainer.layout();
-
-                        // Điều chỉnh scroll position nếu cần
-                        if (pagesContainer != null && pagesContainer.getChildren().size() > 0) {
-                            // Nếu xóa trang cuối, scroll về trang trước đó
-                            if (newCurrentPage < current) {
-                                scrollPane.setVvalue(Math.max(0, oldVValue - 0.05));
-                            } else {
-                                scrollPane.setVvalue(oldVValue);
-                            }
-                        }
-
-                        // QUAN TRỌNG: Trigger scroll handler để load lại các trang visible
-                        // Delay một chút để đảm bảo layout đã hoàn tất
-                        Platform.runLater(() -> {
-                            scrollHandler.handleScroll();
-                        });
-                    });
-
-                    logger.info("Successfully deleted page {} without full re-render", current + 1);
-
-                } catch (Exception e) {
-                    logger.error("Error deleting page {}", current + 1, e);
-                    uiStateManager.showError("Delete Page Error", "Could not delete the page: " + e.getMessage());
-                }
-            }
-        });
+private void handleDeletePage() {
+    if (currentDocument == null) {
+        return;
     }
 
+    int total = currentDocument.getTotalPages();
+    if (total <= 1) {
+        uiStateManager.showError("Delete Page", "Cannot delete the last remaining page.");
+        return;
+    }
+
+    int current = currentDocument.getCurrentPage();
+
+    Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+    confirm.setTitle("Delete Page");
+    confirm.setHeaderText("Delete current page?");
+    confirm.setContentText("This will remove page " + (current + 1) + " from the document.");
+    confirm.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
+    confirm.showAndWait().ifPresent(result -> {
+        if (result == ButtonType.OK) {
+            try {
+                // 1. Lưu thông tin cần thiết
+                File currentFile = currentDocument.getFile();
+                double oldZoom = zoomManager.getCurrentZoom();
+
+                // 2. Xóa trang TRƯỚC KHI save
+                fileManager.deletePages(currentDocument, java.util.List.of(current));
+
+                // 3. Save document (sử dụng save thông thường, không dùng incremental)
+                pdfService.save(currentDocument);
+
+                // 4. CRITICAL: Đóng document cũ ĐỂ giải phóng file lock
+                pdfService.closePDF(currentDocument);
+                
+                // 5. Clear TOÀN BỘ state
+                contentPane.getChildren().clear();
+                pagesContainer = null;
+                loadingPages.clear();
+                
+                // 6. Clear cache và hủy tất cả render đang chờ
+                pageRenderer.clearCache();
+                pageRenderer.cancelAllPendingRenders();
+
+                // 7. Tạo MỚI PageRenderer và ScrollHandler
+                pageRenderer = new PageRenderer(pdfService, renderExecutor);
+                scrollHandler = new ScrollHandler(pageRenderer, scrollPane);
+
+                // 8. Mở LẠI file (để PDFBox load lại cấu trúc mới)
+                currentDocument = fileManager.openFile(currentFile);
+                if (currentDocument == null) {
+                    uiStateManager.showError("Error", "Could not reopen the file after deletion.");
+                    return;
+                }
+
+                // 9. Tính current page mới
+                int newTotal = currentDocument.getTotalPages();
+                int newCurrentPage = (current >= newTotal) ? Math.max(0, newTotal - 1) : current;
+                currentDocument.setCurrentPage(newCurrentPage);
+                currentDocument.setZoomLevel(oldZoom);
+
+                // 10. Cập nhật renderer với document mới
+                pageRenderer.setDocument(currentDocument, oldZoom);
+                zoomManager.setDocument(currentDocument);
+                zoomManager.setCurrentZoom(oldZoom);
+
+                // 11. Tạo lại RenderingManager
+                renderingManager = new RenderingManager(pdfService, pageRenderer, scrollHandler, zoomManager);
+                renderingManager.setDocument(currentDocument);
+                renderingManager.setUIComponents(null, scrollPane, contentPane);
+
+                // 12. CRITICAL: Set document cho ScrollHandler SAU KHI render
+                // (chờ pagesContainer được tạo)
+                renderingManager.renderAllPages();
+                pagesContainer = renderingManager.getPagesContainer();
+                
+                // 13. Set document cho ScrollHandler với pagesContainer HỢP LỆ
+                scrollHandler.setDocument(currentDocument, pagesContainer);
+
+                // 14. Cập nhật UI
+                pageInfoManager.updatePageInfo(currentDocument);
+
+                // 15. Scroll về đầu và trigger render - CHỈ dùng 1 lớp runLater
+                Platform.runLater(() -> {
+                    // Reset scroll position
+                    scrollPane.setVvalue(0);
+                    currentDocument.setCurrentPage(0);
+                    
+                    // Clear loading pages trước khi trigger scroll
+                    loadingPages.clear();
+                    
+                    // Trigger scroll handler để load các trang cần thiết
+                    scrollHandler.handleScroll();
+                    
+                    // Update UI
+                    pageInfoManager.updatePageInfo(currentDocument);
+                    uiStateManager.updateStatus(
+                        "Deleted page " + (current + 1) + ". Total pages: " + newTotal
+                    );
+                });
+
+                logger.info("Successfully deleted page {} and reloaded document", current + 1);
+
+            } catch (Exception e) {
+                logger.error("Error deleting page {}", current + 1, e);
+                uiStateManager.showError("Delete Page Error", "Could not delete the page: " + e.getMessage());
+
+                // Recovery: thử mở lại file gốc
+                try {
+                    if (currentDocument != null && currentDocument.getFile() != null) {
+                        openPDFFile(currentDocument.getFile());
+                    }
+                } catch (Exception ex) {
+                    logger.error("Failed to recover after delete error", ex);
+                }
+            }
+        }
+    });
+}
     // ==================== Zoom Operations ====================
 
     @FXML
