@@ -24,13 +24,13 @@
                     <SeparatorMenuItem/>
                     <MenuItem text="Exit" onAction="#handleExit"/>
                 </Menu>
-                
+
                 <Menu text="Edit">
                     <MenuItem text="Find..." onAction="#handleSearch" accelerator="Ctrl+F"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Hide Search Panel" onAction="#handleHideSearch" accelerator="Escape"/>
                 </Menu>
-    
+
                 <Menu text="View">
                     <MenuItem text="Zoom In" onAction="#handleZoomIn" accelerator="Ctrl+Plus"/>
                     <MenuItem text="Zoom Out" onAction="#handleZoomOut" accelerator="Ctrl+Minus"/>
@@ -39,7 +39,7 @@
                     <SeparatorMenuItem/>
                     <MenuItem text="Toggle Full Screen" onAction="#handleToggleFullScreen" accelerator="F11"/>
                 </Menu>
-    
+
                 <Menu text="Tools">
                     <MenuItem text="Highlight" onAction="#handleHighlight"/>
                     <SeparatorMenuItem/>
@@ -49,7 +49,7 @@
                     <SeparatorMenuItem/>
                     <MenuItem text="Delete Page" onAction="#handleDeletePage"/>
                 </Menu>
-    
+
                 <Menu text="Help">
                     <MenuItem text="About" onAction="#handleAbout"/>
                 </Menu>
@@ -65,59 +65,83 @@
                 <Button text="Open" onAction="#handleOpenPDF" style="-fx-font-size: 11px;"/>
                 <Button text="Save" onAction="#handleSave" style="-fx-font-size: 11px;"/>
                 <Separator orientation="VERTICAL"/>
-                
+
                 <!-- Navigation -->
-                <Button fx:id="prevButton" text="◀" onAction="#handlePreviousPage" 
+                <Button fx:id="prevButton" text="◀" onAction="#handlePreviousPage"
                         style="-fx-font-size: 12px; -fx-min-width: 30px;">
                     <tooltip><Tooltip text="Previous Page (Ctrl+Left)"/></tooltip>
                 </Button>
-                <TextField fx:id="pageNumberField" prefWidth="45" onAction="#handleGoToPage" 
-                          style="-fx-font-size: 11px;"/>
+                <TextField fx:id="pageNumberField" prefWidth="45" onAction="#handleGoToPage"
+                           style="-fx-font-size: 11px;"/>
                 <Label fx:id="totalPagesLabel" text="/ 0" style="-fx-font-size: 11px;"/>
-                <Button fx:id="nextButton" text="▶" onAction="#handleNextPage" 
+                <Button fx:id="nextButton" text="▶" onAction="#handleNextPage"
                         style="-fx-font-size: 12px; -fx-min-width: 30px;">
                     <tooltip><Tooltip text="Next Page (Ctrl+Right)"/></tooltip>
                 </Button>
                 <Separator orientation="VERTICAL"/>
-                
+
                 <!-- Zoom Controls -->
-                <Button text="−" onAction="#handleZoomOut" 
+                <Button text="−" onAction="#handleZoomOut"
                         style="-fx-font-size: 14px; -fx-min-width: 30px;">
                     <tooltip><Tooltip text="Zoom Out (Ctrl+-)"/></tooltip>
                 </Button>
-                <ComboBox fx:id="zoomComboBox" onAction="#handleZoomChange" 
-                         prefWidth="85" style="-fx-font-size: 11px;"/>
-                <Button text="+" onAction="#handleZoomIn" 
+                <ComboBox fx:id="zoomComboBox" onAction="#handleZoomChange"
+                          prefWidth="85" style="-fx-font-size: 11px;"/>
+                <Button text="+" onAction="#handleZoomIn"
                         style="-fx-font-size: 14px; -fx-min-width: 30px;">
                     <tooltip><Tooltip text="Zoom In (Ctrl++)"/></tooltip>
                 </Button>
                 <Separator orientation="VERTICAL"/>
-                
-                <!-- PDF Tools -->
-                <Button text="Merge" onAction="#handleMergePDFs" 
+
+                <Button text="⟲" onAction="#handleRotateLeft" style="-fx-font-size: 14px; -fx-min-width: 30px;">
+                    <tooltip><Tooltip text="Rotate Left (90°)"/></tooltip>
+                </Button>
+                <Button text="⟳" onAction="#handleRotateRight" style="-fx-font-size: 14px; -fx-min-width: 30px;">
+                    <tooltip><Tooltip text="Rotate Right (90°)"/></tooltip>
+                </Button>
+                <Separator orientation="VERTICAL"/>
+                <Label text="Width:" style="-fx-font-size: 10px;"/>
+                <Slider fx:id="strokeWidthSlider" min="1" max="10" value="2"
+                        blockIncrement="0.5" majorTickUnit="1" minorTickCount="0"
+                        showTickMarks="true" snapToTicks="true" prefWidth="100">
+                    <tooltip><Tooltip text="Line Width"/></tooltip>
+                </Slider>
+                <Separator orientation="VERTICAL"/>
+                <fx:define>
+                    <ToggleGroup fx:id="drawingToolsGroup"/>
+                </fx:define>
+                <ToggleButton fx:id="btnDrawRect" text="⬜" onAction="#handleDrawRect" toggleGroup="$drawingToolsGroup" style="-fx-font-size: 14px;"/>
+                <ToggleButton fx:id="btnDrawCircle" text="◯" onAction="#handleDrawCircle" toggleGroup="$drawingToolsGroup" style="-fx-font-size: 14px;"/>
+                <ToggleButton fx:id="btnDrawArrow" text="↗" onAction="#handleDrawArrow" toggleGroup="$drawingToolsGroup" style="-fx-font-size: 14px;"/>
+                <Separator orientation="VERTICAL"/>
+
+                <ColorPicker fx:id="colorPicker" onAction="#handleColorChange" style="-fx-font-size: 11px; -fx-color-label-visible: false;"/>
+                <Separator orientation="VERTICAL"/>
+
+                <Button text="Merge" onAction="#handleMergePDFs"
                         style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-size: 11px;">
                     <tooltip><Tooltip text="Merge multiple PDFs into one"/></tooltip>
                 </Button>
-                <Button text="Split" onAction="#handleSplitPDF" 
+                <Button text="Split" onAction="#handleSplitPDF"
                         style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-size: 11px;">
                     <tooltip><Tooltip text="Split PDF into multiple files"/></tooltip>
                 </Button>
-                <Button text="Extract" onAction="#handleExtractPages" 
+                <Button text="Extract" onAction="#handleExtractPages"
                         style="-fx-background-color: #FF9800; -fx-text-fill: white; -fx-font-size: 11px;">
                     <tooltip><Tooltip text="Extract specific pages"/></tooltip>
                 </Button>
                 <Separator orientation="VERTICAL"/>
-                
+
                 <!-- Edit Tools -->
                 <Button text="Highlight" onAction="#handleHighlight" style="-fx-font-size: 11px;">
                     <tooltip><Tooltip text="Toggle Highlight Mode"/></tooltip>
                 </Button>
-                <Button text="Delete Page" onAction="#handleDeletePage" 
+                <Button text="Delete Page" onAction="#handleDeletePage"
                         style="-fx-font-size: 11px; -fx-text-fill: #f44336;">
                     <tooltip><Tooltip text="Delete current page"/></tooltip>
                 </Button>
                 <Separator orientation="VERTICAL"/>
-                
+
                 <!-- Search -->
                 <MenuButton text="🔍 Search" style="-fx-font-size: 11px;">
                     <tooltip><Tooltip text="Search in document (Ctrl+F)"/></tooltip>

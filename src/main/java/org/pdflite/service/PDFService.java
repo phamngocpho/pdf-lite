@@ -4,23 +4,26 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.text.PDFTextStripper;
-import org.pdflite.model.PDFDocument;
+import org.pdflite.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Comparator;
-import java.util.Collection;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * Service class for handling PDF operations and document management.
@@ -120,11 +123,24 @@ public class PDFService {
         logger.debug("Rendering page {} with DPI {}", pageIndex, dpi);
 
         // Render with RGB image type for better performance (no alpha channel overhead)
-        BufferedImage bufferedImage = renderer.renderImageWithDPI(pageIndex, dpi, ImageType.RGB);
+        PDPage page = pdfDoc.getDocument().getPage(pageIndex);
+
+        // 1. Lấy góc xoay gốc của file PDF
+        int originalRotation = page.getRotation();
+        // 2. Lấy góc xoay người dùng chọn từ Model
+        int userRotation = pdfDoc.getRotation();
+        // 3. Tính tổng góc xoay (cộng dồn)
+        int finalRotation = (originalRotation + userRotation) % 360;
+        // 4. Set góc xoay tạm thời để render
+        page.setRotation(finalRotation);
+        BufferedImage bufferedImage;
+        try {
+            bufferedImage = renderer.renderImageWithDPI(pageIndex, dpi, ImageType.RGB);
+        } finally {
+            page.setRotation(originalRotation);
+        }
 
         Image image = SwingFXUtils.toFXImage(bufferedImage, null);
-
-        // Cache the rendered image
         pdfDoc.cacheImage(pageIndex, scale, image);
 
         return image;
@@ -263,63 +279,66 @@ public class PDFService {
      * This is REQUIRED when saving to the same file that was loaded.
      */
     /**
- * Save the current document to its original file.
- * IMPORTANT: Uses temporary file approach to avoid corruption.
- */
-public void save(PDFDocument pdfDoc) throws IOException {
-    if (pdfDoc == null || pdfDoc.getDocument() == null || pdfDoc.getFile() == null) {
-        throw new IOException("No document or target file to save.");
-    }
+     * Save the current document to its original file.
+     * IMPORTANT: Uses temporary file approach to avoid corruption.
+     */
+    public void save(PDFDocument pdfDoc) throws IOException {
+        if (pdfDoc == null || pdfDoc.getDocument() == null || pdfDoc.getFile() == null) {
+            throw new IOException("No document or target file to save.");
+        }
 
-    PDDocument pdDoc = pdfDoc.getDocument();
-    File originalFile = pdfDoc.getFile();
+        PDDocument pdDoc = pdfDoc.getDocument();
+        File originalFile = pdfDoc.getFile();
 
-    // CRITICAL: Save to temporary file first to avoid corruption
-    // when overwriting the file we're reading from
-    File tempFile = new File(originalFile.getParent(), 
-        originalFile.getName() + ".tmp_" + System.currentTimeMillis());
+        // CRITICAL: Save to temporary file first to avoid corruption
+        // when overwriting the file we're reading from
+        File tempFile = new File(originalFile.getParent(),
+                originalFile.getName() + ".tmp_" + System.currentTimeMillis());
 
-    try {
-        // Save to temp file
-        pdDoc.save(tempFile);
-        logger.info("Saved to temporary file: {}", tempFile.getName());
+        try {
+            flattenAnnotationsToPDF(pdfDoc);
 
-        // Close the document to release file locks
-        pdDoc.close();
-        logger.info("Document closed, ready to replace original file");
+            // Save to temp file
+            pdDoc.save(tempFile);
+            logger.info("Saved to temporary file: {}", tempFile.getName());
 
-        // Delete original file
-        if (originalFile.exists()) {
-            boolean deleted = originalFile.delete();
-            if (!deleted) {
-                throw new IOException("Could not delete original file: " + originalFile.getName());
+            // Close the document to release file locks
+            pdDoc.close();
+            logger.info("Document closed, ready to replace original file");
+
+            // Delete original file
+            if (originalFile.exists()) {
+                boolean deleted = originalFile.delete();
+                if (!deleted) {
+                    throw new IOException("Could not delete original file: " + originalFile.getName());
+                }
+                logger.info("Original file deleted");
             }
-            logger.info("Original file deleted");
-        }
 
-        // Rename temp file to original name
-        boolean renamed = tempFile.renameTo(originalFile);
-        if (!renamed) {
-            // Try copy instead of rename (works better on some systems)
-            java.nio.file.Files.copy(
-                tempFile.toPath(), 
-                originalFile.toPath(),
-                java.nio.file.StandardCopyOption.REPLACE_EXISTING
-            );
-            tempFile.delete();
-            logger.info("Temp file copied to original location");
-        } else {
-            logger.info("Temp file renamed to original name");
-        }
+            // Rename temp file to original name
+            boolean renamed = tempFile.renameTo(originalFile);
+            if (!renamed) {
+                // Try copy instead of rename (works better on some systems)
+                java.nio.file.Files.copy(
+                        tempFile.toPath(),
+                        originalFile.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING
+                );
+                tempFile.delete();
+                logger.info("Temp file copied to original location");
+            } else {
+                logger.info("Temp file renamed to original name");
+            }
 
-        logger.info("Saved PDF to {}", originalFile.getAbsolutePath());
+            logger.info("Saved PDF to {}", originalFile.getAbsolutePath());
 
-    } catch (Exception e) {
-        // Cleanup temp file if something goes wrong
-        if (tempFile.exists()) {
-            tempFile.delete();
+        } catch (Exception e) {
+            // Cleanup temp file if something goes wrong
+            if (tempFile.exists()) {
+                tempFile.delete();
+            }
+            throw new IOException("Failed to save document: " + e.getMessage(), e);
         }
-        throw new IOException("Failed to save document: " + e.getMessage(), e);
     }
 }
 
@@ -379,4 +398,74 @@ public void save(PDFDocument pdfDoc) throws IOException {
 
         logger.info("Deleted {} page(s). New total pages: {}", toDelete, newTotal);
     }
+    private void flattenAnnotationsToPDF(PDFDocument pdfDoc) throws IOException {
+        PDDocument doc = pdfDoc.getDocument();
+        List<Annotation> annotations = pdfDoc.getAnnotations();
+
+        if (annotations.isEmpty()) return;
+
+        for (Annotation ann : annotations) {
+            if (ann instanceof ShapeAnnotation) {
+                ShapeAnnotation shape = (ShapeAnnotation) ann;
+                if (shape.getPageNumber() >= doc.getNumberOfPages()) continue;
+
+                PDPage page = doc.getPage(shape.getPageNumber());
+
+                try (PDPageContentStream contentStream = new PDPageContentStream(doc, page, PDPageContentStream.AppendMode.APPEND, true, true)) {
+
+                    Color awtColor = new Color(
+                            (float) shape.getColor().getRed(),
+                            (float) shape.getColor().getGreen(),
+                            (float) shape.getColor().getBlue(),
+                            (float) shape.getColor().getOpacity()
+                    );
+                    contentStream.setStrokingColor(awtColor);
+                    contentStream.setLineWidth((float) shape.getLineWidth());
+
+                    float pageHeight = page.getMediaBox().getHeight();
+                    float x1 = (float) shape.getX();
+                    float y1 = pageHeight - (float) shape.getY();
+                    float x2 = (float) shape.getEndX();
+                    float y2 = pageHeight - (float) shape.getEndY();
+
+                    if (shape instanceof RectangleAnnotation) {
+                        float w = Math.abs(x2 - x1);
+                        float h = Math.abs(y1 - y2);
+                        float rectX = Math.min(x1, x2);
+                        float rectY = Math.min(y1, y2);
+                        contentStream.addRect(rectX, rectY, w, h);
+                        contentStream.stroke();
+                    }
+                    else if (shape instanceof ArrowAnnotation) {
+                        contentStream.moveTo(x1, y1);
+                        contentStream.lineTo(x2, y2);
+                        contentStream.stroke();
+                    }
+                    else if (shape instanceof CircleAnnotation) {
+                        float w = Math.abs(x2 - x1);
+                        float h = Math.abs(y1 - y2);
+                        float rectX = Math.min(x1, x2);
+                        float rectY = Math.min(y1, y2);
+
+                        final float k = 0.5522847498f;
+                        float rx = w / 2;
+                        float ry = h / 2;
+                        float cx = rectX + rx;
+                        float cy = rectY + ry;
+
+                        contentStream.moveTo(cx + rx, cy);
+                        contentStream.curveTo(cx + rx, cy + k * ry, cx + k * rx, cy + ry, cx, cy + ry);
+                        contentStream.curveTo(cx - k * rx, cy + ry, cx - rx, cy + k * ry, cx - rx, cy);
+                        contentStream.curveTo(cx - rx, cy - k * ry, cx - k * rx, cy - ry, cx, cy - ry);
+                        contentStream.curveTo(cx + k * rx, cy - ry, cx + rx, cy - k * ry, cx + rx, cy);
+                        contentStream.stroke();
+                    }
+                } catch (Exception e) {
+                    logger.error("Error flattening annotation", e);
+                }
+            }
+        }
+        pdfDoc.getAnnotations().clear();
+    }
+
 }

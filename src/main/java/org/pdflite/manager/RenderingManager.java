@@ -43,7 +43,7 @@ public class RenderingManager {
      * @param zoomManager the zoom manager
      */
     public RenderingManager(PDFService pdfService, PageRenderer pageRenderer,
-                           ScrollHandler scrollHandler, ZoomManager zoomManager) {
+                            ScrollHandler scrollHandler, ZoomManager zoomManager) {
         this.pdfService = pdfService;
         this.pageRenderer = pageRenderer;
         this.scrollHandler = scrollHandler;
@@ -153,9 +153,9 @@ public class RenderingManager {
 
                         // Chỉ update các trang đã được render (có ImageView trong StackPane)
                         if (!box.getChildren().isEmpty() &&
-                            box.getChildren().getFirst() instanceof StackPane stackPane) {
+                                box.getChildren().getFirst() instanceof StackPane stackPane) {
                             if (!stackPane.getChildren().isEmpty() &&
-                                stackPane.getChildren().get(0) instanceof javafx.scene.image.ImageView imgView) {
+                                    stackPane.getChildren().get(0) instanceof javafx.scene.image.ImageView imgView) {
 
                                 try {
                                     Image newImg = pdfService.renderPage(currentDocument, pageIndex, (float) newZoom);
@@ -163,7 +163,7 @@ public class RenderingManager {
 
                                     // Update annotation layer size if exists
                                     if (stackPane.getChildren().size() > 1 &&
-                                        stackPane.getChildren().get(1) instanceof AnnotationLayer annotationLayer) {
+                                            stackPane.getChildren().get(1) instanceof AnnotationLayer annotationLayer) {
                                         annotationLayer.setWidth(newImg.getWidth());
                                         annotationLayer.setHeight(newImg.getHeight());
                                         annotationLayer.redraw();

@@ -24,9 +24,9 @@ import java.util.concurrent.Executors;
  * Can be used in side panel or dialog
  */
 public class SearchPanel extends VBox {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(SearchPanel.class);
-    
+
     // UI Components
     private final TextField searchField;
     private final CheckBox caseSensitiveCheckbox;
@@ -38,23 +38,23 @@ public class SearchPanel extends VBox {
     private final ProgressIndicator progressIndicator;
     private final Label statusLabel;
     private final ListView<SearchResult> resultsListView;
-    
+
     // Dependencies
     private PDFDocument pdfDocument;
     private final SearchService searchService;
     private MainController mainController;
-    
+
     // State
     private ExecutorService searchExecutor;
-    private final ObservableList<SearchResult> searchResults = 
-        FXCollections.observableArrayList();
-    
+    private final ObservableList<SearchResult> searchResults =
+            FXCollections.observableArrayList();
+
     /**
      * Constructor
      */
     public SearchPanel() {
         searchService = new SearchService();
-        
+
         // Initialize UI components
         searchField = new TextField();
         caseSensitiveCheckbox = new CheckBox("Case Sensitive");
@@ -66,15 +66,15 @@ public class SearchPanel extends VBox {
         progressIndicator = new ProgressIndicator();
         statusLabel = new Label("Ready");
         resultsListView = new ListView<>();
-        
+
         // Setup UI
         setupUI();
         setupEventHandlers();
         createExecutorService();
-        
+
         logger.debug("SearchPanel created");
     }
-    
+
     /**
      * Setup UI layout
      */
@@ -82,29 +82,29 @@ public class SearchPanel extends VBox {
         setSpacing(10);
         setPadding(new Insets(10));
         setStyle("-fx-background-color: #f5f5f5;");
-        
+
         // Search controls
         VBox searchControls = new VBox(10);
         searchControls.setStyle("-fx-background-color: white; -fx-padding: 10; -fx-border-color: #cccccc;");
-        
+
         Label searchLabel = new Label("Search:");
         searchLabel.setStyle("-fx-font-weight: bold;");
-        
+
         searchField.setPromptText("Enter keyword...");
-        
+
         HBox searchBox = new HBox(10);
         searchBox.getChildren().addAll(searchField, searchButton, cancelButton, progressIndicator);
         HBox.setHgrow(searchField, Priority.ALWAYS);
-        
+
         HBox optionsBox = new HBox(20);
         optionsBox.getChildren().addAll(caseSensitiveCheckbox, wholeWordCheckbox);
-        
+
         searchControls.getChildren().addAll(searchLabel, searchBox, optionsBox);
-        
+
         // Results section
         VBox resultsSection = new VBox(5);
         VBox.setVgrow(resultsSection, Priority.ALWAYS);
-        
+
         HBox resultsHeader = new HBox(10);
         resultsHeader.setAlignment(Pos.CENTER_LEFT);
         Label resultsLabel = new Label("Results:");
@@ -112,32 +112,32 @@ public class SearchPanel extends VBox {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         resultsHeader.getChildren().addAll(resultsLabel, spacer, prevResultButton, nextResultButton);
-        
+
         resultsListView.setItems(searchResults);
         resultsListView.setCellFactory(lv -> new SearchResultCell());
         VBox.setVgrow(resultsListView, Priority.ALWAYS);
-        
+
         resultsSection.getChildren().addAll(resultsHeader, resultsListView);
-        
+
         // Status bar
         HBox statusBar = new HBox();
         statusBar.setStyle("-fx-background-color: #e0e0e0; -fx-padding: 5;");
         statusBar.getChildren().add(statusLabel);
-        
+
         // Add all sections
         getChildren().addAll(searchControls, resultsSection, statusBar);
-        
+
         // Initial state
         progressIndicator.setMaxSize(20, 20);
         progressIndicator.setVisible(false);
         cancelButton.setDisable(true);
         prevResultButton.setDisable(true);
         nextResultButton.setDisable(true);
-        
+
         // Style buttons
         searchButton.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white;");
     }
-    
+
     /**
      * Setup event handlers
      */
@@ -147,15 +147,15 @@ public class SearchPanel extends VBox {
         cancelButton.setOnAction(e -> handleCancel());
         prevResultButton.setOnAction(e -> handlePreviousResult());
         nextResultButton.setOnAction(e -> handleNextResult());
-        
+
         resultsListView.getSelectionModel().selectedItemProperty()
-            .addListener((obs, oldVal, newVal) -> {
-                if (newVal != null) {
-                    handleResultSelected(newVal);
-                }
-            });
+                .addListener((obs, oldVal, newVal) -> {
+                    if (newVal != null) {
+                        handleResultSelected(newVal);
+                    }
+                });
     }
-    
+
     /**
      * Create executor service
      */
@@ -163,7 +163,7 @@ public class SearchPanel extends VBox {
         if (searchExecutor != null && !searchExecutor.isShutdown()) {
             searchExecutor.shutdown();
         }
-        
+
         searchExecutor = Executors.newSingleThreadExecutor(r -> {
             Thread t = new Thread(r);
             t.setDaemon(true);
@@ -171,7 +171,7 @@ public class SearchPanel extends VBox {
             return t;
         });
     }
-    
+
     /**
      * Set PDF document
      */
@@ -182,34 +182,34 @@ public class SearchPanel extends VBox {
         prevResultButton.setDisable(true);
         nextResultButton.setDisable(true);
     }
-    
+
     /**
      * Set main controller
      */
     public void setMainController(MainController controller) {
         this.mainController = controller;
     }
-    
+
     /**
      * Handle search
      */
     private void handleSearch() {
         String keyword = searchField.getText().trim();
-        
+
         if (keyword.isEmpty()) {
             showError("Please enter a search keyword");
             return;
         }
-        
+
         if (pdfDocument == null) {
             showError("No PDF document loaded");
             return;
         }
-        
+
         if (searchExecutor == null || searchExecutor.isShutdown()) {
             createExecutorService();
         }
-        
+
         searchResults.clear();
         searchButton.setDisable(true);
         cancelButton.setDisable(false);
@@ -217,47 +217,47 @@ public class SearchPanel extends VBox {
         prevResultButton.setDisable(true);
         nextResultButton.setDisable(true);
         updateStatus("Searching...");
-        
+
         boolean caseSensitive = caseSensitiveCheckbox.isSelected();
         boolean wholeWord = wholeWordCheckbox.isSelected();
-        
+
         searchExecutor.submit(() -> performSearch(keyword, caseSensitive, wholeWord));
     }
-    
+
     /**
      * Perform search
      */
     private void performSearch(String keyword, boolean caseSensitive, boolean wholeWord) {
         try {
             logger.info("Starting search for: {}", keyword);
-            
+
             List<SearchResult> results = searchService.searchInDocument(
-                pdfDocument.getDocument(),
-                keyword,
-                caseSensitive,
-                wholeWord
+                    pdfDocument.getDocument(),
+                    keyword,
+                    caseSensitive,
+                    wholeWord
             );
-            
+
             Platform.runLater(() -> {
                 if (searchService.isCancelled()) {
                     updateStatus("Search cancelled");
                 } else {
                     searchResults.addAll(results);
                     updateStatus(String.format("Found %d result(s)", results.size()));
-                    
-                    // ✅ FIX: Apply highlights to main viewer
+
+                    // Apply highlights to main viewer
                     if (mainController != null && !results.isEmpty()) {
                         mainController.highlightSearchResults(results);
                         logger.info("Applied {} highlights from search panel", results.size());
                     }
-                    
+
                     if (!results.isEmpty()) {
                         resultsListView.getSelectionModel().selectFirst();
                         nextResultButton.setDisable(results.size() <= 1);
                     }
                 }
             });
-            
+
         } catch (IOException e) {
             logger.error("Error during search", e);
             Platform.runLater(() -> {
@@ -272,7 +272,7 @@ public class SearchPanel extends VBox {
             });
         }
     }
-    
+
     /**
      * Handle cancel
      */
@@ -280,7 +280,7 @@ public class SearchPanel extends VBox {
         searchService.cancelSearch();
         cancelButton.setDisable(true);
     }
-    
+
     /**
      * Handle previous result
      */
@@ -291,7 +291,7 @@ public class SearchPanel extends VBox {
             updateNavigationButtons();
         }
     }
-    
+
     /**
      * Handle next result
      */
@@ -302,7 +302,7 @@ public class SearchPanel extends VBox {
             updateNavigationButtons();
         }
     }
-    
+
     /**
      * Update navigation buttons
      */
@@ -311,13 +311,12 @@ public class SearchPanel extends VBox {
         prevResultButton.setDisable(currentIndex <= 0);
         nextResultButton.setDisable(currentIndex >= searchResults.size() - 1);
     }
-    
+
     /**
      * Handle result selected
      */
     private void handleResultSelected(SearchResult result) {
     if (mainController != null && result != null) {
-        // ✅ FIX: Use highlightSearchResult to set active result
         mainController.highlightSearchResult(result);
         
         int position = resultsListView.getSelectionModel().getSelectedIndex() + 1;
@@ -327,14 +326,14 @@ public class SearchPanel extends VBox {
         updateNavigationButtons();
         }
     }
-    
+
     /**
      * Update status
      */
     private void updateStatus(String message) {
         statusLabel.setText(message);
     }
-    
+
     /**
      * Show error
      */
@@ -345,7 +344,7 @@ public class SearchPanel extends VBox {
         alert.setContentText(message);
         alert.showAndWait();
     }
-    
+
     /**
      * Cleanup
      */
@@ -356,7 +355,7 @@ public class SearchPanel extends VBox {
         }
         logger.info("SearchPanel cleanup completed");
     }
-    
+
     /**
      * Search result cell
      */
@@ -364,7 +363,7 @@ public class SearchPanel extends VBox {
         @Override
         protected void updateItem(SearchResult item, boolean empty) {
             super.updateItem(item, empty);
-            
+
             if (empty || item == null) {
                 setText(null);
                 setGraphic(null);

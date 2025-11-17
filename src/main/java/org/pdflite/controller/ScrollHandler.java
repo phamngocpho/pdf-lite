@@ -26,12 +26,12 @@ import java.util.TimerTask;
  */
 public class ScrollHandler {
     private static final Logger logger = LoggerFactory.getLogger(ScrollHandler.class);
-    
+
     private static final long SCROLL_DEBOUNCE_MS = 150; // Wait 150ms after scroll stops
-    
+
     private final PageRenderer pageRenderer;
     private final ScrollPane scrollPane;
-    
+
     private PDFDocument currentDocument;
     private VBox pagesContainer;
     private Timer scrollTimer;
@@ -144,7 +144,7 @@ public class ScrollHandler {
                     // Check if page is in load range
                     if (pageEnd >= loadStart && pageStart <= loadEnd) {
                         pagesInRange.add(i);
-                        
+
                         // Prioritize visible pages over buffer pages
                         if (pageEnd >= visibleStart && pageStart <= visibleEnd) {
                             visiblePages.add(i);
@@ -197,7 +197,7 @@ public class ScrollHandler {
         if (pageBox.getChildren().isEmpty()) {
             return false;
         }
-        
+
         Object firstChild = pageBox.getChildren().getFirst();
         if (firstChild instanceof javafx.scene.layout.StackPane placeholder) {
             return !placeholder.getChildren().isEmpty() &&

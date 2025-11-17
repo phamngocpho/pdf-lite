@@ -70,6 +70,19 @@ public class MainController {
     private Button nextButton;
     @FXML
     private Menu recentFilesMenu;
+    @FXML
+    private ColorPicker colorPicker;
+    @FXML
+    private Slider strokeWidthSlider;
+    @FXML
+    private ToggleGroup drawingToolsGroup;
+    @FXML
+    private ToggleButton btnDrawRect;
+    @FXML
+    private ToggleButton btnDrawCircle;
+    @FXML
+    private ToggleButton btnDrawArrow;
+
 
     // ==================== Services and Managers ====================
 
@@ -155,6 +168,39 @@ public class MainController {
                         }
                     }
                 });
+            });
+        }
+        if (drawingToolsGroup != null) {
+            // Listener lắng nghe sự thay đổi trạng thái của ToggleGroup
+            drawingToolsGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
+                // Nếu không có nút nào được chọn (newVal == null), chuyển về View Mode
+                if (newVal == null) {
+                    updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
+                    return;
+                }
+
+                // Nếu một nút được chọn, ánh xạ nó sang chế độ vẽ tương ứng
+                ToggleButton selectedBtn = (ToggleButton) newVal;
+
+
+                // Ánh xạ công cụ
+                if (selectedBtn == btnDrawRect) {
+                    updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.RECTANGLE);
+                } else if (selectedBtn == btnDrawCircle) {
+                    updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.CIRCLE);
+                } else if (selectedBtn == btnDrawArrow) {
+                    updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.ARROW);
+                }
+            });
+        }
+
+        if (colorPicker != null) {
+            colorPicker.setValue(javafx.scene.paint.Color.BLACK);
+        }
+        // Listener của Slider và ColorPicker (Giữ nguyên)
+        if (strokeWidthSlider != null) {
+            strokeWidthSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+                updateDrawingStyleForAllPages();
             });
         }
 
@@ -467,18 +513,115 @@ private void handleDeletePage() {
                 logger.error("Error deleting page {}", current + 1, e);
                 uiStateManager.showError("Delete Page Error", "Could not delete the page: " + e.getMessage());
 
-                // Recovery: thử mở lại file gốc
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Delete Page");
+        confirm.setHeaderText("Delete current page?");
+        confirm.setContentText("This will remove page " + (current + 1) + " from the document.");
+        confirm.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
+        DialogPane confirmDialogPane = confirm.getDialogPane();
+        if (themeManager != null) {
+            themeManager.applyThemeToScene(confirmDialogPane.getScene());
+        }
+        confirm.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.OK) {
                 try {
-                    if (currentDocument != null && currentDocument.getFile() != null) {
-                        openPDFFile(currentDocument.getFile());
+                    // 1. Lưu thông tin cần thiết
+                    File currentFile = currentDocument.getFile();
+                    double oldZoom = zoomManager.getCurrentZoom();
+
+                    // 2. Xóa trang TRƯỚC KHI save
+                    fileManager.deletePages(currentDocument, java.util.List.of(current));
+
+                    // 3. Save document (sử dụng save thông thường, không dùng incremental)
+                    pdfService.save(currentDocument);
+
+                    // 4. CRITICAL: Đóng document cũ ĐỂ giải phóng file lock
+                    pdfService.closePDF(currentDocument);
+
+                    // 5. Clear TOÀN BỘ state
+                    contentPane.getChildren().clear();
+                    pagesContainer = null;
+                    loadingPages.clear();
+
+                    // 6. Clear cache và hủy tất cả render đang chờ
+                    pageRenderer.clearCache();
+                    pageRenderer.cancelAllPendingRenders();
+
+                    // 7. Tạo MỚI PageRenderer và ScrollHandler
+                    pageRenderer = new PageRenderer(pdfService, renderExecutor);
+                    scrollHandler = new ScrollHandler(pageRenderer, scrollPane);
+
+                    // 8. Mở LẠI file (để PDFBox load lại cấu trúc mới)
+                    currentDocument = fileManager.openFile(currentFile);
+                    if (currentDocument == null) {
+                        uiStateManager.showError("Error", "Could not reopen the file after deletion.");
+                        return;
                     }
-                } catch (Exception ex) {
-                    logger.error("Failed to recover after delete error", ex);
+
+                    // 9. Tính current page mới
+                    int newTotal = currentDocument.getTotalPages();
+                    int newCurrentPage = (current >= newTotal) ? Math.max(0, newTotal - 1) : current;
+                    currentDocument.setCurrentPage(newCurrentPage);
+                    currentDocument.setZoomLevel(oldZoom);
+
+                    // 10. Cập nhật renderer với document mới
+                    pageRenderer.setDocument(currentDocument, oldZoom);
+                    zoomManager.setDocument(currentDocument);
+                    zoomManager.setCurrentZoom(oldZoom);
+
+                    // 11. Tạo lại RenderingManager
+                    renderingManager = new RenderingManager(pdfService, pageRenderer, scrollHandler, zoomManager);
+                    renderingManager.setDocument(currentDocument);
+                    renderingManager.setUIComponents(null, scrollPane, contentPane);
+
+                    // 12. CRITICAL: Set document cho ScrollHandler SAU KHI render
+                    // (chờ pagesContainer được tạo)
+                    renderingManager.renderAllPages();
+                    pagesContainer = renderingManager.getPagesContainer();
+
+                    // 13. Set document cho ScrollHandler với pagesContainer HỢP LỆ
+                    scrollHandler.setDocument(currentDocument, pagesContainer);
+
+                    // 14. Cập nhật UI
+                    pageInfoManager.updatePageInfo(currentDocument);
+
+                    // 15. Scroll về đầu và trigger render - CHỈ dùng 1 lớp runLater
+                    Platform.runLater(() -> {
+                        // Reset scroll position
+                        scrollPane.setVvalue(0);
+                        currentDocument.setCurrentPage(0);
+
+                        // Clear loading pages trước khi trigger scroll
+                        loadingPages.clear();
+
+                        // Trigger scroll handler để load các trang cần thiết
+                        scrollHandler.handleScroll();
+
+                        // Update UI
+                        pageInfoManager.updatePageInfo(currentDocument);
+                        uiStateManager.updateStatus(
+                                "Deleted page " + (current + 1) + ". Total pages: " + newTotal
+                        );
+                    });
+
+                    logger.info("Successfully deleted page {} and reloaded document", current + 1);
+
+                } catch (Exception e) {
+                    logger.error("Error deleting page {}", current + 1, e);
+                    uiStateManager.showError("Delete Page Error", "Could not delete the page: " + e.getMessage());
+
+                    // Recovery: thử mở lại file gốc
+                    try {
+                        if (currentDocument != null && currentDocument.getFile() != null) {
+                            openPDFFile(currentDocument.getFile());
+                        }
+                    } catch (Exception ex) {
+                        logger.error("Failed to recover after delete error", ex);
+                    }
                 }
             }
-        }
-    });
-}
+        });
+    }
     // ==================== Zoom Operations ====================
 
     @FXML
@@ -541,13 +684,19 @@ private void handleDeletePage() {
         highlightModeActive = !highlightModeActive;
 
         if (highlightModeActive) {
+            // Tắt nhóm vẽ hình khi bật Highlight
+            if (drawingToolsGroup != null) {
+                drawingToolsGroup.selectToggle(null);
+            }
+
             uiStateManager.updateStatus("Highlight mode: Active - Click and drag to highlight");
             pageRenderer.setHighlightModeActive(true);
-            setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.HIGHLIGHT);
+            updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.HIGHLIGHT);
         } else {
+            // Tắt Highlight
             uiStateManager.updateStatus("Highlight mode: Disabled");
             pageRenderer.setHighlightModeActive(false);
-            setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
+            updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
         }
     }
 
@@ -633,8 +782,14 @@ private void handleDeletePage() {
                 A lightweight PDF viewer with annotation features.
 
                 Built with JavaFX and Apache PDFBox""");
+
+        DialogPane dialogPane = alert.getDialogPane();
+        if (themeManager != null) {
+            themeManager.applyThemeToScene(dialogPane.getScene());
+        }
+
         alert.showAndWait();
-    }
+        }
 
     // ==================== Merge and Split Operations ====================
 
@@ -651,7 +806,13 @@ private void handleDeletePage() {
             dialogStage.setTitle("Merge PDF Files");
             dialogStage.initModality(Modality.APPLICATION_MODAL);
             dialogStage.initOwner(rootPane.getScene().getWindow());
-            dialogStage.setScene(new Scene(root));
+
+            Scene dialogScene = new Scene(root);
+            dialogStage.setScene(dialogScene);
+
+            if (themeManager != null) {
+                themeManager.applyThemeToScene(dialogScene);
+            }
 
             controller.setDialogStage(dialogStage);
 
@@ -683,10 +844,15 @@ private void handleDeletePage() {
             dialogStage.setTitle("Split PDF File");
             dialogStage.initModality(Modality.APPLICATION_MODAL);
             dialogStage.initOwner(rootPane.getScene().getWindow());
-            dialogStage.setScene(new Scene(root));
-
             controller.setDialogStage(dialogStage);
             controller.setSourceFile(currentDocument.getFile());
+
+            Scene dialogScene = new Scene(root);
+            dialogStage.setScene(dialogScene);
+
+            if (themeManager != null) {
+                themeManager.applyThemeToScene(dialogScene);
+            }
 
             dialogStage.setOnCloseRequest(event -> controller.shutdown());
             dialogStage.showAndWait();
@@ -695,6 +861,34 @@ private void handleDeletePage() {
             logger.error("Error opening split dialog", e);
             uiStateManager.showError("Error", "Could not open split dialog: " + e.getMessage());
         }
+    }
+
+    // ==================== Rotation Operations ====================
+
+    @FXML
+    private void handleRotateLeft() {
+        rotateDocument(-90);
+    }
+
+    @FXML
+    private void handleRotateRight() {
+        rotateDocument(90);
+    }
+
+    private void rotateDocument(int angle) {
+        if (currentDocument == null) return;
+
+        // 1. Tính góc xoay mới
+        int currentRot = currentDocument.getRotation();
+        currentDocument.setRotation(currentRot + angle);
+
+        // 2. Render lại màn hình
+        // Hàm này sẽ gọi renderPage -> renderPage thấy cache trống (do bước 1 đã clear) -> vẽ lại ảnh xoay
+        if (renderingManager != null && zoomManager != null) {
+            renderingManager.preserveScrollPositionAndApplyZoom(zoomManager.getCurrentZoom());
+        }
+
+        uiStateManager.updateStatus("Rotated document " + (angle > 0 ? "Right" : "Left"));
     }
 
     @FXML
@@ -716,10 +910,13 @@ private void handleDeletePage() {
             dialogStage.setTitle("Extract PDF Pages");
             dialogStage.initModality(Modality.APPLICATION_MODAL);
             dialogStage.initOwner(rootPane.getScene().getWindow());
-            dialogStage.setScene(new Scene(root));
-
             controller.setDialogStage(dialogStage);
             controller.setSourceFile(currentDocument.getFile());
+            Scene dialogScene = new Scene(root);
+            dialogStage.setScene(dialogScene);
+            if (themeManager != null) {
+                themeManager.applyThemeToScene(dialogScene); // Gọi phương thức đã sửa trong ThemeManager
+            }
 
             dialogStage.setOnCloseRequest(event -> controller.shutdown());
             dialogStage.showAndWait();
@@ -796,6 +993,29 @@ private void handleDeletePage() {
         }
     }
 
+    // ==================== Drawing Operations ====================
+
+    private void updateAnnotationMode(AnnotationLayer.AnnotationMode mode) {
+        if (pagesContainer == null) return;
+        pagesContainer.getChildren().forEach(node -> {
+            if (node instanceof javafx.scene.layout.VBox pageBox) {
+                if (!pageBox.getChildren().isEmpty() && pageBox.getChildren().get(0) instanceof javafx.scene.layout.StackPane stack) {
+                    stack.getChildren().stream()
+                            .filter(child -> child instanceof AnnotationLayer)
+                            .map(child -> (AnnotationLayer) child)
+                            .forEach(layer -> {
+                                layer.setAnnotationMode(mode);
+                                // Nếu vẽ hình thì chọn màu Đỏ, Highlight thì màu Vàng
+                                if (mode != AnnotationLayer.AnnotationMode.NONE && mode != AnnotationLayer.AnnotationMode.HIGHLIGHT) {
+                                    layer.setDrawingColor(javafx.scene.paint.Color.RED);
+                                }
+                            });
+                }
+            }
+        });
+        uiStateManager.updateStatus("Tool: " + mode);
+    }
+
     @FXML
     private void handleClearRecentFiles() {
         recentFilesManager.clearRecentFiles();
@@ -811,5 +1031,57 @@ private void handleDeletePage() {
                 openPDFFile(file);
             }
         }
+    }
+
+    // ==================== Drawing Operations ====================
+
+    @FXML
+    private void handleDrawRect() {
+        updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.RECTANGLE);
+    }
+
+    @FXML
+    private void handleDrawCircle() {
+        updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.CIRCLE);
+    }
+
+    @FXML
+    private void handleDrawArrow() {
+        updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.ARROW);
+    }
+
+    @FXML
+    private void handleColorChange() {
+        updateDrawingStyleForAllPages();
+    }
+    private void updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode mode) {
+        if (pagesContainer == null) return;
+
+        processAllAnnotationLayers(layer -> layer.setAnnotationMode(mode));
+
+        uiStateManager.updateStatus("Tool: " + mode);
+    }
+    private void updateDrawingStyleForAllPages() {
+        if (pagesContainer == null || colorPicker == null || strokeWidthSlider == null) return;
+
+        javafx.scene.paint.Color color = colorPicker.getValue();
+        double width = strokeWidthSlider.getValue();
+
+        processAllAnnotationLayers(layer -> {
+            layer.setDrawingColor(color);
+            layer.setLineWidth(width);
+        });
+    }
+    private void processAllAnnotationLayers(java.util.function.Consumer<AnnotationLayer> action) {
+        pagesContainer.getChildren().forEach(node -> {
+            if (node instanceof VBox pageBox && !pageBox.getChildren().isEmpty()) {
+                if (pageBox.getChildren().get(0) instanceof StackPane stack) {
+                    stack.getChildren().stream()
+                            .filter(child -> child instanceof AnnotationLayer)
+                            .map(child -> (AnnotationLayer) child)
+                            .forEach(action);
+                }
+            }
+        });
     }
 }

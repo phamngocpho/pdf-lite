@@ -178,7 +178,13 @@ public class PDFDocument {
      * @param rotation the rotation angle in degrees
      */
     public void setRotation(int rotation) {
-        this.rotation = rotation % 360;
+        int newRotation = rotation % 360;
+        if (newRotation < 0) newRotation += 360;
+
+        if (this.rotation != newRotation) {
+            this.rotation = newRotation;
+            clearCache();
+        }
     }
 
     /**
@@ -249,4 +255,6 @@ public class PDFDocument {
     public void clearCache() {
         imageCache.clear();
     }
+
+
 }

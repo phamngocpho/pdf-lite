@@ -34,7 +34,7 @@ public class PageRenderer {
     private final Map<String, Image> imageCache;
     private final Set<Integer> loadingPages;
     private final Map<Integer, Future<?>> pendingRenders;
-    
+
     private PDFDocument currentDocument;
     private double currentZoom;
     private boolean highlightModeActive;
@@ -163,7 +163,7 @@ public class PageRenderer {
         // Check cache first - use CONSISTENT cache key format
         String cacheKey = getCacheKey(pageIndex, currentZoom);
         Image cachedImage = imageCache.get(cacheKey);
-        
+
         if (cachedImage != null) {
             logger.debug("Using cached image for page {} (key: {})", pageIndex + 1, cacheKey);
             Platform.runLater(() -> {
@@ -180,6 +180,26 @@ public class PageRenderer {
                     logger.debug("Render interrupted for page {}", pageIndex + 1);
                     return;
                 }
+
+                // Render the page
+                Image image = pdfService.renderPage(
+                        currentDocument,
+                        pageIndex,
+                        (float) currentZoom
+                );
+
+                // Cache with CONSISTENT key format
+                imageCache.put(cacheKey, image);
+                logger.debug("Rendered and cached page {} (key: {})", pageIndex + 1, cacheKey);
+
+                // Update UI on JavaFX thread
+                Platform.runLater(() -> {
+                    if (!Thread.currentThread().isInterrupted()) {
+                        displayImage(image, pageBox, pageIndex);
+                        loadingPages.remove(pageIndex);
+                        logger.debug("Displayed page {}", pageIndex + 1);
+                    }
+                });
 
                 // Render the page
                 Image image = pdfService.renderPage(

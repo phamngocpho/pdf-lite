@@ -87,8 +87,8 @@ public class SplitDialogController {
 
         // Setup button states
         updateButtonStates();
-        rangesListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> 
-            updateButtonStates());
+        rangesListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) ->
+                updateButtonStates());
 
         // Hide progress bar initially
         progressBar.setVisible(false);
@@ -110,7 +110,7 @@ public class SplitDialogController {
      */
     public void setSourceFile(File file) {
         this.sourceFile = file;
-        
+
         if (file == null) {
             return;
         }
@@ -119,10 +119,10 @@ public class SplitDialogController {
             totalPages = splitService.getPageCount(file);
             fileNameLabel.setText(file.getName());
             totalPagesLabel.setText(String.format("Total Pages: %d", totalPages));
-            
+
             // Load thumbnails
             loadThumbnails();
-            
+
             updateStatus("Ready to split");
             logger.info("Loaded PDF: {} ({} pages)", file.getName(), totalPages);
         } catch (IOException e) {
@@ -145,7 +145,7 @@ public class SplitDialogController {
     private void updateInputVisibility() {
         rangeInputBox.setVisible(splitByRangeRadio.isSelected());
         rangeInputBox.setManaged(splitByRangeRadio.isSelected());
-        
+
         pagesInputBox.setVisible(splitByPagesRadio.isSelected());
         pagesInputBox.setManaged(splitByPagesRadio.isSelected());
     }
@@ -156,7 +156,7 @@ public class SplitDialogController {
     @FXML
     private void handleAddRange() {
         String rangeText = rangeTextField.getText().trim();
-        
+
         if (rangeText.isEmpty()) {
             showError("Invalid Input", "Please enter a page range (e.g., 1-5)");
             return;
@@ -174,15 +174,15 @@ public class SplitDialogController {
             int endPage = Integer.parseInt(parts[1].trim());
 
             if (startPage < 1 || endPage > totalPages || startPage > endPage) {
-                showError("Invalid Range", 
-                    String.format("Range must be between 1 and %d, with start <= end", totalPages));
+                showError("Invalid Range",
+                        String.format("Range must be between 1 and %d, with start <= end", totalPages));
                 return;
             }
 
             rangesList.add(rangeText);
             rangeTextField.clear();
             updateButtonStates();
-            
+
         } catch (NumberFormatException e) {
             showError("Invalid Input", "Please enter valid page numbers");
         }
@@ -214,7 +214,7 @@ public class SplitDialogController {
         DirectoryChooser dirChooser = new DirectoryChooser();
         dirChooser.setTitle("Select Output Directory");
         File outputDir = dirChooser.showDialog(dialogStage);
-        
+
         if (outputDir == null) {
             return; // User cancelled
         }
@@ -258,7 +258,7 @@ public class SplitDialogController {
      */
     private void performSplitByPageCount(File outputDir) {
         String pagesPerFileText = pagesPerFileTextField.getText().trim();
-        
+
         if (pagesPerFileText.isEmpty()) {
             showError("Invalid Input", "Please enter the number of pages per file");
             return;
@@ -266,15 +266,15 @@ public class SplitDialogController {
 
         try {
             int pagesPerFile = Integer.parseInt(pagesPerFileText);
-            
+
             if (pagesPerFile < 1 || pagesPerFile > totalPages) {
-                showError("Invalid Input", 
-                    String.format("Pages per file must be between 1 and %d", totalPages));
+                showError("Invalid Input",
+                        String.format("Pages per file must be between 1 and %d", totalPages));
                 return;
             }
 
             String baseName = getBaseFileName(sourceFile);
-            
+
             executorService.submit(() -> {
                 try {
                     setUIEnabled(false);
@@ -284,7 +284,7 @@ public class SplitDialogController {
                     updateStatus("Splitting PDF...");
 
                     List<File> outputFiles = splitService.splitByPageCount(
-                        sourceFile, outputDir, pagesPerFile, baseName
+                            sourceFile, outputDir, pagesPerFile, baseName
                     );
 
                     handleSplitSuccess(outputFiles, outputDir);
@@ -293,7 +293,7 @@ public class SplitDialogController {
                     handleSplitError(e);
                 }
             });
-            
+
         } catch (NumberFormatException e) {
             showError("Invalid Input", "Please enter a valid number");
         }
@@ -304,7 +304,7 @@ public class SplitDialogController {
      */
     private void performSplitAllPages(File outputDir) {
         String baseName = getBaseFileName(sourceFile);
-        
+
         executorService.submit(() -> {
             try {
                 setUIEnabled(false);
@@ -314,7 +314,7 @@ public class SplitDialogController {
                 updateStatus("Splitting PDF into individual pages...");
 
                 List<File> outputFiles = splitService.splitIntoIndividualPages(
-                    sourceFile, outputDir, baseName
+                        sourceFile, outputDir, baseName
                 );
 
                 handleSplitSuccess(outputFiles, outputDir);
@@ -369,22 +369,22 @@ public class SplitDialogController {
      */
     private void createZipArchive(List<File> outputFiles, File outputDir) {
         updateStatus("Creating ZIP archive...");
-        
+
         executorService.submit(() -> {
             try {
                 String baseName = getBaseFileName(sourceFile);
                 File zipFile = new File(outputDir, baseName + "_split.zip");
-                
+
                 ZipUtility.createZipArchive(outputFiles, zipFile);
-                
+
                 Platform.runLater(() -> {
                     updateStatus("ZIP archive created!");
-                    showInfo("Split Complete", 
-                        String.format("Successfully split PDF into %d files.\nZIP archive created: %s", 
-                            outputFiles.size(), zipFile.getName()));
+                    showInfo("Split Complete",
+                            String.format("Successfully split PDF into %d files.\nZIP archive created: %s",
+                                    outputFiles.size(), zipFile.getName()));
                     handleCancel();
                 });
-                
+
             } catch (IOException e) {
                 logger.error("Error creating ZIP", e);
                 Platform.runLater(() -> {
@@ -400,9 +400,9 @@ public class SplitDialogController {
      * Shows split complete dialog.
      */
     private void showSplitCompleteDialog(List<File> outputFiles, File outputDir) {
-        showInfo("Split Complete", 
-            String.format("Successfully split PDF into %d files.\nOutput directory: %s", 
-                outputFiles.size(), outputDir.getAbsolutePath()));
+        showInfo("Split Complete",
+                String.format("Successfully split PDF into %d files.\nOutput directory: %s",
+                        outputFiles.size(), outputDir.getAbsolutePath()));
         handleCancel();
     }
 
@@ -435,7 +435,7 @@ public class SplitDialogController {
      */
     private void updateButtonStates() {
         boolean hasSelection = rangesListView.getSelectionModel().getSelectedItem() != null;
-        
+
         removeRangeButton.setDisable(!hasSelection);
         splitButton.setDisable(sourceFile == null);
     }

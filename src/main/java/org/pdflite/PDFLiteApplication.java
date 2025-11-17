@@ -65,20 +65,20 @@ public class PDFLiteApplication extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         logger.info("Starting PDF Lite Application");
-        
+
         FXMLLoader fxmlLoader = new FXMLLoader(PDFLiteApplication.class.getResource("main-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 1200, 800);
-        
+
         // Add CSS stylesheet
         scene.getStylesheets().add(
-            Objects.requireNonNull(PDFLiteApplication.class.getResource("styles.css")).toExternalForm()
+                Objects.requireNonNull(PDFLiteApplication.class.getResource("styles.css")).toExternalForm()
         );
-        
+
         stage.setTitle("PDF Lite - PDF Viewer & Editor");
         stage.setScene(scene);
         stage.setMinWidth(MIN_WIDTH);
         stage.setMinHeight(MIN_HEIGHT);
-        
+
         // Set application icon (if available)
         try {
             stage.getIcons().add(new Image(Objects.requireNonNull(PDFLiteApplication.class.getResourceAsStream("icon.png"))));

@@ -8,10 +8,17 @@ import org.pdflite.model.Annotation;
 import org.pdflite.model.HighlightAnnotation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.pdflite.model.ShapeAnnotation;
+import org.pdflite.model.RectangleAnnotation;
+import org.pdflite.model.CircleAnnotation;
+import org.pdflite.model.ArrowAnnotation;
 
 import java.util.ArrayList;
 import java.util.List;
+import javafx.scene.Cursor;
 import org.pdflite.model.SearchResult;
+
+import static org.pdflite.model.DrawingTool.CIRCLE;
 import static org.pdflite.util.Constants.LOW_RENDER_SCALE;
 
 /**
@@ -43,7 +50,12 @@ import static org.pdflite.util.Constants.LOW_RENDER_SCALE;
 public class AnnotationLayer extends Canvas {
 
     private static final Logger logger = LoggerFactory.getLogger(AnnotationLayer.class);
-    
+
+    private int pageIndex = 0;
+    private Annotation tempAnnotation;
+    private double currentLineWidth = 2.0;
+    private Runnable onAnnotationAdded;
+
     /**
      * List of annotations currently on this layer.
      */
@@ -93,6 +105,20 @@ public class AnnotationLayer extends Canvas {
         logger.debug("AnnotationLayer created: {}x{}", width, height);
     }
 
+
+    public void setOnAnnotationAdded(Runnable callback) {
+        this.onAnnotationAdded = callback;
+    }
+
+    public void setLineWidth(double width) {
+        this.currentLineWidth = width;
+    }
+
+    // Hàm này dùng chung để set màu cho cả Highlight và Vẽ hình
+    public void setDrawingColor(Color color) {
+        this.currentColor = color;
+    }
+
     public void setScale(double scale) {
         this.scale = scale;
     }
@@ -110,15 +136,34 @@ public class AnnotationLayer extends Canvas {
      */
     private void setupMouseHandlers() {
         setOnMousePressed(event -> {
-            if (event.getButton() == MouseButton.PRIMARY && currentMode != AnnotationMode.NONE) {
-                startX = event.getX();
-                startY = event.getY();
-                isDrawing = true;
+            if (currentMode != AnnotationMode.NONE) {
+
+                // --- BẮT ĐẦU FIX LỖI XUNG ĐỘT ---
+                // Nếu bấm chuột chính (trái), BẮT ĐẦU VẼ và NUỐT (Consume) sự kiện
+                if (event.getButton() == MouseButton.PRIMARY) {
+                    startX = event.getX();
+                    startY = event.getY();
+                    isDrawing = true;
+                    event.consume(); // Rất quan trọng để chặn ContextMenuPane
+                }
+                // Nếu bấm chuột phụ (phải), HỦY chế độ vẽ hiện tại
+                else if (event.getButton() == MouseButton.SECONDARY) {
+                    setAnnotationMode(AnnotationMode.NONE); // Trở về View Mode
+                    event.consume(); // Nuốt sự kiện để không bật ContextMenu
+                }
+                // --- KẾT THÚC FIX LỖI XUNG ĐỘT ---
             }
         });
 
         setOnMouseDragged(event -> {
-            if (isDrawing && currentMode == AnnotationMode.HIGHLIGHT) {
+            if (!isDrawing) return;
+
+            double mStartX = startX / scale;
+            double mStartY = startY / scale;
+            double mEndX = event.getX() / scale;
+            double mEndY = event.getY() / scale;
+
+            if (currentMode == AnnotationMode.HIGHLIGHT) {
                 redraw();
                 GraphicsContext gc = getGraphicsContext2D();
                 gc.setFill(getColorWithAlpha(currentColor, 0.4));
@@ -128,18 +173,35 @@ public class AnnotationLayer extends Canvas {
                 double h = Math.abs(event.getY() - startY);
                 gc.fillRect(x, y, w, h);
             }
+            else {
+                switch (currentMode) {
+                    case RECTANGLE:
+                        tempAnnotation = new RectangleAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY, currentColor, currentLineWidth);
+                        break;
+                    case CIRCLE:
+                        tempAnnotation = new CircleAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY, currentColor, currentLineWidth);
+                        break;
+                    case ARROW:
+                        tempAnnotation = new ArrowAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY, currentColor, currentLineWidth);
+                        break;
+                }
+                redraw();
+            }
         });
 
         setOnMouseReleased(event -> {
             if (isDrawing && event.getButton() == MouseButton.PRIMARY) {
-                switch (currentMode) {
-                    case HIGHLIGHT:
-                        addHighlight(startX, startY, event.getX(), event.getY());
-                        break;
-                    case DRAW, TEXT:
-                        break;
+
+                if (currentMode == AnnotationMode.HIGHLIGHT) {
+                    addHighlight(startX, startY, event.getX(), event.getY());
                 }
+                else if (tempAnnotation != null) {
+                    annotations.add(tempAnnotation); // Lưu vào danh sách
+                    if (onAnnotationAdded != null) onAnnotationAdded.run(); // Báo Controller
+                }
+
                 isDrawing = false;
+                tempAnnotation = null; // Xóa hình tạm
                 redraw();
             }
         });
@@ -183,16 +245,23 @@ public class AnnotationLayer extends Canvas {
     public void redraw() {
         GraphicsContext gc = getGraphicsContext2D();
         gc.clearRect(0, 0, getWidth(), getHeight());
-
+        drawSearchHighlights(gc);
         for (Annotation annotation : annotations) {
             if (annotation instanceof HighlightAnnotation highlight) {
                 gc.setFill(getColorWithAlpha(highlight.getColor(), 0.4));
                 gc.fillRect(highlight.getX(), highlight.getY(),
                         highlight.getWidth(), highlight.getHeight());
             }
+            else if (annotation instanceof ShapeAnnotation shape) {
+                shape.draw(gc, scale);
+            }
         }
 
-        drawSearchHighlights(gc);
+        if (tempAnnotation instanceof ShapeAnnotation shapeTemp) {
+            gc.setLineDashes(5); // Nét đứt
+            shapeTemp.draw(gc, scale);
+            gc.setLineDashes(0); // Reset về nét liền
+        }
     }
 
     /**
@@ -286,6 +355,13 @@ public class AnnotationLayer extends Canvas {
         HIGHLIGHT,
 
         /**
+         * Draw shape
+         */
+        RECTANGLE,
+        CIRCLE,
+        ARROW,
+
+        /**
          * Freehand drawing mode (not yet implemented).
          */
         DRAW,
@@ -317,10 +393,10 @@ public class AnnotationLayer extends Canvas {
             logger.trace("Active result unchanged: {}", result);
             return;
         }
-        
+
         this.activeSearchResult = result;
         redraw();
-        
+
         if (result != null) {
             logger.debug("Set active search result: page={}, start={}, end={}, pos=({}, {})",
                     result.pageNumber(), result.startIndex(), result.endIndex(),
@@ -358,7 +434,7 @@ public class AnnotationLayer extends Canvas {
                 logger.warn("Invalid coordinates for search result: {}", result);
                 continue;
             }
-            
+
             boolean isActive = (result.equals(activeSearchResult));
 
             Color highlightColor = isActive ? ACTIVE_SEARCH_HIGHLIGHT_COLOR : SEARCH_HIGHLIGHT_COLOR;
@@ -384,7 +460,7 @@ public class AnnotationLayer extends Canvas {
                 gc.setLineWidth(2);
                 gc.strokeRect(x, y, width, height);
                 activeCount++;
-                
+
                 logger.trace("Drew ACTIVE highlight at ({}, {}) size {}x{} - page={}, start={}",
                         x, y, width, height, result.pageNumber(), result.startIndex());
             } else {
@@ -397,7 +473,7 @@ public class AnnotationLayer extends Canvas {
         if (activeCount > 1) {
             logger.warn("⚠️ Multiple active highlights detected! Count: {}", activeCount);
         }
-        
+
         logger.trace("Drew {} normal + {} active highlights", normalCount, activeCount);
     }
 }

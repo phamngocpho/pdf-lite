@@ -72,9 +72,9 @@ public class ContextMenuHandler {
      * @param zoom Current zoom level (e.g., 1.0 = 100%)
      */
     public void analyzeSelection(PDFDocument document, int pageIndex,
-            double canvasX1, double canvasY1,
-            double canvasX2, double canvasY2,
-            double zoom) {
+                                 double canvasX1, double canvasY1,
+                                 double canvasX2, double canvasY2,
+                                 double zoom) {
 
         if (document == null || document.getDocument() == null) {
             logger.warn("Analysis aborted: document is null");
@@ -165,9 +165,9 @@ public class ContextMenuHandler {
             ClipboardContent content = new ClipboardContent();
             content.putString(currentSelection.getText());
             Clipboard.getSystemClipboard().setContent(content);
-            
-            logger.info("Copied {} characters to clipboard", 
-                currentSelection.getText().length());
+
+            logger.info("Copied {} characters to clipboard",
+                    currentSelection.getText().length());
         } else {
             logger.warn("No text to copy");
         }
@@ -199,8 +199,9 @@ public class ContextMenuHandler {
         private final Rectangle2D.Float pdfRect;
         private final String text;
 
+
         public SelectionInfo(int pageIndex, Rectangle2D.Float pdfRect,
-                String text, List<Object> images) {
+                             String text, List<Object> images) {
             this.pageIndex = pageIndex;
             this.pdfRect = pdfRect;
             this.text = text;
@@ -236,8 +237,8 @@ public class ContextMenuHandler {
      * </ol>
      */
     public void analyzeCursorForImage(PDFDocument document, int pageIndex,
-            double canvasX, double canvasY,
-            double zoom) {
+                                      double canvasX, double canvasY,
+                                      double zoom) {
 
         currentImageUnderCursor = null;
 

@@ -79,7 +79,7 @@ public class SearchManager {
             showPanel(position);
         }
     }
-    
+
     public void showResults(List<SearchResult> results) {
         clearHighlights();
 
@@ -271,7 +271,7 @@ public class SearchManager {
                 if (activeResult != null && activeResult.pageNumber() - 1 == pageIndex) {
                     layer.setActiveSearchResult(activeResult);
                     activeSetCount++;
-                    
+
                     logger.debug("Set active result on page {} - {}",
                             pageIndex + 1, activeResult);
                 } else {
