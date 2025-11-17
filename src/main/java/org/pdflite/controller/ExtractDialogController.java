@@ -85,7 +85,7 @@ public class ExtractDialogController {
      */
     public void setSourceFile(File file) {
         this.sourceFile = file;
-
+        
         if (file == null) {
             return;
         }
@@ -94,10 +94,10 @@ public class ExtractDialogController {
             totalPages = splitService.getPageCount(file);
             fileNameLabel.setText(file.getName());
             totalPagesLabel.setText(String.format("Total Pages: %d", totalPages));
-
+            
             // Load thumbnails
             loadThumbnails();
-
+            
             updateStatus("Ready to extract");
             logger.info("Loaded PDF: {} ({} pages)", file.getName(), totalPages);
         } catch (IOException e) {
@@ -110,8 +110,8 @@ public class ExtractDialogController {
      * Loads thumbnail previews for all pages.
      */
     private void loadThumbnails() {
-        ThumbnailLoader.loadThumbnails(sourceFile, totalPages, previewPane,
-                pdfService, executorService, this::updateStatus);
+        ThumbnailLoader.loadThumbnails(sourceFile, totalPages, previewPane, 
+            pdfService, executorService, this::updateStatus);
     }
 
     /**
@@ -123,7 +123,7 @@ public class ExtractDialogController {
             rangeValidationLabel.setStyle("-fx-text-fill: #666;");
             return;
         }
-
+        
         try {
             List<Integer> pages = parsePageRanges(rangeText);
             if (pages.isEmpty()) {
@@ -131,7 +131,7 @@ public class ExtractDialogController {
                 rangeValidationLabel.setStyle("-fx-text-fill: #f44336;");
             } else {
                 rangeValidationLabel.setText(
-                        String.format("✓ %d page(s) will be extracted", pages.size())
+                    String.format("✓ %d page(s) will be extracted", pages.size())
                 );
                 rangeValidationLabel.setStyle("-fx-text-fill: #4CAF50;");
             }
@@ -147,30 +147,30 @@ public class ExtractDialogController {
     private List<Integer> parsePageRanges(String rangeText) throws IllegalArgumentException {
         List<Integer> pages = new ArrayList<>();
         String[] parts = rangeText.split(",");
-
+        
         for (String part : parts) {
             part = part.trim();
             if (part.isEmpty()) {
                 continue;
             }
-
+            
             if (part.contains("-")) {
                 // Range like "1-5"
                 String[] rangeParts = part.split("-");
                 if (rangeParts.length != 2) {
                     throw new IllegalArgumentException("Invalid range format: " + part);
                 }
-
+                
                 try {
                     int start = Integer.parseInt(rangeParts[0].trim());
                     int end = Integer.parseInt(rangeParts[1].trim());
-
+                    
                     if (start < 1 || end > totalPages || start > end) {
                         throw new IllegalArgumentException(
-                                String.format("Invalid range %d-%d (total pages: %d)", start, end, totalPages)
+                            String.format("Invalid range %d-%d (total pages: %d)", start, end, totalPages)
                         );
                     }
-
+                    
                     for (int i = start; i <= end; i++) {
                         if (!pages.contains(i)) {
                             pages.add(i);
@@ -185,7 +185,7 @@ public class ExtractDialogController {
                     int page = Integer.parseInt(part);
                     if (page < 1 || page > totalPages) {
                         throw new IllegalArgumentException(
-                                String.format("Page %d is out of range (total pages: %d)", page, totalPages)
+                            String.format("Page %d is out of range (total pages: %d)", page, totalPages)
                         );
                     }
                     if (!pages.contains(page)) {
@@ -196,7 +196,7 @@ public class ExtractDialogController {
                 }
             }
         }
-
+        
         // Sort pages
         Collections.sort(pages);
         return pages;
@@ -211,29 +211,29 @@ public class ExtractDialogController {
             showError("No File", "Please select a PDF file first");
             return;
         }
-
+        
         String rangeText = rangeTextArea.getText().trim();
         if (rangeText.isEmpty()) {
             showError("No Pages Selected", "Please enter page ranges to extract");
             return;
         }
-
+        
         try {
             List<Integer> pages = parsePageRanges(rangeText);
             if (pages.isEmpty()) {
                 showError("No Pages", "No valid pages to extract");
                 return;
             }
-
+            
             // Choose output directory
             DirectoryChooser dirChooser = new DirectoryChooser();
             dirChooser.setTitle("Select Output Directory");
             File outputDir = dirChooser.showDialog(dialogStage);
-
+            
             if (outputDir == null) {
                 return; // User cancelled
             }
-
+            
             // Determine output file name
             String outputFileName = outputFileNameField.getText().trim();
             if (outputFileName.isEmpty()) {
@@ -243,12 +243,12 @@ public class ExtractDialogController {
             if (!outputFileName.toLowerCase().endsWith(".pdf")) {
                 outputFileName += ".pdf";
             }
-
+            
             File outputFile = new File(outputDir, outputFileName);
-
+            
             // Perform extraction
             performExtract(pages, outputFile);
-
+            
         } catch (IllegalArgumentException e) {
             showError("Invalid Range", e.getMessage());
         }
@@ -265,38 +265,38 @@ public class ExtractDialogController {
                 progressBar.setManaged(true);
                 progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
                 updateStatus("Extracting pages...");
-
+                
                 // Create page ranges
                 List<PDFSplitService.PageRange> ranges = createPageRanges(pages, outputFile);
-
+                
                 // If single range, extract directly
                 if (ranges.size() == 1) {
                     List<File> result = splitService.splitPDF(
-                            sourceFile,
-                            outputFile.getParentFile(),
-                            ranges
+                        sourceFile, 
+                        outputFile.getParentFile(), 
+                        ranges
                     );
                     handleExtractSuccess(result.getFirst());
                 } else {
                     // Multiple ranges, extract and merge
-                    File tempDir = new File(System.getProperty("java.io.tmpdir"),
-                            "pdf-lite-extract-" + System.currentTimeMillis());
+                    File tempDir = new File(System.getProperty("java.io.tmpdir"), 
+                        "pdf-lite-extract-" + System.currentTimeMillis());
                     tempDir.mkdirs();
-
+                    
                     List<File> tempFiles = splitService.splitPDF(sourceFile, tempDir, ranges);
-
+                    
                     // Merge all temp files into output file
                     mergeService.mergePDFs(tempFiles, outputFile);
-
+                    
                     // Clean up temp files
                     for (File tempFile : tempFiles) {
                         tempFile.delete();
                     }
                     tempDir.delete();
-
+                    
                     handleExtractSuccess(outputFile);
                 }
-
+                
             } catch (IOException e) {
                 handleExtractError(e);
             }
@@ -334,8 +334,8 @@ public class ExtractDialogController {
         Platform.runLater(() -> {
             progressBar.setProgress(1.0);
             updateStatus("Extract completed successfully!");
-            showInfo("Extract Complete",
-                    String.format("Successfully extracted pages to:\n%s", outputFile.getAbsolutePath()));
+            showInfo("Extract Complete", 
+                String.format("Successfully extracted pages to:\n%s", outputFile.getAbsolutePath()));
             handleCancel();
         });
     }

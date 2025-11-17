@@ -152,7 +152,7 @@
                     </items>
                 </MenuButton>
                 <Separator orientation="VERTICAL"/>
-
+                
                 <!-- View -->
                 <Button text="Fullscreen" onAction="#handleToggleFullScreen" style="-fx-font-size: 11px;">
                     <tooltip><Tooltip text="Toggle Fullscreen (F11)"/></tooltip>

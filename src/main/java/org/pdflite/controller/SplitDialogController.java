@@ -135,8 +135,8 @@ public class SplitDialogController {
      * Loads thumbnail previews for all pages.
      */
     private void loadThumbnails() {
-        ThumbnailLoader.loadThumbnails(sourceFile, totalPages, previewPane,
-                pdfService, executorService, this::updateStatus);
+        ThumbnailLoader.loadThumbnails(sourceFile, totalPages, previewPane, 
+            pdfService, executorService, this::updateStatus);
     }
 
     /**

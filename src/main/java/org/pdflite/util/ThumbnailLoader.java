@@ -36,8 +36,8 @@ public class ThumbnailLoader {
      * @param updateStatus    callback to update status
      */
     public static void loadThumbnails(File sourceFile, int totalPages, FlowPane previewPane,
-                                      PDFService pdfService, ExecutorService executorService,
-                                      Consumer<String> updateStatus) {
+                                     PDFService pdfService, ExecutorService executorService,
+                                     Consumer<String> updateStatus) {
         previewPane.getChildren().clear();
         updateStatus.accept("Loading thumbnails...");
 
@@ -45,14 +45,14 @@ public class ThumbnailLoader {
             PDFDocument doc = null;
             try {
                 doc = new PDFDocument(
-                        org.apache.pdfbox.Loader.loadPDF(sourceFile),
-                        sourceFile
+                    org.apache.pdfbox.Loader.loadPDF(sourceFile),
+                    sourceFile
                 );
 
                 for (int i = 0; i < totalPages; i++) {
                     final int pageNum = i;
                     Image thumbnail = pdfService.renderPage(doc, pageNum, (float) PREVIEW_SCALE);
-
+                    
                     Platform.runLater(() -> {
                         VBox pageBox = createThumbnailBox(thumbnail, pageNum + 1);
                         previewPane.getChildren().add(pageBox);
@@ -60,7 +60,7 @@ public class ThumbnailLoader {
                 }
 
                 Platform.runLater(() -> updateStatus.accept("Thumbnails loaded"));
-
+                
             } catch (IOException e) {
                 logger.error("Error loading thumbnails", e);
                 Platform.runLater(() -> updateStatus.accept("Error loading thumbnails"));
@@ -95,7 +95,7 @@ public class ThumbnailLoader {
         VBox box = new VBox(5, imageView, pageLabel);
         box.setAlignment(Pos.CENTER);
         box.setStyle("-fx-border-color: #ccc; -fx-border-width: 1; -fx-padding: 5;");
-
+        
         return box;
     }
 }

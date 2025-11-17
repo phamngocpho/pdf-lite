@@ -154,7 +154,7 @@ public class CoordinateConverter {
      * @return true if coordinates are valid
      */
     public static boolean isValidPdfCoordinate(float pdfX, float pdfY,
-                                               float pageWidth, float pageHeight) {
+            float pageWidth, float pageHeight) {
 
         //logger.warn("Invalid PDF coordinates: ({:.2f},{:.2f}) outside bounds (0,0)-({:.2f},{:.2f})",pdfX, pdfY, pageWidth, pageHeight);
 

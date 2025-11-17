@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -237,7 +238,7 @@ public class PDFService {
      * </p>
      * <p>
      * Example usage:
-     *
+     * 
      * <pre>
      * List&lt;Integer&gt; pages = pdfService.searchTextInPages(document, "important");
      * // pages contains [0, 5, 12] if the term appears on pages 1, 6, and 13
@@ -339,6 +340,7 @@ public class PDFService {
             throw new IOException("Failed to save document: " + e.getMessage(), e);
         }
     }
+}
 
     /**
      * Save the current document to a specific path.

@@ -316,15 +316,14 @@ public class SearchPanel extends VBox {
      * Handle result selected
      */
     private void handleResultSelected(SearchResult result) {
-        if (mainController != null && result != null) {
-            // ✅ FIX: Use highlightSearchResult to set active result
-            mainController.highlightSearchResult(result);
-
-            int position = resultsListView.getSelectionModel().getSelectedIndex() + 1;
-            updateStatus(String.format("Result %d of %d on page %d",
-                    position, searchResults.size(), result.pageNumber()));
-
-            updateNavigationButtons();
+    if (mainController != null && result != null) {
+        mainController.highlightSearchResult(result);
+        
+        int position = resultsListView.getSelectionModel().getSelectedIndex() + 1;
+        updateStatus(String.format("Result %d of %d on page %d", 
+                                 position, searchResults.size(), result.pageNumber()));
+        
+        updateNavigationButtons();
         }
     }
 

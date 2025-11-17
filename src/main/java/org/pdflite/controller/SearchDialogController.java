@@ -216,9 +216,9 @@ public class SearchDialogController {
             mainController.highlightSearchResult(result);
 
             int position = resultsListView.getSelectionModel().getSelectedIndex() + 1;
-            updateStatus(String.format("Result %d of %d on page %d",
-                    position, searchResults.size(), result.pageNumber()));
-
+            updateStatus(String.format("Result %d of %d on page %d", 
+                                    position, searchResults.size(), result.pageNumber()));
+            
             updateNavigationButtons();
         }
     }
