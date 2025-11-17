@@ -20,7 +20,7 @@ public class ZoomManager {
 
     private final PDFService pdfService;
     private final ZoomChangeListener zoomChangeListener;
-    
+
     private double currentZoom = Constants.DEFAULT_ZOOM;
     private ComboBox<String> zoomComboBox;
     private ScrollPane scrollPane;
@@ -188,8 +188,8 @@ public class ZoomManager {
             }
 
             String statusMessage = prefix != null
-                ? String.format("%s - Zoom: %.0f%%", prefix, currentZoom * 100)
-                : String.format("Zoom: %.0f%%", currentZoom * 100);
+                    ? String.format("%s - Zoom: %.0f%%", prefix, currentZoom * 100)
+                    : String.format("Zoom: %.0f%%", currentZoom * 100);
 
             if (zoomChangeListener != null) {
                 zoomChangeListener.onZoomChanged(currentZoom);
@@ -206,7 +206,7 @@ public class ZoomManager {
      */
     public double calculateInitialZoom(Image firstPageImage) {
         if (scrollPane != null && scrollPane.getViewportBounds().getWidth() > 0
-            && scrollPane.getViewportBounds().getHeight() > 0) {
+                && scrollPane.getViewportBounds().getHeight() > 0) {
             return calculateFitToPageZoom(firstPageImage.getWidth(), firstPageImage.getHeight());
         } else {
             return 0.7;

@@ -1,10 +1,12 @@
 package org.pdflite;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
+import org.pdflite.controller.MainController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,29 +65,39 @@ public class PDFLiteApplication extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         logger.info("Starting PDF Lite Application");
-        
+
         FXMLLoader fxmlLoader = new FXMLLoader(PDFLiteApplication.class.getResource("main-view.fxml"));
         Scene scene = new Scene(fxmlLoader.load(), 1200, 800);
-        
+
         // Add CSS stylesheet
         scene.getStylesheets().add(
-            Objects.requireNonNull(PDFLiteApplication.class.getResource("styles.css")).toExternalForm()
+                Objects.requireNonNull(PDFLiteApplication.class.getResource("styles.css")).toExternalForm()
         );
-        
+
         stage.setTitle("PDF Lite - PDF Viewer & Editor");
         stage.setScene(scene);
         stage.setMinWidth(MIN_WIDTH);
         stage.setMinHeight(MIN_HEIGHT);
-        
+
         // Set application icon (if available)
         try {
             stage.getIcons().add(new Image(Objects.requireNonNull(PDFLiteApplication.class.getResourceAsStream("icon.png"))));
         } catch (Exception e) {
             logger.warn("Could not load application icon");
         }
-        
+
+        // Get controller and set up window close handler
+        MainController controller = fxmlLoader.getController();
+        stage.setOnCloseRequest(event -> {
+            controller.performExit();
+            event.consume();
+        });
+
         stage.show();
         logger.info("Application started successfully");
+
+        // Open last file after UI is shown
+        Platform.runLater(controller::openLastFile);
     }
 
 }

@@ -1,48 +1,86 @@
-// src/main/java/org/pdflite/view/AnnotationLayer.java
-
 package org.pdflite.view;
 
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.input.MouseButton;
 import javafx.scene.paint.Color;
-import org.pdflite.manager.DrawingManager; // Thêm import
 import org.pdflite.model.Annotation;
 import org.pdflite.model.HighlightAnnotation;
-// Thêm các import model
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.pdflite.model.ShapeAnnotation;
 import org.pdflite.model.RectangleAnnotation;
 import org.pdflite.model.CircleAnnotation;
 import org.pdflite.model.ArrowAnnotation;
-import org.pdflite.model.DrawingTool;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import javafx.scene.Cursor;
 import org.pdflite.model.SearchResult;
+
+import static org.pdflite.model.DrawingTool.CIRCLE;
 import static org.pdflite.util.Constants.LOW_RENDER_SCALE;
 
+/**
+ * Interactive canvas layer for drawing and managing annotations on PDF pages.
+ * <p>
+ * This class extends JavaFX Canvas and provides an overlay layer that sits on top
+ * of rendered PDF pages. It allows users to create annotations by interacting with
+ * the mouse. The layer supports multiple annotation modes:
+ * <ul>
+ *   <li>{@link AnnotationMode#NONE} - No annotation functionality</li>
+ *   <li>{@link AnnotationMode#HIGHLIGHT} - Create rectangular highlight annotations</li>
+ *   <li>{@link AnnotationMode#DRAW} - Freehand drawing (planned)</li>
+ *   <li>{@link AnnotationMode#TEXT} - Text annotations (planned)</li>
+ *   <li>{@link AnnotationMode#SHAPE} - Shape annotations (planned)</li>
+ * </ul>
+ * </p>
+ * <p>
+ * The layer handles mouse events to create annotations interactively. When in
+ * HIGHLIGHT mode, users can click and drag to select a rectangular area which
+ * becomes a semi-transparent highlight annotation.
+ * </p>
+ *
+ * @author PDF Lite Team
+ * @version 1.0.0
+ * @since 1.0.0
+ * @see Annotation
+ * @see HighlightAnnotation
+ */
 public class AnnotationLayer extends Canvas {
 
     private static final Logger logger = LoggerFactory.getLogger(AnnotationLayer.class);
 
+    private int pageIndex = 0;
+    private Annotation tempAnnotation;
+    private double currentLineWidth = 2.0;
+    private Runnable onAnnotationAdded;
+
+    /**
+     * List of annotations currently on this layer.
+     */
     private final List<Annotation> annotations = new ArrayList<>();
+
+    /**
+     * The current annotation mode.
+     */
     private AnnotationMode currentMode = AnnotationMode.NONE;
 
-    // GIỮ NGUYÊN 'currentColor' cho logic HIGHLIGHT
+    /**
+     * The current color to use for new annotations.
+     */
     private Color currentColor = Color.YELLOW;
 
-    // Tọa độ vẽ
+    /**
+     * Starting X coordinate for drag operations.
+     */
     private double startX, startY;
-    private double currentX, currentY; // Dùng cho live-preview SHAPE
+
+    /**
+     * Flag indicating whether a draw operation is in progress.
+     */
     private boolean isDrawing = false;
 
-    // === CÁC BIẾN MỚI ===
-    private DrawingManager drawingManager;
-    private int pageNumber = 0; // Số trang của layer này
-
-    // (Các biến Search của bạn)
     private final List<SearchResult> searchHighlights = new ArrayList<>();
     private SearchResult activeSearchResult = null;
     private static final Color SEARCH_HIGHLIGHT_COLOR = Color.YELLOW;
@@ -51,26 +89,34 @@ public class AnnotationLayer extends Canvas {
     private static final double ACTIVE_SEARCH_HIGHLIGHT_OPACITY = 0.6;
     private double scale = 1.0;
 
+    /**
+     * Creates a new annotation layer with the specified dimensions.
+     * <p>
+     * The dimensions should match the rendered PDF page image dimensions
+     * to ensure proper alignment of annotations.
+     * </p>
+     *
+     * @param width the width of the layer in pixels
+     * @param height the height of the layer in pixels
+     */
     public AnnotationLayer(double width, double height) {
         super(width, height);
         setupMouseHandlers();
         logger.debug("AnnotationLayer created: {}x{}", width, height);
     }
 
-    // === CÁC HÀM SETTER MỚI ===
-    /**
-     * Inject DrawingManager từ MainController.
-     */
-    public void setDrawingManager(DrawingManager drawingManager) {
-        this.drawingManager = drawingManager;
+
+    public void setOnAnnotationAdded(Runnable callback) {
+        this.onAnnotationAdded = callback;
     }
 
-    /**
-     * Set số trang.
-     * Cần gọi khi tạo AnnotationLayer (trong MainController).
-     */
-    public void setPageNumber(int pageNumber) {
-        this.pageNumber = pageNumber;
+    public void setLineWidth(double width) {
+        this.currentLineWidth = width;
+    }
+
+    // Hàm này dùng chung để set màu cho cả Highlight và Vẽ hình
+    public void setDrawingColor(Color color) {
+        this.currentColor = color;
     }
 
     public void setScale(double scale) {
@@ -78,34 +124,47 @@ public class AnnotationLayer extends Canvas {
     }
 
     /**
-     * Cập nhật setupMouseHandlers để xử lý cả HIGHLIGHT và SHAPE
+     * Sets up mouse event handlers for interactive annotation creation.
+     * <p>
+     * This method configures handlers for:
+     * <ul>
+     *   <li>Mouse pressed - Start annotation creation</li>
+     *   <li>Mouse dragged - Preview annotation while dragging</li>
+     *   <li>Mouse released - Finalize and store annotation</li>
+     * </ul>
+     * </p>
      */
     private void setupMouseHandlers() {
         setOnMousePressed(event -> {
-            if (event.getButton() != MouseButton.PRIMARY) return;
+            if (currentMode != AnnotationMode.NONE) {
 
-            if (currentMode == AnnotationMode.HIGHLIGHT) {
-                // Logic HIGHLIGHT (Giữ nguyên)
-                startX = event.getX();
-                startY = event.getY();
-                isDrawing = true;
-            } else if (currentMode == AnnotationMode.SHAPE && drawingManager != null
-                    && drawingManager.getCurrentTool() != DrawingTool.NONE) {
-                // Logic SHAPE (Mới)
-                startX = event.getX();
-                startY = event.getY();
-                currentX = startX;
-                currentY = startY;
-                isDrawing = true;
+                // --- BẮT ĐẦU FIX LỖI XUNG ĐỘT ---
+                // Nếu bấm chuột chính (trái), BẮT ĐẦU VẼ và NUỐT (Consume) sự kiện
+                if (event.getButton() == MouseButton.PRIMARY) {
+                    startX = event.getX();
+                    startY = event.getY();
+                    isDrawing = true;
+                    event.consume(); // Rất quan trọng để chặn ContextMenuPane
+                }
+                // Nếu bấm chuột phụ (phải), HỦY chế độ vẽ hiện tại
+                else if (event.getButton() == MouseButton.SECONDARY) {
+                    setAnnotationMode(AnnotationMode.NONE); // Trở về View Mode
+                    event.consume(); // Nuốt sự kiện để không bật ContextMenu
+                }
+                // --- KẾT THÚC FIX LỖI XUNG ĐỘT ---
             }
         });
 
         setOnMouseDragged(event -> {
             if (!isDrawing) return;
 
+            double mStartX = startX / scale;
+            double mStartY = startY / scale;
+            double mEndX = event.getX() / scale;
+            double mEndY = event.getY() / scale;
+
             if (currentMode == AnnotationMode.HIGHLIGHT) {
-                // Logic HIGHLIGHT
-                redraw(); // Xóa và vẽ lại
+                redraw();
                 GraphicsContext gc = getGraphicsContext2D();
                 gc.setFill(getColorWithAlpha(currentColor, 0.4));
                 double x = Math.min(startX, event.getX());
@@ -113,34 +172,54 @@ public class AnnotationLayer extends Canvas {
                 double w = Math.abs(event.getX() - startX);
                 double h = Math.abs(event.getY() - startY);
                 gc.fillRect(x, y, w, h);
-            } else if (currentMode == AnnotationMode.SHAPE) {
-                // Logic SHAPE (Mới)
-                currentX = event.getX();
-                currentY = event.getY();
-                redraw(); // Xóa và vẽ lại các annotation đã lưu
-                drawPreview(getGraphicsContext2D()); // Vẽ hình preview
+            }
+            else {
+                switch (currentMode) {
+                    case RECTANGLE:
+                        tempAnnotation = new RectangleAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY, currentColor, currentLineWidth);
+                        break;
+                    case CIRCLE:
+                        tempAnnotation = new CircleAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY, currentColor, currentLineWidth);
+                        break;
+                    case ARROW:
+                        tempAnnotation = new ArrowAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY, currentColor, currentLineWidth);
+                        break;
+                }
+                redraw();
             }
         });
 
         setOnMouseReleased(event -> {
-            if (!isDrawing || event.getButton() != MouseButton.PRIMARY) return;
+            if (isDrawing && event.getButton() == MouseButton.PRIMARY) {
 
-            if (currentMode == AnnotationMode.HIGHLIGHT) {
-                // Logic HIGHLIGHT (Giữ nguyên)
-                addHighlight(startX, startY, event.getX(), event.getY());
-            } else if (currentMode == AnnotationMode.SHAPE) {
-                // Logic SHAPE (Mới)
-                addShapeAnnotation(startX, startY, event.getX(), event.getY());
+                if (currentMode == AnnotationMode.HIGHLIGHT) {
+                    addHighlight(startX, startY, event.getX(), event.getY());
+                }
+                else if (tempAnnotation != null) {
+                    annotations.add(tempAnnotation); // Lưu vào danh sách
+                    if (onAnnotationAdded != null) onAnnotationAdded.run(); // Báo Controller
+                }
+
+                isDrawing = false;
+                tempAnnotation = null; // Xóa hình tạm
+                redraw();
             }
-
-            isDrawing = false;
-            redraw(); // Vẽ lại lần cuối
         });
     }
 
     /**
-     * Thêm HighlightAnnotation (Code gốc của bạn - Giữ nguyên)
-     * [SỬA ĐỔI NHỎ] Dùng 'this.pageNumber' thay vì 0
+     * Adds a highlight annotation to the layer.
+     * <p>
+     * This method creates a {@link HighlightAnnotation} from the given coordinates
+     * and adds it to the annotations list. The coordinates are normalized so that
+     * (x, y) represents the top-left corner. Highlights with dimensions smaller
+     * than 5x5 pixels are ignored to prevent accidental tiny highlights.
+     * </p>
+     *
+     * @param x1 the X coordinate of the first corner
+     * @param y1 the Y coordinate of the first corner
+     * @param x2 the X coordinate of the opposite corner
+     * @param y2 the Y coordinate of the opposite corner
      */
     private void addHighlight(double x1, double y1, double x2, double y2) {
         double x = Math.min(x1, x2);
@@ -149,203 +228,157 @@ public class AnnotationLayer extends Canvas {
         double height = Math.abs(y2 - y1);
 
         if (width > 5 && height > 5) {
-            // Sửa 0 thành this.pageNumber
-            HighlightAnnotation annotation = new HighlightAnnotation(this.pageNumber, x, y, width, height, currentColor);
+            HighlightAnnotation annotation = new HighlightAnnotation(0, x, y, width, height, currentColor);
             annotations.add(annotation);
-            logger.debug("Added highlight (Page {}) at ({}, {})", this.pageNumber, x, y);
+            logger.debug("Added highlight annotation at ({}, {}) with size {}x{}", x, y, width, height);
         }
     }
 
     /**
-     * [HÀM MỚI] Thêm ShapeAnnotation (Rectangle, Circle, Arrow)
-     */
-    private void addShapeAnnotation(double x1, double y1, double x2, double y2) {
-        if (drawingManager == null) return;
-
-        DrawingTool tool = drawingManager.getCurrentTool();
-        String colorStr = drawingManager.getCurrentColorAsWebString();
-        double lineWidth = drawingManager.getCurrentLineWidth();
-
-        // Chuẩn hóa tọa độ
-        double x = Math.min(x1, x2);
-        double y = Math.min(y1, y2);
-        double w = Math.abs(x2 - x1);
-        double h = Math.abs(y2 - y1);
-
-        // Bỏ qua nếu quá nhỏ (trừ Arrow)
-        if (w < 3 && h < 3 && tool != DrawingTool.ARROW) {
-            return;
-        }
-
-        switch (tool) {
-            case RECTANGLE:
-                RectangleAnnotation rect = new RectangleAnnotation(this.pageNumber, x, y, w, h, colorStr, lineWidth);
-                annotations.add(rect);
-                logger.debug("Added Rectangle (Page {})", this.pageNumber);
-                break;
-
-            case CIRCLE:
-                double centerX = x + w / 2;
-                double centerY = y + h / 2;
-                double radius = Math.max(w, h) / 2;
-                CircleAnnotation circle = new CircleAnnotation(this.pageNumber, centerX, centerY, radius, colorStr, lineWidth);
-                annotations.add(circle);
-                logger.debug("Added Circle (Page {})", this.pageNumber);
-                break;
-
-            case ARROW:
-                ArrowAnnotation arrow = new ArrowAnnotation(this.pageNumber, x1, y1, x2, y2, colorStr, lineWidth);
-                annotations.add(arrow);
-                logger.debug("Added Arrow (Page {})", this.pageNumber);
-                break;
-            default:
-                break;
-        }
-    }
-
-    /**
-     * [HÀM MỚI] Vẽ hình dạng xem trước (preview) khi kéo chuột.
-     */
-    private void drawPreview(GraphicsContext gc) {
-        if (drawingManager == null) return;
-
-        DrawingTool tool = drawingManager.getCurrentTool();
-        Color color = drawingManager.getCurrentColor();
-        double lineWidth = drawingManager.getCurrentLineWidth();
-
-        gc.setStroke(color);
-        gc.setLineWidth(lineWidth);
-
-        double x = Math.min(startX, currentX);
-        double y = Math.min(startY, currentY);
-        double w = Math.abs(currentX - startX);
-        double h = Math.abs(currentY - startY);
-
-        switch (tool) {
-            case RECTANGLE:
-                gc.strokeRect(x, y, w, h);
-                break;
-            case CIRCLE:
-                double centerX = x + w / 2;
-                double centerY = y + h / 2;
-                double radius = Math.max(w, h) / 2;
-                gc.strokeOval(centerX - radius, centerY - radius, radius * 2, radius * 2);
-                break;
-            case ARROW:
-                gc.strokeLine(startX, startY, currentX, currentY);
-                drawArrowhead(gc, startX, startY, currentX, currentY, 10);
-                break;
-            default:
-                break;
-        }
-    }
-
-    /**
-     * Redraws tất cả các annotations (ĐÃ NÂNG CẤP)
+     * Redraws all annotations on the canvas.
+     * <p>
+     * This method clears the canvas and then redraws all stored annotations.
+     * It should be called whenever the annotation list changes or when the
+     * layer needs to be refreshed.
+     * </p>
      */
     public void redraw() {
         GraphicsContext gc = getGraphicsContext2D();
         gc.clearRect(0, 0, getWidth(), getHeight());
-
-        // Vẽ tất cả annotations đã lưu
+        drawSearchHighlights(gc);
         for (Annotation annotation : annotations) {
             if (annotation instanceof HighlightAnnotation highlight) {
-                // Logic HIGHLIGHT (Giữ nguyên)
                 gc.setFill(getColorWithAlpha(highlight.getColor(), 0.4));
                 gc.fillRect(highlight.getX(), highlight.getY(),
                         highlight.getWidth(), highlight.getHeight());
             }
             else if (annotation instanceof ShapeAnnotation shape) {
-                // Logic SHAPE (Mới)
-                Color color = Color.web(shape.getColor());
-                double lineWidth = shape.getLineWidth();
-                gc.setStroke(color);
-                gc.setLineWidth(lineWidth);
-
-                if (shape instanceof RectangleAnnotation rect) {
-                    gc.strokeRect(rect.getX(), rect.getY(), rect.getWidth(), rect.getHeight());
-
-                } else if (shape instanceof CircleAnnotation circle) {
-                    double radius = circle.getRadius();
-                    gc.strokeOval(circle.getCenterX() - radius, circle.getCenterY() - radius, radius * 2, radius * 2);
-
-                } else if (shape instanceof ArrowAnnotation arrow) {
-                    gc.strokeLine(arrow.getStartX(), arrow.getStartY(), arrow.getEndX(), arrow.getEndY());
-                    drawArrowhead(gc, arrow.getStartX(), arrow.getStartY(), arrow.getEndX(), arrow.getEndY(), 10);
-                }
+                shape.draw(gc, scale);
             }
         }
 
-        // Vẽ search highlights (Giữ nguyên)
-        drawSearchHighlights(gc);
+        if (tempAnnotation instanceof ShapeAnnotation shapeTemp) {
+            gc.setLineDashes(5); // Nét đứt
+            shapeTemp.draw(gc, scale);
+            gc.setLineDashes(0); // Reset về nét liền
+        }
     }
 
     /**
-     * [HÀM MỚI] Tiện ích vẽ đầu mũi tên.
+     * Creates a new Color with the specified alpha (opacity) value.
+     * <p>
+     * This utility method is used to create semi-transparent colors for
+     * annotation rendering.
+     * </p>
+     *
+     * @param color the base color
+     * @param alpha the opacity value (0.0 = fully transparent, 1.0 = fully opaque)
+     * @return a new Color with the specified alpha value
      */
-    private void drawArrowhead(GraphicsContext gc, double x1, double y1, double x2, double y2, double arrowSize) {
-        double angle = Math.atan2(y2 - y1, x2 - x1);
-        double sin = Math.sin(angle);
-        double cos = Math.cos(angle);
-
-        // Điểm P1
-        double x3 = x2 - arrowSize * cos + arrowSize / 2 * sin;
-        double y3 = y2 - arrowSize * sin - arrowSize / 2 * cos;
-
-        // Điểm P2
-        double x4 = x2 - arrowSize * cos - arrowSize / 2 * sin;
-        double y4 = y2 - arrowSize * sin + arrowSize / 2 * cos;
-
-        // Dùng fill() để vẽ tam giác đặc
-        gc.setFill(gc.getStroke());
-        gc.fillPolygon(new double[]{x2, x3, x4}, new double[]{y2, y3, y4}, 3);
-    }
-
-
-    // (Các hàm còn lại của bạn giữ nguyên)
-
     private Color getColorWithAlpha(Color color, double alpha) {
         return Color.color(color.getRed(), color.getGreen(), color.getBlue(), alpha);
     }
 
+    /**
+     * Sets the current annotation mode.
+     * <p>
+     * This determines what type of annotation will be created when the user
+     * interacts with the layer. Set to {@link AnnotationMode#NONE} to disable
+     * annotation creation.
+     * </p>
+     *
+     * @param mode the annotation mode to set
+     */
     public void setAnnotationMode(AnnotationMode mode) {
         this.currentMode = mode;
-        logger.debug("Annotation mode (Page {}) set to: {}", this.pageNumber, mode);
+        logger.debug("Annotation mode set to: {}", mode);
     }
 
+    /**
+     * Gets the current annotation mode.
+     *
+     * @return the current AnnotationMode
+     */
     public AnnotationMode getCurrentMode() {
         return currentMode;
     }
 
     /**
-     * Hàm này giờ chỉ dùng cho HIGHLIGHT (logic cũ)
+     * Sets the color to use for new highlight annotations.
+     *
+     * @param color the color to set
      */
     public void setHighlightColor(Color color) {
         this.currentColor = color;
     }
 
+    /**
+     * Clears all annotations from this layer and redraws.
+     * <p>
+     * This permanently removes all annotations. The operation cannot be undone.
+     * </p>
+     */
     public void clearAnnotations() {
         annotations.clear();
         redraw();
     }
 
+    /**
+     * Gets a copy of all annotations on this layer.
+     * <p>
+     * Returns a new list to prevent external modification of the internal
+     * annotations list.
+     * </p>
+     *
+     * @return a new list containing all annotations
+     */
     public List<Annotation> getAnnotations() {
         return new ArrayList<>(annotations);
     }
 
     /**
-     * Enum gốc của bạn (Giữ nguyên)
+     * Enumeration of available annotation modes.
+     * <p>
+     * Each mode determines what type of annotation will be created when
+     * the user interacts with the annotation layer.
+     * </p>
      */
     public enum AnnotationMode {
+        /**
+         * No annotation functionality - clicks are ignored.
+         */
         NONE,
+
+        /**
+         * Create rectangular highlight annotations by clicking and dragging.
+         */
         HIGHLIGHT,
+
+        /**
+         * Draw shape
+         */
+        RECTANGLE,
+        CIRCLE,
+        ARROW,
+
+        /**
+         * Freehand drawing mode (not yet implemented).
+         */
         DRAW,
+
+        /**
+         * Text annotation mode (not yet implemented).
+         */
         TEXT,
+
+        /**
+         * Shape annotation mode (not yet implemented).
+         */
         SHAPE
     }
 
-    // ==================== SEARCH HIGHLIGHTS (Giữ nguyên) ====================
-    //<editor-fold desc="Search Highlight (Giữ nguyên code của bạn)">
+    // ==================== SEARCH HIGHLIGHTS ====================
+
     public void setSearchHighlights(List<SearchResult> results) {
         this.searchHighlights.clear();
         if (results != null) {
@@ -366,8 +399,8 @@ public class AnnotationLayer extends Canvas {
 
         if (result != null) {
             logger.debug("Set active search result: page={}, start={}, end={}, pos=({}, {})",
-                    result.getPageNumber(), result.getStartIndex(), result.getEndIndex(),
-                    result.getX(), result.getY());
+                    result.pageNumber(), result.startIndex(), result.endIndex(),
+                    result.x(), result.y());
         } else {
             logger.debug("Cleared active search result");
         }
@@ -384,51 +417,63 @@ public class AnnotationLayer extends Canvas {
         if (searchHighlights.isEmpty()) {
             return;
         }
+
         gc.save();
+
         double canvasWidth = getWidth();
         double canvasHeight = getHeight();
+
         logger.trace("Drawing {} highlights on canvas {}x{} with scale={}",
                 searchHighlights.size(), canvasWidth, canvasHeight, scale);
+
         int normalCount = 0;
         int activeCount = 0;
+
         for (SearchResult result : searchHighlights) {
-            if (result.getWidth() <= 0 || result.getHeight() <= 0) {
+            if (result.width() <= 0 || result.height() <= 0) {
                 logger.warn("Invalid coordinates for search result: {}", result);
                 continue;
             }
-            
+
             boolean isActive = (result.equals(activeSearchResult));
 
             Color highlightColor = isActive ? ACTIVE_SEARCH_HIGHLIGHT_COLOR : SEARCH_HIGHLIGHT_COLOR;
             double opacity = isActive ? ACTIVE_SEARCH_HIGHLIGHT_OPACITY : SEARCH_HIGHLIGHT_OPACITY;
+
             gc.setFill(Color.color(
                     highlightColor.getRed(),
                     highlightColor.getGreen(),
                     highlightColor.getBlue(),
                     opacity
             ));
+
             double finalScale = this.scale * LOW_RENDER_SCALE;
-            double x = result.getX() * finalScale;
-            double y = result.getY() * finalScale;
-            double width = result.getWidth() * finalScale;
-            double height = result.getHeight() * finalScale;
+            double x = result.x() * finalScale;
+            double y = result.y() * finalScale;
+            double width = result.width() * finalScale;
+            double height = result.height() * finalScale;
+
             gc.fillRect(x, y, width, height);
+
             if (isActive) {
                 gc.setStroke(Color.DARKORANGE);
                 gc.setLineWidth(2);
                 gc.strokeRect(x, y, width, height);
                 activeCount++;
+
                 logger.trace("Drew ACTIVE highlight at ({}, {}) size {}x{} - page={}, start={}",
-                        x, y, width, height, result.getPageNumber(), result.getStartIndex());
+                        x, y, width, height, result.pageNumber(), result.startIndex());
             } else {
                 normalCount++;
             }
         }
+
         gc.restore();
+
         if (activeCount > 1) {
             logger.warn("⚠️ Multiple active highlights detected! Count: {}", activeCount);
         }
+
         logger.trace("Drew {} normal + {} active highlights", normalCount, activeCount);
     }
-    //</editor-fold>
 }

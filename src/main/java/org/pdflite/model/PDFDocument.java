@@ -178,7 +178,13 @@ public class PDFDocument {
      * @param rotation the rotation angle in degrees
      */
     public void setRotation(int rotation) {
-        this.rotation = rotation % 360;
+        int newRotation = rotation % 360;
+        if (newRotation < 0) newRotation += 360;
+
+        if (this.rotation != newRotation) {
+            this.rotation = newRotation;
+            clearCache();
+        }
     }
 
     /**
@@ -250,13 +256,5 @@ public class PDFDocument {
         imageCache.clear();
     }
 
-    /**
-     * Clears all cached image versions for a specific page.
-     */
-    public void clearCacheForPage(int pageIndex) {
-        if (imageCache == null) return;
-        String keyPrefix = pageIndex + "_";
-        imageCache.keySet().removeIf(key -> key.startsWith(keyPrefix));
-    }
-}
 
+}

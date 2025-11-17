@@ -16,7 +16,7 @@ package org.pdflite.util;
  * @since 1.0.0
  */
 public class Constants {
-    
+
     // Application Info
 
     /**
@@ -28,7 +28,7 @@ public class Constants {
      * The version number of the application.
      */
     public static final String APP_VERSION = "1.0.0";
-    
+
     // Default values
 
     /**
@@ -73,7 +73,7 @@ public class Constants {
      * </p>
      */
     public static final double ZOOM_STEP = 0.25;
-    
+
     // File extensions
 
     /**
@@ -91,14 +91,14 @@ public class Constants {
      * </p>
      */
     public static final String PDF_DESCRIPTION = "PDF Files";
-    
+
     // Search constants
     public static final int SEARCH_CONTEXT_LENGTH = 50;
     public static final String SEARCH_HIGHLIGHT_COLOR = "#FFFF00";
     public static final double SEARCH_HIGHLIGHT_OPACITY = 0.5;
     public static final double LOW_RENDER_SCALE = 150.0 / 72.0; //LOW DPI RENDERING SCALE
     public static final double HIGH_RENDER_SCALE = 300.0 / 72.0; //HIGH DPI RENDERING SCALE
-    
+
     /**
      * Private constructor to prevent instantiation.
      * <p>

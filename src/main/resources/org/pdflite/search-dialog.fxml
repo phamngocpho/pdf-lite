@@ -4,36 +4,36 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane xmlns="http://javafx.com/javafx" 
+<BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="org.pdflite.controller.SearchDialogController"
             prefWidth="600" prefHeight="500"
             stylesheets="@styles.css">
-    
+
     <!-- Top: Search controls -->
     <top>
         <VBox spacing="10" style="-fx-background-color: #f5f5f5; -fx-border-color: #cccccc;">
             <padding>
                 <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
-            
+
             <!-- Search field and button -->
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <Label text="Search:" style="-fx-font-weight: bold;"/>
-                <TextField fx:id="searchField" 
-                          promptText="Enter keyword to search..."
-                          HBox.hgrow="ALWAYS"/>
-                <Button fx:id="searchButton" 
-                       text="Search" 
-                       onAction="#handleSearch"
-                       style="-fx-background-color: #2196F3; -fx-text-fill: white;"/>
-                <Button fx:id="cancelButton" 
-                       text="Cancel" 
-                       onAction="#handleCancel"/>
-                <ProgressIndicator fx:id="progressIndicator" 
-                                  maxWidth="20" maxHeight="20"/>
+                <TextField fx:id="searchField"
+                           promptText="Enter keyword to search..."
+                           HBox.hgrow="ALWAYS"/>
+                <Button fx:id="searchButton"
+                        text="Search"
+                        onAction="#handleSearch"
+                        style="-fx-background-color: #2196F3; -fx-text-fill: white;"/>
+                <Button fx:id="cancelButton"
+                        text="Cancel"
+                        onAction="#handleCancel"/>
+                <ProgressIndicator fx:id="progressIndicator"
+                                   maxWidth="20" maxHeight="20"/>
             </HBox>
-            
+
             <!-- Search options -->
             <HBox spacing="20">
                 <CheckBox fx:id="caseSensitiveCheckbox" text="Case Sensitive"/>
@@ -41,39 +41,39 @@
             </HBox>
         </VBox>
     </top>
-    
+
     <!-- Center: Results list -->
     <center>
         <VBox spacing="5">
             <BorderPane.margin>
                 <Insets top="10" right="10" bottom="10" left="10"/>
             </BorderPane.margin>
-            
+
             <HBox spacing="10" alignment="CENTER_LEFT">
                 <Label text="Results:" style="-fx-font-weight: bold;"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Button fx:id="prevResultButton" 
-                       text="◀ Previous" 
-                       onAction="#handlePreviousResult"
-                       disable="true"/>
-                <Button fx:id="nextResultButton" 
-                       text="Next ▶" 
-                       onAction="#handleNextResult"
-                       disable="true"/>
+                <Button fx:id="prevResultButton"
+                        text="◀ Previous"
+                        onAction="#handlePreviousResult"
+                        disable="true"/>
+                <Button fx:id="nextResultButton"
+                        text="Next ▶"
+                        onAction="#handleNextResult"
+                        disable="true"/>
             </HBox>
-            
+
             <ListView fx:id="resultsListView" VBox.vgrow="ALWAYS"/>
         </VBox>
     </center>
-    
+
     <!-- Bottom: Status and close button -->
     <bottom>
-        <HBox spacing="10" alignment="CENTER_LEFT" 
+        <HBox spacing="10" alignment="CENTER_LEFT"
               style="-fx-background-color: #e0e0e0; -fx-border-color: #cccccc;">
             <padding>
                 <Insets top="5" right="10" bottom="5" left="10"/>
             </padding>
-            
+
             <Label fx:id="statusLabel" text="Ready" HBox.hgrow="ALWAYS"/>
             <Button fx:id="closeButton" text="Close" onAction="#handleClose"/>
         </HBox>

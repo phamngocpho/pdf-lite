@@ -39,8 +39,8 @@ public class SearchDialogManager {
      * @param uiStateManager the UI state manager
      */
     public SearchDialogManager(BorderPane rootPane, PageRenderer pageRenderer,
-                              ZoomManager zoomManager, RenderingManager renderingManager,
-                              UIStateManager uiStateManager) {
+                               ZoomManager zoomManager, RenderingManager renderingManager,
+                               UIStateManager uiStateManager) {
         this.rootPane = rootPane;
         this.pageRenderer = pageRenderer;
         this.zoomManager = zoomManager;

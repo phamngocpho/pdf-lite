@@ -1,38 +1,34 @@
-// src/main/java/org/pdflite/model/ArrowAnnotation.java
-
+// File: src/main/java/org/pdflite/model/ArrowAnnotation.java
 package org.pdflite.model;
 
-/**
- * Đại diện cho Annotation mũi tên (đường thẳng).
- */
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.paint.Color;
+
 public class ArrowAnnotation extends ShapeAnnotation {
+    public static final String TYPE = "Arrow";
+    private static final double ARROW_HEAD_SIZE = 10; // Kích thước đầu mũi tên mặc định
 
-    private double startX;
-    private double startY;
-    private double endX;
-    private double endY;
-
-    public ArrowAnnotation(int pageNumber, double startX, double startY, double endX, double endY, String color, double lineWidth) {
-        // Gọi lên constructor của ShapeAnnotation (đã sửa)
-        super(pageNumber, "ARROW", color, lineWidth);
-        this.startX = startX;
-        this.startY = startY;
-        this.endX = endX;
-        this.endY = endY;
+    public ArrowAnnotation(int pageNumber, double startX, double startY, double endX, double endY, Color color, double lineWidth) {
+        super(pageNumber, startX, startY, endX, endY, color, lineWidth, TYPE);
     }
 
-    // Getters và Setters
-    public double getStartX() { return startX; }
-    public void setStartX(double startX) { this.startX = startX; }
+    @Override
+    public void draw(GraphicsContext gc, double scale) {
+        gc.setStroke(color);
+        gc.setLineWidth(lineWidth * scale);
 
-    public double getStartY() { return startY; }
-    public void setStartY(double startY) { this.startY = startY; }
+        // x và y của lớp cha là startX, startY.
+        // Vẽ đường thẳng
+        gc.strokeLine(x * scale, y * scale, endX * scale, endY * scale);
 
-    public double getEndX() { return endX; }
-    public void setEndX(double endX) { this.endX = endX; }
+        // Vẽ đầu mũi tên
+        double angle = Math.atan2((endY - y), (endX - x));
+        double arrowHeadX1 = endX * scale - ARROW_HEAD_SIZE * Math.cos(angle - Math.PI / 6);
+        double arrowHeadY1 = endY * scale - ARROW_HEAD_SIZE * Math.sin(angle - Math.PI / 6);
+        double arrowHeadX2 = endX * scale - ARROW_HEAD_SIZE * Math.cos(angle + Math.PI / 6);
+        double arrowHeadY2 = endY * scale - ARROW_HEAD_SIZE * Math.sin(angle + Math.PI / 6);
 
-    // === HÀM BỊ LỖI NẰM Ở ĐÂY ===
-    public double getEndY() { return endY; }
-    public void setEndY(double endY) { this.endY = endY; }
-    // ============================
+        gc.strokeLine(endX * scale, endY * scale, arrowHeadX1, arrowHeadY1);
+        gc.strokeLine(endX * scale, endY * scale, arrowHeadX2, arrowHeadY2);
+    }
 }

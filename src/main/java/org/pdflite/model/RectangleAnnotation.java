@@ -1,19 +1,24 @@
-// src/main/java/org/pdflite/model/RectangleAnnotation.java
 package org.pdflite.model;
 
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.paint.Color;
+
 public class RectangleAnnotation extends ShapeAnnotation {
-    private double x, y, width, height;
-    public RectangleAnnotation(int pageNumber, double x, double y, double width, double height, String color, double lineWidth) {
-        super(pageNumber, "RECTANGLE", color, lineWidth);
-        this.x = x; this.y = y; this.width = width; this.height = height;
+    public RectangleAnnotation(int pageNumber, double startX, double startY, double endX, double endY, Color color, double lineWidth) {
+        super(pageNumber, startX, startY, endX, endY, color, lineWidth, "Rectangle");
     }
-    // Getters/Setters
-    public double getX() { return x; }
-    public void setX(double x) { this.x = x; }
-    public double getY() { return y; }
-    public void setY(double y) { this.y = y; }
-    public double getWidth() { return width; }
-    public void setWidth(double width) { this.width = width; }
-    public double getHeight() { return height; }
-    public void setHeight(double height) { this.height = height; }
+
+    @Override
+    public void draw(GraphicsContext gc, double scale) {
+        gc.setStroke(color);
+        gc.setLineWidth(lineWidth * scale);
+
+        // Tính toán toạ độ vẽ (xử lý cả trường hợp kéo ngược chiều)
+        double drawX = Math.min(x, endX) * scale;
+        double drawY = Math.min(y, endY) * scale;
+        double w = Math.abs(endX - x) * scale;
+        double h = Math.abs(endY - y) * scale;
+
+        gc.strokeRect(drawX, drawY, w, h);
+    }
 }

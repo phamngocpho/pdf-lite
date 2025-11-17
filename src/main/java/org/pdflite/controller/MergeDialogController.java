@@ -75,8 +75,8 @@ public class MergeDialogController {
 
         // Setup button states
         updateButtonStates();
-        filesTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> 
-            updateButtonStates());
+        filesTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) ->
+                updateButtonStates());
 
         // Hide progress bar initially
         progressBar.setVisible(false);
@@ -98,7 +98,7 @@ public class MergeDialogController {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Select PDF Files to Merge");
         fileChooser.getExtensionFilters().add(
-            new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
+                new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
         );
 
         List<File> selectedFiles = fileChooser.showOpenMultipleDialog(dialogStage);
@@ -117,7 +117,7 @@ public class MergeDialogController {
         for (File file : files) {
             // Check if file is already in the list
             boolean alreadyAdded = fileItems.stream()
-                .anyMatch(item -> item.getFile().getAbsolutePath().equals(file.getAbsolutePath()));
+                    .anyMatch(item -> item.getFile().getAbsolutePath().equals(file.getAbsolutePath()));
 
             if (alreadyAdded) {
                 logger.debug("File already in list: {}", file.getName());
@@ -135,14 +135,14 @@ public class MergeDialogController {
 
             // Get page count
             int pageCount = mergeService.getPageCount(file);
-            
+
             // Add to list
             PDFFileItem item = new PDFFileItem(
-                fileItems.size() + 1,
-                file,
-                file.getName(),
-                pageCount,
-                formatFileSize(file.length())
+                    fileItems.size() + 1,
+                    file,
+                    file.getName(),
+                    pageCount,
+                    formatFileSize(file.length())
             );
             fileItems.add(item);
             addedCount++;
@@ -154,8 +154,8 @@ public class MergeDialogController {
 
         // Update status
         if (addedCount > 0) {
-            updateStatus(String.format("Added %d file(s)%s", addedCount, 
-                skippedCount > 0 ? " (" + skippedCount + " skipped)" : ""));
+            updateStatus(String.format("Added %d file(s)%s", addedCount,
+                    skippedCount > 0 ? " (" + skippedCount + " skipped)" : ""));
         } else if (skippedCount > 0) {
             updateStatus(String.format("Skipped %d file(s)", skippedCount));
         }
@@ -169,7 +169,7 @@ public class MergeDialogController {
     @FXML
     private void handleRemove() {
         List<PDFFileItem> selectedItems = new ArrayList<>(
-            filesTable.getSelectionModel().getSelectedItems()
+                filesTable.getSelectionModel().getSelectedItems()
         );
 
         if (selectedItems.isEmpty()) {
@@ -231,7 +231,7 @@ public class MergeDialogController {
         fileChooser.setTitle("Save Merged PDF");
         fileChooser.setInitialFileName("merged.pdf");
         fileChooser.getExtensionFilters().add(
-            new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
+                new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
         );
 
         File outputFile = fileChooser.showSaveDialog(dialogStage);
@@ -255,8 +255,8 @@ public class MergeDialogController {
         updateStatus("Merging PDFs...");
 
         List<File> inputFiles = fileItems.stream()
-            .map(PDFFileItem::getFile)
-            .toList();
+                .map(PDFFileItem::getFile)
+                .toList();
 
         executorService.submit(() -> {
             try {
@@ -265,10 +265,10 @@ public class MergeDialogController {
                 Platform.runLater(() -> {
                     progressBar.setProgress(1.0);
                     updateStatus("Merge completed successfully!");
-                    showInfo("Merge Complete", 
-                        String.format("Successfully merged %d files into:\n%s", 
-                            inputFiles.size(), outputFile.getName()));
-                    
+                    showInfo("Merge Complete",
+                            String.format("Successfully merged %d files into:\n%s",
+                                    inputFiles.size(), outputFile.getName()));
+
                     // Close dialog after short delay
                     Platform.runLater(() -> {
                         try {

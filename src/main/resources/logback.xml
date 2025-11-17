@@ -21,7 +21,7 @@
 
     <!-- Application logger -->
     <logger name="org.pdflite" level="INFO"/>
-    
+
     <!-- PDFBox logger (set to WARN to reduce noise) -->
     <logger name="org.apache.pdfbox" level="WARN"/>
 
