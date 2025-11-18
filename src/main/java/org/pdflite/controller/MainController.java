@@ -15,6 +15,7 @@ import javafx.stage.Stage;
 import org.pdflite.manager.*;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
+import org.pdflite.service.PDFPrintService;
 import org.pdflite.service.PDFService;
 import org.pdflite.util.Constants;
 import org.pdflite.util.NavigationHelper;
@@ -87,6 +88,7 @@ public class MainController {
     // ==================== Services and Managers ====================
 
     private PDFService pdfService;
+    private PDFPrintService printService;
     private NavigationHelper navigationHelper;
     private PageRenderer pageRenderer;
     private ScrollHandler scrollHandler;
@@ -117,6 +119,7 @@ public class MainController {
     public void initialize() {
         logger.info("Initializing MainController");
         pdfService = new PDFService();
+        printService = new PDFPrintService(pdfService);
 
         // Initialize page renderer and scroll handler
         pageRenderer = new PageRenderer(pdfService, renderExecutor);
@@ -331,6 +334,10 @@ public class MainController {
                 return;
             }
 
+            // CRITICAL: Reset to page 1 (index 0) when opening a new file
+            // This ensures we don't try to open at a page that doesn't exist in the new file
+            currentDocument.setCurrentPage(0);
+
             // Calculate initial zoom
             Image firstPage = pdfService.renderPage(currentDocument, 0, 1.0f);
             double initialZoom = zoomManager.calculateInitialZoom(firstPage);
@@ -347,13 +354,22 @@ public class MainController {
             renderingManager.renderAllPages();
             pagesContainer = renderingManager.getPagesContainer();
             pageInfoManager.updatePageInfo(currentDocument);
+            
+            // Scroll to top (page 1) to ensure we're viewing the first page
+            Platform.runLater(() -> {
+                if (scrollPane != null && pagesContainer != null) {
+                    scrollPane.setVvalue(0.0);
+                }
+            });
+            
             uiStateManager.updateStatus("Opened: " + file.getName());
 
             // Add to recent files
             recentFilesManager.addRecentFile(file.getAbsolutePath());
             updateRecentFilesMenu();
 
-            logger.info("Successfully opened PDF: {}", file.getName());
+            logger.info("Successfully opened PDF: {} ({} pages, starting at page 1)", 
+                    file.getName(), currentDocument.getTotalPages());
         } catch (IOException e) {
             logger.error("Error opening PDF file", e);
             uiStateManager.showError("Error Opening PDF", "Could not open the PDF file: " + e.getMessage());
@@ -382,6 +398,57 @@ public class MainController {
         } catch (IOException e) {
             logger.error("Error saving document as", e);
             uiStateManager.showError("Save As Error", "Could not save the document: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handlePrint() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No PDF Loaded", "Please open a PDF file first before printing.");
+            return;
+        }
+
+        // Check if printing is available
+        if (!printService.isPrintingAvailable()) {
+            uiStateManager.showError("No Printer Available", 
+                    "No printer is available on this system. Please install a printer and try again.");
+            return;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/org/pdflite/print-dialog.fxml"));
+            Parent root = loader.load();
+
+            PrintDialogController controller = loader.getController();
+
+            Stage dialogStage = new Stage();
+            dialogStage.setTitle("Print PDF");
+            dialogStage.initModality(Modality.APPLICATION_MODAL);
+            dialogStage.initOwner(rootPane.getScene().getWindow());
+
+            Scene dialogScene = new Scene(root);
+            dialogStage.setScene(dialogScene);
+
+            // Apply theme to dialog
+            if (themeManager != null) {
+                themeManager.applyThemeToScene(dialogScene);
+            }
+
+            controller.setDialogStage(dialogStage);
+            controller.setDocument(currentDocument, printService, currentDocument.getCurrentPage());
+
+            dialogStage.showAndWait();
+
+            // Check if user clicked print
+            if (controller.isPrintClicked()) {
+                uiStateManager.updateStatus("Print job sent successfully");
+                logger.info("Print job completed");
+            }
+
+        } catch (IOException e) {
+            logger.error("Error opening print dialog", e);
+            uiStateManager.showError("Error", "Could not open print dialog: " + e.getMessage());
         }
     }
 
