@@ -36,6 +36,14 @@ public class ScrollHandler {
     private VBox pagesContainer;
     private Timer scrollTimer;
     private volatile long lastScrollTime = 0;
+    private PageChangeListener pageChangeListener;
+
+    /**
+     * Listener interface for page change events.
+     */
+    public interface PageChangeListener {
+        void onPageChanged(int newPageIndex);
+    }
 
     /**
      * Creates a new ScrollHandler.
@@ -57,6 +65,15 @@ public class ScrollHandler {
     public void setDocument(PDFDocument document, VBox pagesContainer) {
         this.currentDocument = document;
         this.pagesContainer = pagesContainer;
+    }
+
+    /**
+     * Sets the page change listener.
+     *
+     * @param listener the listener to notify when page changes
+     */
+    public void setPageChangeListener(PageChangeListener listener) {
+        this.pageChangeListener = listener;
     }
 
     /**
@@ -82,8 +99,10 @@ public class ScrollHandler {
             }
         }, SCROLL_DEBOUNCE_MS);
 
-        // Immediately update current page indicator
-        updateCurrentPageFromScroll();
+        // Update current page indicator on JavaFX thread to ensure UI is updated
+        Platform.runLater(() -> {
+            updateCurrentPageFromScroll();
+        });
     }
 
     /**
@@ -257,19 +276,33 @@ public class ScrollHandler {
         try {
             double viewportHeight = scrollPane.getViewportBounds().getHeight();
             double scrollValue = scrollPane.getVvalue();
-            double contentHeight = pagesContainer.getHeight();
+            
+            // Use calculated content height instead of actual height for more accurate calculation
+            int totalPages = currentDocument.getTotalPages();
+            double contentHeight = getContentHeight(totalPages);
 
             if (contentHeight <= viewportHeight) {
-                return; // All content visible, stay on current page
+                // All content visible, set to first page
+                if (currentDocument.getCurrentPage() != 0) {
+                    currentDocument.setCurrentPage(0);
+                    // Notify listener about page change
+                    if (pageChangeListener != null) {
+                        pageChangeListener.onPageChanged(0);
+                    }
+                }
+                return;
             }
 
             double visibleStart = scrollValue * (contentHeight - viewportHeight);
             double visibleCenter = visibleStart + (viewportHeight / 2);
 
-            int totalPages = currentDocument.getTotalPages();
             double currentY = 0;
 
             for (int i = 0; i < totalPages; i++) {
+                if (i >= pagesContainer.getChildren().size()) {
+                    break;
+                }
+                
                 VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
                 double pageHeight = pageBox.getPrefHeight();
                 double pageEnd = currentY + pageHeight;
@@ -277,6 +310,10 @@ public class ScrollHandler {
                 if (visibleCenter >= currentY && visibleCenter < pageEnd) {
                     if (currentDocument.getCurrentPage() != i) {
                         currentDocument.setCurrentPage(i);
+                        // Notify listener about page change
+                        if (pageChangeListener != null) {
+                            pageChangeListener.onPageChanged(i);
+                        }
                     }
                     break;
                 }

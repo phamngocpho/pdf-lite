@@ -138,6 +138,18 @@ public class MainController {
 
         // Initialize managers
         initializeManagers();
+        
+        // Set page change listener to update UI when page changes during scroll
+        // Must be after initializeManagers() so pageInfoManager is initialized
+        scrollHandler.setPageChangeListener(newPageIndex -> {
+            Platform.runLater(() -> {
+                if (currentDocument != null) {
+                    // The scroll handler already updated currentDocument.setCurrentPage(newPageIndex)
+                    // Just update the UI
+                    pageInfoManager.updatePageInfo(currentDocument);
+                }
+            });
+        });
 
         // Initialize recent files manager
         recentFilesManager = new RecentFilesManager();
@@ -161,16 +173,6 @@ public class MainController {
         if (scrollPane != null) {
             scrollPane.vvalueProperty().addListener((obs, oldVal, newVal) -> {
                 scrollHandler.handleScroll();
-                // Update page info after scroll handler processes the scroll
-                Platform.runLater(() -> {
-                    if (currentDocument != null) {
-                        int currentPage = scrollHandler.getCurrentPageFromScroll();
-                        if (currentPage >= 0 && currentPage != currentDocument.getCurrentPage()) {
-                            currentDocument.setCurrentPage(currentPage);
-                            pageInfoManager.updatePageInfo(currentDocument);
-                        }
-                    }
-                });
             });
         }
         if (drawingToolsGroup != null) {
@@ -518,6 +520,15 @@ private void handleDeletePage() {
                 // 7. Tạo MỚI PageRenderer và ScrollHandler
                 pageRenderer = new PageRenderer(pdfService, renderExecutor);
                 scrollHandler = new ScrollHandler(pageRenderer, scrollPane);
+                
+                // Set page change listener again after recreating ScrollHandler
+                scrollHandler.setPageChangeListener(newPageIndex -> {
+                    Platform.runLater(() -> {
+                        if (currentDocument != null) {
+                            pageInfoManager.updatePageInfo(currentDocument);
+                        }
+                    });
+                });
 
                 // 8. Mở LẠI file (để PDFBox load lại cấu trúc mới)
                 currentDocument = fileManager.openFile(currentFile);
