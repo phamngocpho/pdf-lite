@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.pdflite.controller.PrintDialogController"
+      spacing="15" style="-fx-padding: 20;">
+
+    <Label text="Print PDF Document" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+
+    <!-- Printer Selection -->
+    <VBox spacing="8">
+        <Label text="Printer:" style="-fx-font-weight: bold;"/>
+        <ComboBox fx:id="cbPrinters" prefWidth="400" promptText="Select a printer"/>
+    </VBox>
+
+    <!-- Page Range Selection -->
+    <VBox spacing="10">
+        <Label text="Page Range:" style="-fx-font-weight: bold;"/>
+        
+        <RadioButton fx:id="rbAllPages" text="All pages">
+            <VBox.margin>
+                <Insets left="10"/>
+            </VBox.margin>
+        </RadioButton>
+        
+        <RadioButton fx:id="rbCurrentPage" text="Current page">
+            <VBox.margin>
+                <Insets left="10"/>
+            </VBox.margin>
+        </RadioButton>
+        
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <RadioButton fx:id="rbPageRange" text="Pages:"/>
+            <TextField fx:id="tfPageRange" promptText="e.g., 1-5, 7, 9-12" prefWidth="250"/>
+            <VBox.margin>
+                <Insets left="10"/>
+            </VBox.margin>
+        </HBox>
+        
+        <Label fx:id="lblTotalPages" text="Total pages: 0" 
+               style="-fx-text-fill: #666; -fx-font-size: 11px;">
+            <VBox.margin>
+                <Insets left="10"/>
+            </VBox.margin>
+        </Label>
+    </VBox>
+
+    <!-- Buttons -->
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <VBox.margin>
+            <Insets top="10"/>
+        </VBox.margin>
+        
+        <Button fx:id="btnPrint" text="Print" onAction="#handlePrint" 
+                defaultButton="true" prefWidth="80"
+                style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        <Button fx:id="btnCancel" text="Cancel" onAction="#handleCancel" 
+                cancelButton="true" prefWidth="80"/>
+    </HBox>
+
+</VBox>
+

@@ -27,7 +27,7 @@ import java.util.TimerTask;
 public class ScrollHandler {
     private static final Logger logger = LoggerFactory.getLogger(ScrollHandler.class);
 
-    private static final long SCROLL_DEBOUNCE_MS = 150; // Wait 150ms after scroll stops
+    private static final long SCROLL_DEBOUNCE_MS = 50; // Wait 50ms after scroll stops
 
     private final PageRenderer pageRenderer;
     private final ScrollPane scrollPane;
@@ -36,6 +36,14 @@ public class ScrollHandler {
     private VBox pagesContainer;
     private Timer scrollTimer;
     private volatile long lastScrollTime = 0;
+    private PageChangeListener pageChangeListener;
+
+    /**
+     * Listener interface for page change events.
+     */
+    public interface PageChangeListener {
+        void onPageChanged(int newPageIndex);
+    }
 
     /**
      * Creates a new ScrollHandler.
@@ -57,6 +65,15 @@ public class ScrollHandler {
     public void setDocument(PDFDocument document, VBox pagesContainer) {
         this.currentDocument = document;
         this.pagesContainer = pagesContainer;
+    }
+
+    /**
+     * Sets the page change listener.
+     *
+     * @param listener the listener to notify when page changes
+     */
+    public void setPageChangeListener(PageChangeListener listener) {
+        this.pageChangeListener = listener;
     }
 
     /**
@@ -82,8 +99,10 @@ public class ScrollHandler {
             }
         }, SCROLL_DEBOUNCE_MS);
 
-        // Immediately update current page indicator
-        updateCurrentPageFromScroll();
+        // Update current page indicator on JavaFX thread to ensure UI is updated
+        Platform.runLater(() -> {
+            updateCurrentPageFromScroll();
+        });
     }
 
     /**
@@ -103,11 +122,15 @@ public class ScrollHandler {
             try {
                 double bufferSize = scrollPane.getViewportBounds().getHeight();
                 double scrollValue = scrollPane.getVvalue();
-                double contentHeight = pagesContainer.getHeight();
+                
+                int totalPages = currentDocument.getTotalPages();
+                
+                // Calculate total content height based on all page placeholders
+                // This ensures accurate calculation even when pages haven't been rendered yet
+                double contentHeight = getContentHeight(totalPages);
 
                 if (contentHeight <= bufferSize) {
                     // All content is visible, load all pages
-                    int totalPages = currentDocument.getTotalPages();
                     for (int i = 0; i < totalPages; i++) {
                         if (pageRenderer.isPageLoading(i)) {
                             VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
@@ -127,7 +150,6 @@ public class ScrollHandler {
                 double loadStart = Math.max(0, visibleStart - bufferSize);
                 double loadEnd = Math.min(contentHeight, visibleEnd + bufferSize);
 
-                int totalPages = currentDocument.getTotalPages();
                 double currentY = 0;
 
                 // Priority lists: visible pages first, then nearby pages
@@ -136,6 +158,12 @@ public class ScrollHandler {
                 Set<Integer> pagesInRange = new HashSet<>();
 
                 for (int i = 0; i < totalPages; i++) {
+                    // Safety check: ensure page box exists
+                    if (i >= pagesContainer.getChildren().size()) {
+                        logger.warn("Page {} placeholder missing, creating it", i + 1);
+                        continue;
+                    }
+                    
                     VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
                     double pageHeight = pageBox.getPrefHeight();
                     double pageStart = currentY;
@@ -180,6 +208,19 @@ public class ScrollHandler {
                         }
                     }
                 }
+                
+                // Additional safeguard: if we're near the end (last 5 pages), ensure they get loaded
+                if (scrollValue > 0.8 && totalPages > 0) {
+                    int startPage = Math.max(0, totalPages - 5);
+                    for (int i = startPage; i < totalPages; i++) {
+                        if (i < pagesContainer.getChildren().size() && pageRenderer.isPageLoading(i)) {
+                            VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
+                            if (isPlaceholder(pageBox)) {
+                                pageRenderer.loadPage(i, pageBox);
+                            }
+                        }
+                    }
+                }
 
             } catch (Exception e) {
                 logger.error("Error loading visible pages", e);
@@ -187,23 +228,41 @@ public class ScrollHandler {
         });
     }
 
+    private double getContentHeight(int totalPages) {
+        double calculatedContentHeight = 0;
+        for (int i = 0; i < totalPages; i++) {
+            if (i < pagesContainer.getChildren().size()) {
+                VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
+                calculatedContentHeight += pageBox.getPrefHeight() + 10; // Add spacing
+            }
+        }
+
+        // Use the larger of calculated height or actual container height
+        return Math.max(calculatedContentHeight, pagesContainer.getHeight());
+    }
+
     /**
      * Checks if a page box contains a placeholder (not yet loaded).
+     * A placeholder is a StackPane that doesn't contain an ImageView.
      *
      * @param pageBox the page box to check
      * @return true if the page box contains a placeholder
      */
     private boolean isPlaceholder(VBox pageBox) {
         if (pageBox.getChildren().isEmpty()) {
-            return false;
+            return true;
         }
 
         Object firstChild = pageBox.getChildren().getFirst();
-        if (firstChild instanceof javafx.scene.layout.StackPane placeholder) {
-            return !placeholder.getChildren().isEmpty() &&
-                    placeholder.getChildren().getFirst() instanceof javafx.scene.control.Label;
+        if (firstChild instanceof javafx.scene.layout.StackPane stackPane) {
+            // If StackPane contains an ImageView, it's rendered
+            boolean hasImageView = stackPane.getChildren().stream()
+                    .anyMatch(child -> child instanceof javafx.scene.image.ImageView);
+            return !hasImageView;
         }
-        return false;
+        
+        // If it's not a StackPane, it's likely a placeholder
+        return true;
     }
 
     /**
@@ -217,19 +276,33 @@ public class ScrollHandler {
         try {
             double viewportHeight = scrollPane.getViewportBounds().getHeight();
             double scrollValue = scrollPane.getVvalue();
-            double contentHeight = pagesContainer.getHeight();
+            
+            // Use calculated content height instead of actual height for more accurate calculation
+            int totalPages = currentDocument.getTotalPages();
+            double contentHeight = getContentHeight(totalPages);
 
             if (contentHeight <= viewportHeight) {
-                return; // All content visible, stay on current page
+                // All content visible, set to first page
+                if (currentDocument.getCurrentPage() != 0) {
+                    currentDocument.setCurrentPage(0);
+                    // Notify listener about page change
+                    if (pageChangeListener != null) {
+                        pageChangeListener.onPageChanged(0);
+                    }
+                }
+                return;
             }
 
             double visibleStart = scrollValue * (contentHeight - viewportHeight);
             double visibleCenter = visibleStart + (viewportHeight / 2);
 
-            int totalPages = currentDocument.getTotalPages();
             double currentY = 0;
 
             for (int i = 0; i < totalPages; i++) {
+                if (i >= pagesContainer.getChildren().size()) {
+                    break;
+                }
+                
                 VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
                 double pageHeight = pageBox.getPrefHeight();
                 double pageEnd = currentY + pageHeight;
@@ -237,6 +310,10 @@ public class ScrollHandler {
                 if (visibleCenter >= currentY && visibleCenter < pageEnd) {
                     if (currentDocument.getCurrentPage() != i) {
                         currentDocument.setCurrentPage(i);
+                        // Notify listener about page change
+                        if (pageChangeListener != null) {
+                            pageChangeListener.onPageChanged(i);
+                        }
                     }
                     break;
                 }
