@@ -103,11 +103,15 @@ public class ScrollHandler {
             try {
                 double bufferSize = scrollPane.getViewportBounds().getHeight();
                 double scrollValue = scrollPane.getVvalue();
-                double contentHeight = pagesContainer.getHeight();
+                
+                int totalPages = currentDocument.getTotalPages();
+                
+                // Calculate total content height based on all page placeholders
+                // This ensures accurate calculation even when pages haven't been rendered yet
+                double contentHeight = getContentHeight(totalPages);
 
                 if (contentHeight <= bufferSize) {
                     // All content is visible, load all pages
-                    int totalPages = currentDocument.getTotalPages();
                     for (int i = 0; i < totalPages; i++) {
                         if (pageRenderer.isPageLoading(i)) {
                             VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
@@ -127,7 +131,6 @@ public class ScrollHandler {
                 double loadStart = Math.max(0, visibleStart - bufferSize);
                 double loadEnd = Math.min(contentHeight, visibleEnd + bufferSize);
 
-                int totalPages = currentDocument.getTotalPages();
                 double currentY = 0;
 
                 // Priority lists: visible pages first, then nearby pages
@@ -136,6 +139,12 @@ public class ScrollHandler {
                 Set<Integer> pagesInRange = new HashSet<>();
 
                 for (int i = 0; i < totalPages; i++) {
+                    // Safety check: ensure page box exists
+                    if (i >= pagesContainer.getChildren().size()) {
+                        logger.warn("Page {} placeholder missing, creating it", i + 1);
+                        continue;
+                    }
+                    
                     VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
                     double pageHeight = pageBox.getPrefHeight();
                     double pageStart = currentY;
@@ -180,11 +189,37 @@ public class ScrollHandler {
                         }
                     }
                 }
+                
+                // Additional safeguard: if we're near the end (last 5 pages), ensure they get loaded
+                if (scrollValue > 0.8 && totalPages > 0) {
+                    int startPage = Math.max(0, totalPages - 5);
+                    for (int i = startPage; i < totalPages; i++) {
+                        if (i < pagesContainer.getChildren().size() && pageRenderer.isPageLoading(i)) {
+                            VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
+                            if (isPlaceholder(pageBox)) {
+                                pageRenderer.loadPage(i, pageBox);
+                            }
+                        }
+                    }
+                }
 
             } catch (Exception e) {
                 logger.error("Error loading visible pages", e);
             }
         });
+    }
+
+    private double getContentHeight(int totalPages) {
+        double calculatedContentHeight = 0;
+        for (int i = 0; i < totalPages; i++) {
+            if (i < pagesContainer.getChildren().size()) {
+                VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
+                calculatedContentHeight += pageBox.getPrefHeight() + 10; // Add spacing
+            }
+        }
+
+        // Use the larger of calculated height or actual container height
+        return Math.max(calculatedContentHeight, pagesContainer.getHeight());
     }
 
     /**
