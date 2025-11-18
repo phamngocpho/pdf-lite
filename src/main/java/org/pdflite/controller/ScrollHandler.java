@@ -27,7 +27,7 @@ import java.util.TimerTask;
 public class ScrollHandler {
     private static final Logger logger = LoggerFactory.getLogger(ScrollHandler.class);
 
-    private static final long SCROLL_DEBOUNCE_MS = 150; // Wait 150ms after scroll stops
+    private static final long SCROLL_DEBOUNCE_MS = 50; // Wait 50ms after scroll stops
 
     private final PageRenderer pageRenderer;
     private final ScrollPane scrollPane;
@@ -224,21 +224,26 @@ public class ScrollHandler {
 
     /**
      * Checks if a page box contains a placeholder (not yet loaded).
+     * A placeholder is a StackPane that doesn't contain an ImageView.
      *
      * @param pageBox the page box to check
      * @return true if the page box contains a placeholder
      */
     private boolean isPlaceholder(VBox pageBox) {
         if (pageBox.getChildren().isEmpty()) {
-            return false;
+            return true;
         }
 
         Object firstChild = pageBox.getChildren().getFirst();
-        if (firstChild instanceof javafx.scene.layout.StackPane placeholder) {
-            return !placeholder.getChildren().isEmpty() &&
-                    placeholder.getChildren().getFirst() instanceof javafx.scene.control.Label;
+        if (firstChild instanceof javafx.scene.layout.StackPane stackPane) {
+            // If StackPane contains an ImageView, it's rendered
+            boolean hasImageView = stackPane.getChildren().stream()
+                    .anyMatch(child -> child instanceof javafx.scene.image.ImageView);
+            return !hasImageView;
         }
-        return false;
+        
+        // If it's not a StackPane, it's likely a placeholder
+        return true;
     }
 
     /**
