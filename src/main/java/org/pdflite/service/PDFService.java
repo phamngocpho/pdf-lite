@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -147,6 +146,44 @@ public class PDFService {
     }
 
     /**
+     * Gets the dimensions of a PDF page at a given scale without rendering the full image.
+     * This is more efficient than rendering when you only need the size.
+     *
+     * @param pdfDoc    the PDF document
+     * @param pageIndex the zero-based index of the page
+     * @param scale     the scaling factor to apply (1.0 = 100%)
+     * @return a double array with [width, height] of the page at the given scale
+     * @throws IllegalArgumentException if the page index is invalid
+     */
+    public double[] getPageDimensions(PDFDocument pdfDoc, int pageIndex, float scale) {
+        if (pageIndex < 0 || pageIndex >= pdfDoc.getTotalPages()) {
+            throw new IllegalArgumentException("Invalid page index: " + pageIndex);
+        }
+
+        PDPage page = pdfDoc.getDocument().getPage(pageIndex);
+        
+        // Get rotation-aware dimensions
+        int originalRotation = page.getRotation();
+        int userRotation = pdfDoc.getRotation();
+        int finalRotation = (originalRotation + userRotation) % 360;
+        
+        // Get page media box (dimensions)
+        org.apache.pdfbox.pdmodel.common.PDRectangle mediaBox = page.getMediaBox();
+        
+        // Calculate dimensions based on DPI and scale
+        float dpi = DEFAULT_DPI * scale;
+        double widthInInches = mediaBox.getWidth() / 72.0; // PDF uses 72 points per inch
+        double heightInInches = mediaBox.getHeight() / 72.0;
+        
+        double width = widthInInches * dpi;
+        double height = heightInInches * dpi;
+        
+        // Return swapped dimensions if rotated 90 or 270 degrees
+        boolean isRotated = (finalRotation == 90 || finalRotation == 270);
+        return isRotated ? new double[]{height, width} : new double[]{width, height};
+    }
+
+    /**
      * Closes the PDF document and releases resources.
      * <p>
      * This method closes the underlying PDFBox document and releases any
@@ -273,13 +310,6 @@ public class PDFService {
 
     /**
      * Save the current document to its original file.
-     */
-    /**
-     * Save the current document to its original file using INCREMENTAL SAVE.
-     * This is REQUIRED when saving to the same file that was loaded.
-     */
-    /**
-     * Save the current document to its original file.
      * IMPORTANT: Uses temporary file approach to avoid corruption.
      */
     public void save(PDFDocument pdfDoc) throws IOException {
@@ -397,15 +427,14 @@ public class PDFService {
 
         logger.info("Deleted {} page(s). New total pages: {}", toDelete, newTotal);
     }
-    private void flattenAnnotationsToPDF(PDFDocument pdfDoc) throws IOException {
+    private void flattenAnnotationsToPDF(PDFDocument pdfDoc) {
         PDDocument doc = pdfDoc.getDocument();
         List<Annotation> annotations = pdfDoc.getAnnotations();
 
         if (annotations.isEmpty()) return;
 
         for (Annotation ann : annotations) {
-            if (ann instanceof ShapeAnnotation) {
-                ShapeAnnotation shape = (ShapeAnnotation) ann;
+            if (ann instanceof ShapeAnnotation shape) {
                 if (shape.getPageNumber() >= doc.getNumberOfPages()) continue;
 
                 PDPage page = doc.getPage(shape.getPageNumber());
@@ -427,37 +456,41 @@ public class PDFService {
                     float x2 = (float) shape.getEndX();
                     float y2 = pageHeight - (float) shape.getEndY();
 
-                    if (shape instanceof RectangleAnnotation) {
-                        float w = Math.abs(x2 - x1);
-                        float h = Math.abs(y1 - y2);
-                        float rectX = Math.min(x1, x2);
-                        float rectY = Math.min(y1, y2);
-                        contentStream.addRect(rectX, rectY, w, h);
-                        contentStream.stroke();
-                    }
-                    else if (shape instanceof ArrowAnnotation) {
-                        contentStream.moveTo(x1, y1);
-                        contentStream.lineTo(x2, y2);
-                        contentStream.stroke();
-                    }
-                    else if (shape instanceof CircleAnnotation) {
-                        float w = Math.abs(x2 - x1);
-                        float h = Math.abs(y1 - y2);
-                        float rectX = Math.min(x1, x2);
-                        float rectY = Math.min(y1, y2);
+                    switch (shape) {
+                        case RectangleAnnotation rectangleAnnotation -> {
+                            float w = Math.abs(x2 - x1);
+                            float h = Math.abs(y1 - y2);
+                            float rectX = Math.min(x1, x2);
+                            float rectY = Math.min(y1, y2);
+                            contentStream.addRect(rectX, rectY, w, h);
+                            contentStream.stroke();
+                        }
+                        case ArrowAnnotation arrowAnnotation -> {
+                            contentStream.moveTo(x1, y1);
+                            contentStream.lineTo(x2, y2);
+                            contentStream.stroke();
+                        }
+                        case CircleAnnotation circleAnnotation -> {
+                            float w = Math.abs(x2 - x1);
+                            float h = Math.abs(y1 - y2);
+                            float rectX = Math.min(x1, x2);
+                            float rectY = Math.min(y1, y2);
 
-                        final float k = 0.5522847498f;
-                        float rx = w / 2;
-                        float ry = h / 2;
-                        float cx = rectX + rx;
-                        float cy = rectY + ry;
+                            final float k = 0.5522847498f;
+                            float rx = w / 2;
+                            float ry = h / 2;
+                            float cx = rectX + rx;
+                            float cy = rectY + ry;
 
-                        contentStream.moveTo(cx + rx, cy);
-                        contentStream.curveTo(cx + rx, cy + k * ry, cx + k * rx, cy + ry, cx, cy + ry);
-                        contentStream.curveTo(cx - k * rx, cy + ry, cx - rx, cy + k * ry, cx - rx, cy);
-                        contentStream.curveTo(cx - rx, cy - k * ry, cx - k * rx, cy - ry, cx, cy - ry);
-                        contentStream.curveTo(cx + k * rx, cy - ry, cx + rx, cy - k * ry, cx + rx, cy);
-                        contentStream.stroke();
+                            contentStream.moveTo(cx + rx, cy);
+                            contentStream.curveTo(cx + rx, cy + k * ry, cx + k * rx, cy + ry, cx, cy + ry);
+                            contentStream.curveTo(cx - k * rx, cy + ry, cx - rx, cy + k * ry, cx - rx, cy);
+                            contentStream.curveTo(cx - rx, cy - k * ry, cx - k * rx, cy - ry, cx, cy - ry);
+                            contentStream.curveTo(cx + k * rx, cy - ry, cx + rx, cy - k * ry, cx + rx, cy);
+                            contentStream.stroke();
+                        }
+                        default -> {
+                        }
                     }
                 } catch (Exception e) {
                     logger.error("Error flattening annotation", e);

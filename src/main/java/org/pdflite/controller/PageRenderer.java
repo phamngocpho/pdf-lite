@@ -37,9 +37,7 @@ public class PageRenderer {
 
     private PDFDocument currentDocument;
     private double currentZoom;
-    private boolean highlightModeActive;
-
-    private ContextMenuHandler contextMenuHandler;
+    private final ContextMenuHandler contextMenuHandler;
 
     /**
      * Creates a new PageRenderer with the specified service and executor.
@@ -91,9 +89,7 @@ public class PageRenderer {
     /**
      * Sets whether highlight mode is active.
      */
-    public void setHighlightModeActive(boolean active) {
-        this.highlightModeActive = active;
-    }
+    public void setHighlightModeActive(boolean active) {}
 
     /**
      * Clears all cached images and resets state.
@@ -253,9 +249,7 @@ public class PageRenderer {
         annotationLayer.setPickOnBounds(false);
         annotationLayer.setOnContextMenuRequested(null);
         annotationLayer.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
-            if (event.getButton() == MouseButton.SECONDARY) {
-                // Do nothing - let context menu handle it
-            }
+            // Do nothing - let context menu handle it
         });
 
         // Create context menu pane
@@ -298,14 +292,14 @@ public class PageRenderer {
         pageBox.setPrefSize(width, height);
         pageBox.setMinSize(width, height);
         pageBox.setMaxSize(width, height);
-        pageBox.setStyle("-fx-background-color: #505050;");
+        pageBox.setStyle("-fx-background-color: #606060; -fx-padding: 0;");
 
         // Create a simple gray placeholder with exact dimensions
         StackPane placeholder = new StackPane();
         placeholder.setPrefSize(width, height);
         placeholder.setMinSize(width, height);
         placeholder.setMaxSize(width, height);
-        placeholder.setStyle("-fx-background-color: #505050;");
+        placeholder.setStyle("-fx-background-color: #606060; -fx-padding: 0;");
 
         pageBox.getChildren().add(placeholder);
         return pageBox;
