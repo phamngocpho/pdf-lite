@@ -84,7 +84,7 @@ public class RenderingManager {
             if (pagesContainer == null) {
                 pagesContainer = new VBox(10);
                 pagesContainer.setAlignment(Pos.TOP_CENTER);
-                pagesContainer.setStyle("-fx-background-color: #808080; -fx-padding: 10;");
+                pagesContainer.setStyle("-fx-background-color: #808080; -fx-padding: 20;");
                 if (contentPane != null) {
                     contentPane.getChildren().add(pagesContainer);
                 }
@@ -94,14 +94,17 @@ public class RenderingManager {
             pagesContainer.getChildren().clear();
 
             int totalPages = currentDocument.getTotalPages();
-            Image firstPage = pdfService.renderPage(currentDocument, 0, (float) zoomManager.getCurrentZoom());
-            double pageWidth = firstPage.getWidth();
-            double pageHeight = firstPage.getHeight();
-
+            double currentZoom = zoomManager.getCurrentZoom();
+            
             logger.info("Creating continuous scroll view for {} pages", totalPages);
 
-            // Create placeholders for all pages
+            // Create placeholders for all pages - calculate individual page dimensions efficiently
             for (int i = 0; i < totalPages; i++) {
+                // Get page dimensions without rendering (much faster)
+                double[] dimensions = pdfService.getPageDimensions(currentDocument, i, (float) currentZoom);
+                double pageWidth = dimensions[0];
+                double pageHeight = dimensions[1];
+                
                 VBox pageBox = pageRenderer.createPagePlaceholder(i, pageWidth, pageHeight);
                 pagesContainer.getChildren().add(pageBox);
             }
@@ -118,7 +121,7 @@ public class RenderingManager {
                 }
             });
 
-        } catch (IOException e) {
+        } catch (Exception e) {
             logger.error("Error rendering page", e);
             throw new RuntimeException("Could not render the page: " + e.getMessage(), e);
         }
@@ -144,19 +147,35 @@ public class RenderingManager {
             currentDocument.setZoomLevel(newZoom);
             pageRenderer.setZoom(newZoom);
 
-            // Update zoom cho các trang đã được render
+            // Update zoom cho TẤT CẢ các trang (cả đã render và placeholder)
             pagesContainer.getChildren().forEach(node -> {
                 if (node instanceof VBox box) {
                     String id = box.getId();
                     if (id != null && id.startsWith("page-")) {
                         int pageIndex = Integer.parseInt(id.replace("page-", ""));
 
-                        // Chỉ update các trang đã được render (có ImageView trong StackPane)
+                        // Get new dimensions at new zoom level
+                        double[] dimensions = pdfService.getPageDimensions(currentDocument, pageIndex, (float) newZoom);
+                        double newWidth = dimensions[0];
+                        double newHeight = dimensions[1];
+
+                        // Update VBox size
+                        box.setPrefSize(newWidth, newHeight);
+                        box.setMinSize(newWidth, newHeight);
+                        box.setMaxSize(newWidth, newHeight);
+
                         if (!box.getChildren().isEmpty() &&
                                 box.getChildren().getFirst() instanceof StackPane stackPane) {
+                            
+                            // Update StackPane size
+                            stackPane.setPrefSize(newWidth, newHeight);
+                            stackPane.setMinSize(newWidth, newHeight);
+                            stackPane.setMaxSize(newWidth, newHeight);
+
+                            // Check if page is rendered (has ImageView) or is placeholder
                             if (!stackPane.getChildren().isEmpty() &&
                                     stackPane.getChildren().get(0) instanceof javafx.scene.image.ImageView imgView) {
-
+                                // Page đã được render - cần re-render với zoom mới
                                 try {
                                     Image newImg = pdfService.renderPage(currentDocument, pageIndex, (float) newZoom);
                                     imgView.setImage(newImg);
@@ -172,6 +191,7 @@ public class RenderingManager {
                                     logger.error("Error updating page zoom for page {}", pageIndex + 1, e);
                                 }
                             }
+                            // Nếu là placeholder (chưa có ImageView), size đã được update ở trên rồi
                         }
                     }
                 }
