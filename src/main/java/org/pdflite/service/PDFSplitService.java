@@ -48,41 +48,56 @@ public class PDFSplitService {
     public List<File> splitPDF(File sourceFile, File outputDirectory, List<PageRange> pageRanges)
             throws IOException {
 
-        if (sourceFile == null || !sourceFile.exists() || !sourceFile.canRead()) {
-            throw new IllegalArgumentException("Invalid source file");
-        }
+        validateFile(sourceFile);
+        validateOutputDirectory(outputDirectory);
+        validatePageRanges(pageRanges);
 
-        if (outputDirectory == null || !outputDirectory.exists() || !outputDirectory.isDirectory()) {
-            throw new IllegalArgumentException("Invalid output directory");
-        }
-
-        if (pageRanges == null || pageRanges.isEmpty()) {
-            throw new IllegalArgumentException("Page ranges cannot be null or empty");
-        }
-
-        logger.info("Splitting PDF: {} into {} parts", sourceFile.getName(), pageRanges.size());
-
-        List<File> outputFiles = new ArrayList<>();
+        logger.info("Splitting PDF file: {} into {} parts", sourceFile.getName(), pageRanges.size());
 
         try (PDDocument sourceDoc = Loader.loadPDF(sourceFile)) {
-            int totalPages = sourceDoc.getNumberOfPages();
+            return splitPDFInternal(sourceDoc, outputDirectory, pageRanges);
+        }
+    }
 
-            for (PageRange range : pageRanges) {
-                // Validate range
-                if (range.startPage() < 1 || range.endPage() > totalPages ||
-                        range.startPage() > range.endPage()) {
-                    throw new IllegalArgumentException(
-                            String.format("Invalid page range: %d-%d (total pages: %d)",
-                                    range.startPage(), range.endPage(), totalPages));
-                }
+    /**
+     * Splits a PDF into multiple files based on page ranges (using already-opened PDDocument).
+     * This method is useful for encrypted PDFs that are already decrypted in memory.
+     *
+     * @param sourceDoc       The source PDDocument (already opened/decrypted)
+     * @param outputDirectory The directory where split files will be saved
+     * @param pageRanges      List of page ranges to extract
+     * @return List of created output files
+     * @throws IOException if an error occurs during splitting
+     */
+    public List<File> splitPDF(PDDocument sourceDoc, File outputDirectory, List<PageRange> pageRanges)
+            throws IOException {
 
-                File outputFile = new File(outputDirectory, range.outputFileName());
-                extractPages(sourceDoc, range.startPage(), range.endPage(), outputFile);
-                outputFiles.add(outputFile);
+        validateDocument(sourceDoc);
+        validateOutputDirectory(outputDirectory);
+        validatePageRanges(pageRanges);
 
-                logger.info("Created: {} (pages {}-{})",
-                        outputFile.getName(), range.startPage(), range.endPage());
-            }
+        logger.info("Splitting PDF document into {} parts", pageRanges.size());
+
+        return splitPDFInternal(sourceDoc, outputDirectory, pageRanges);
+    }
+
+    /**
+     * Internal method to split PDF document into multiple files.
+     */
+    private List<File> splitPDFInternal(PDDocument sourceDoc, File outputDirectory, List<PageRange> pageRanges)
+            throws IOException {
+
+        List<File> outputFiles = new ArrayList<>();
+        int totalPages = sourceDoc.getNumberOfPages();
+
+        for (PageRange range : pageRanges) {
+            validatePageRange(range, totalPages);
+
+            File outputFile = new File(outputDirectory, range.outputFileName());
+            extractPages(sourceDoc, range.startPage(), range.endPage(), outputFile);
+            outputFiles.add(outputFile);
+
+            logger.debug("Created: {} (pages {}-{})", outputFile.getName(), range.startPage(), range.endPage());
         }
 
         logger.info("Successfully split PDF into {} files", outputFiles.size());
@@ -101,30 +116,53 @@ public class PDFSplitService {
     public List<File> splitIntoIndividualPages(File sourceFile, File outputDirectory, String baseFileName)
             throws IOException {
 
-        if (sourceFile == null || !sourceFile.exists() || !sourceFile.canRead()) {
-            throw new IllegalArgumentException("Invalid source file");
-        }
+        validateFile(sourceFile);
+        validateOutputDirectory(outputDirectory);
 
-        if (outputDirectory == null || !outputDirectory.exists() || !outputDirectory.isDirectory()) {
-            throw new IllegalArgumentException("Invalid output directory");
-        }
-
-        logger.info("Splitting PDF: {} into individual pages", sourceFile.getName());
-
-        List<File> outputFiles = new ArrayList<>();
+        logger.info("Splitting PDF file: {} into individual pages", sourceFile.getName());
 
         try (PDDocument sourceDoc = Loader.loadPDF(sourceFile)) {
-            int totalPages = sourceDoc.getNumberOfPages();
+            return splitIntoIndividualPagesInternal(sourceDoc, outputDirectory, baseFileName);
+        }
+    }
 
-            for (int i = 1; i <= totalPages; i++) {
-                String fileName = String.format("%s_%d.pdf", baseFileName, i);
-                File outputFile = new File(outputDirectory, fileName);
+    /**
+     * Splits a PDF into individual pages (using already-opened PDDocument).
+     *
+     * @param sourceDoc       The source PDDocument (already opened/decrypted)
+     * @param outputDirectory The directory where split files will be saved
+     * @param baseFileName    Base name for output files
+     * @return List of created output files
+     * @throws IOException if an error occurs during splitting
+     */
+    public List<File> splitIntoIndividualPages(PDDocument sourceDoc, File outputDirectory, String baseFileName)
+            throws IOException {
 
-                extractPages(sourceDoc, i, i, outputFile);
-                outputFiles.add(outputFile);
+        validateDocument(sourceDoc);
+        validateOutputDirectory(outputDirectory);
 
-                logger.debug("Created: {} (page {})", fileName, i);
-            }
+        logger.info("Splitting PDF document into individual pages");
+
+        return splitIntoIndividualPagesInternal(sourceDoc, outputDirectory, baseFileName);
+    }
+
+    /**
+     * Internal method to split PDF into individual pages.
+     */
+    private List<File> splitIntoIndividualPagesInternal(PDDocument sourceDoc, File outputDirectory, String baseFileName)
+            throws IOException {
+
+        List<File> outputFiles = new ArrayList<>();
+        int totalPages = sourceDoc.getNumberOfPages();
+
+        for (int i = 1; i <= totalPages; i++) {
+            String fileName = String.format("%s_%d.pdf", baseFileName, i);
+            File outputFile = new File(outputDirectory, fileName);
+
+            extractPages(sourceDoc, i, i, outputFile);
+            outputFiles.add(outputFile);
+
+            logger.debug("Created: {} (page {})", fileName, i);
         }
 
         logger.info("Successfully split PDF into {} individual pages", outputFiles.size());
@@ -335,6 +373,55 @@ public class PDFSplitService {
         } catch (IOException e) {
             logger.error("Error validating page range", e);
             return false;
+        }
+    }
+
+    // ==================== Validation Methods ====================
+
+    /**
+     * Validates source file.
+     */
+    private void validateFile(File sourceFile) {
+        if (sourceFile == null || !sourceFile.exists() || !sourceFile.canRead()) {
+            throw new IllegalArgumentException("Invalid source file");
+        }
+    }
+
+    /**
+     * Validates PDDocument.
+     */
+    private void validateDocument(PDDocument sourceDoc) {
+        if (sourceDoc == null) {
+            throw new IllegalArgumentException("Source document cannot be null");
+        }
+    }
+
+    /**
+     * Validates output directory.
+     */
+    private void validateOutputDirectory(File outputDirectory) {
+        if (outputDirectory == null || !outputDirectory.exists() || !outputDirectory.isDirectory()) {
+            throw new IllegalArgumentException("Invalid output directory");
+        }
+    }
+
+    /**
+     * Validates page ranges list.
+     */
+    private void validatePageRanges(List<PageRange> pageRanges) {
+        if (pageRanges == null || pageRanges.isEmpty()) {
+            throw new IllegalArgumentException("Page ranges cannot be null or empty");
+        }
+    }
+
+    /**
+     * Validates a single page range.
+     */
+    private void validatePageRange(PageRange range, int totalPages) {
+        if (range.startPage() < 1 || range.endPage() > totalPages || range.startPage() > range.endPage()) {
+            throw new IllegalArgumentException(
+                    String.format("Invalid page range: %d-%d (total pages: %d)",
+                            range.startPage(), range.endPage(), totalPages));
         }
     }
 }

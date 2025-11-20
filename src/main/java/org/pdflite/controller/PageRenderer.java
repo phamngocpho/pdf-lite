@@ -19,7 +19,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import org.pdflite.view.ContextMenuPane;
 

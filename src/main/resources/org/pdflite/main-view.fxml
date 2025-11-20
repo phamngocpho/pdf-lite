@@ -49,6 +49,10 @@
                     <MenuItem text="Split PDF..." onAction="#handleSplitPDF"/>
                     <MenuItem text="Extract Pages..." onAction="#handleExtractPages"/>
                     <SeparatorMenuItem/>
+                    <MenuItem text="Encrypt PDF..." onAction="#handleEncryptPDF"/>
+                    <MenuItem text="Remove Password..." onAction="#handleDecryptPDF"/>
+                    <MenuItem text="Show Permissions..." onAction="#handleShowPDFPermissions"/>
+                    <SeparatorMenuItem/>
                     <MenuItem text="Delete Page" onAction="#handleDeletePage"/>
                 </Menu>
 

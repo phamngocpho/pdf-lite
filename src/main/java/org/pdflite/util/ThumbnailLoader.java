@@ -7,6 +7,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
+import org.apache.pdfbox.pdmodel.PDDocument;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
 import org.slf4j.Logger;
@@ -49,18 +50,8 @@ public class ThumbnailLoader {
                     sourceFile
                 );
 
-                for (int i = 0; i < totalPages; i++) {
-                    final int pageNum = i;
-                    Image thumbnail = pdfService.renderPage(doc, pageNum, (float) PREVIEW_SCALE);
-                    
-                    Platform.runLater(() -> {
-                        VBox pageBox = createThumbnailBox(thumbnail, pageNum + 1);
-                        previewPane.getChildren().add(pageBox);
-                    });
-                }
+                loadThumbnailsForDocument(doc, totalPages, previewPane, pdfService, updateStatus);
 
-                Platform.runLater(() -> updateStatus.accept("Thumbnails loaded"));
-                
             } catch (IOException e) {
                 logger.error("Error loading thumbnails", e);
                 Platform.runLater(() -> updateStatus.accept("Error loading thumbnails"));
@@ -74,6 +65,61 @@ public class ThumbnailLoader {
                 }
             }
         });
+    }
+
+    /**
+     * Loads thumbnails from an already-opened PDDocument (for encrypted PDFs).
+     *
+     * @param sourceDoc       the PDDocument (already opened/decrypted)
+     * @param totalPages      total number of pages
+     * @param previewPane     the FlowPane to add thumbnails to
+     * @param pdfService      the PDF service
+     * @param executorService the executor service
+     * @param updateStatus    callback to update status
+     */
+    public static void loadThumbnailsFromDocument(PDDocument sourceDoc, int totalPages, FlowPane previewPane,
+                                                  PDFService pdfService, ExecutorService executorService,
+                                                  Consumer<String> updateStatus) {
+        previewPane.getChildren().clear();
+        updateStatus.accept("Loading thumbnails...");
+
+        executorService.submit(() -> {
+            try {
+                // Create a temporary PDFDocument wrapper (without closing the underlying PDDocument)
+                PDFDocument doc = new PDFDocument(sourceDoc, null);
+
+                loadThumbnailsForDocument(doc, totalPages, previewPane, pdfService, updateStatus);
+
+            } catch (IOException e) {
+                logger.error("Error loading thumbnails", e);
+                Platform.runLater(() -> updateStatus.accept("Error loading thumbnails"));
+            }
+            // Note: We don't close sourceDoc here as it's managed by the caller
+        });
+    }
+
+    /**
+     * Helper method to load thumbnails for all pages of a PDFDocument.
+     *
+     * @param doc          the PDF document
+     * @param totalPages   total number of pages
+     * @param previewPane  the FlowPane to add thumbnails to
+     * @param pdfService   the PDF service
+     * @param updateStatus callback to update status
+     */
+    private static void loadThumbnailsForDocument(PDFDocument doc, int totalPages, FlowPane previewPane,
+                                                   PDFService pdfService, Consumer<String> updateStatus) throws IOException {
+        for (int i = 0; i < totalPages; i++) {
+            final int pageNum = i;
+            Image thumbnail = pdfService.renderPage(doc, pageNum, (float) PREVIEW_SCALE);
+
+            Platform.runLater(() -> {
+                VBox pageBox = createThumbnailBox(thumbnail, pageNum + 1);
+                previewPane.getChildren().add(pageBox);
+            });
+        }
+
+        Platform.runLater(() -> updateStatus.accept("Thumbnails loaded"));
     }
 
     /**

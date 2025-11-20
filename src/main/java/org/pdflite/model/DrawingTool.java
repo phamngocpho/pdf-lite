@@ -1,4 +1,3 @@
-// src/main/java/org/pdflite/model/DrawingTool.java
 package org.pdflite.model;
 
 /**

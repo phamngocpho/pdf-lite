@@ -6,6 +6,8 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
+import org.apache.pdfbox.pdmodel.encryption.StandardProtectionPolicy;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -88,6 +90,151 @@ public class PDFService {
         logger.info("Opening PDF file: {}", file.getAbsolutePath());
         PDDocument document = Loader.loadPDF(file);
         return new PDFDocument(document, file);
+    }
+
+    /**
+     * Opens a password-protected PDF file.
+     * <p>
+     * This method loads an encrypted PDF file using the provided password.
+     * If the password is incorrect, an IOException will be thrown.
+     * </p>
+     *
+     * @param file     the PDF file to open
+     * @param password the password to decrypt the PDF
+     * @return a PDFDocument object representing the opened PDF
+     * @throws IOException if the file cannot be read, password is incorrect,
+     *                     or the file is not a valid PDF
+     */
+    public PDFDocument openPDF(File file, String password) throws IOException {
+        logger.info("Opening password-protected PDF file: {}", file.getAbsolutePath());
+        PDDocument document = Loader.loadPDF(file, password);
+
+        if (document.isEncrypted()) {
+            logger.info("Successfully decrypted PDF");
+        }
+
+        return new PDFDocument(document, file);
+    }
+
+    /**
+     * Checks if a PDF file is encrypted/password-protected.
+     *
+     * @param file the PDF file to check
+     * @return true if the file is encrypted, false otherwise
+     * @throws IOException if the file cannot be read
+     */
+    public boolean isPDFEncrypted(File file) throws IOException {
+        try (PDDocument document = Loader.loadPDF(file)) {
+            return document.isEncrypted();
+        } catch (IOException e) {
+            // If we can't load without password, it's encrypted
+            return true;
+        }
+    }
+
+    /**
+     * Gets the access permissions of a PDF document.
+     *
+     * @param pdfDoc the PDF document
+     * @return AccessPermission object, or null if not encrypted
+     */
+    public AccessPermission getPDFPermissions(PDFDocument pdfDoc) {
+        if (pdfDoc != null && pdfDoc.getDocument().isEncrypted()) {
+            return pdfDoc.getDocument().getCurrentAccessPermission();
+        }
+        return null;
+    }
+
+    /**
+     * Encrypts a PDF file with password protection.
+     * <p>
+     * This method creates an encrypted copy of the PDF with owner and user passwords.
+     * Owner password provides full access, while user password provides restricted access
+     * based on the specified permissions.
+     * </p>
+     *
+     * @param inputFile      the source PDF file
+     * @param outputFile     the destination for encrypted PDF
+     * @param ownerPassword  the owner password (full access)
+     * @param userPassword   the user password (restricted access)
+     * @param permissions    access permissions for user password
+     * @throws IOException if encryption fails or file operations fail
+     */
+    public void encryptPDF(File inputFile, File outputFile, String ownerPassword,
+                          String userPassword, AccessPermission permissions) throws IOException {
+        logger.info("Encrypting PDF: {}", inputFile.getName());
+
+        try (PDDocument document = Loader.loadPDF(inputFile)) {
+            // Create protection policy with 256-bit AES encryption
+            StandardProtectionPolicy protectionPolicy = new StandardProtectionPolicy(
+                    ownerPassword,
+                    userPassword,
+                    permissions
+            );
+
+            // Use 256-bit encryption (most secure)
+            protectionPolicy.setEncryptionKeyLength(256);
+
+            // Apply encryption
+            document.protect(protectionPolicy);
+
+            // Save encrypted document
+            document.save(outputFile);
+
+            logger.info("PDF encrypted successfully: {}", outputFile.getName());
+        }
+    }
+
+    /**
+     * Encrypts a PDF with default permissions (allow printing, deny everything else).
+     *
+     * @param inputFile     the source PDF file
+     * @param outputFile    the destination for encrypted PDF
+     * @param ownerPassword the owner password (full access)
+     * @param userPassword  the user password (restricted access)
+     * @throws IOException if encryption fails
+     */
+    public void encryptPDF(File inputFile, File outputFile, String ownerPassword,
+                          String userPassword) throws IOException {
+        AccessPermission permissions = new AccessPermission();
+        permissions.setCanPrint(true);
+        permissions.setCanModify(false);
+        permissions.setCanExtractContent(false);
+        permissions.setCanModifyAnnotations(false);
+
+        encryptPDF(inputFile, outputFile, ownerPassword, userPassword, permissions);
+    }
+
+    /**
+     * Removes password protection from a PDF file.
+     *
+     * @param inputFile  the encrypted PDF file
+     * @param outputFile the destination for decrypted PDF
+     * @param password   the owner password
+     * @throws IOException if decryption fails or password is incorrect
+     */
+    public void decryptPDF(File inputFile, File outputFile, String password) throws IOException {
+        logger.info("Decrypting PDF: {}", inputFile.getName());
+
+        try (PDDocument document = Loader.loadPDF(inputFile, password)) {
+            if (!document.isEncrypted()) {
+                throw new IOException("PDF is not encrypted");
+            }
+
+            // Check if we have permission to decrypt
+            AccessPermission ap = document.getCurrentAccessPermission();
+            if (!ap.isOwnerPermission()) {
+                throw new IOException("Owner password required to remove encryption");
+            }
+
+            // Remove encryption by setting all permissions
+            document.setAllSecurityToBeRemoved(true);
+
+            // Save decrypted document
+            document.save(outputFile);
+
+            logger.info("PDF decrypted successfully: {}", outputFile.getName());
+        }
     }
 
     /**
@@ -350,6 +497,13 @@ public class PDFService {
         try {
             flattenAnnotationsToPDF(pdfDoc);
 
+            // If document was encrypted, remove encryption before saving
+            // (User already has access since they opened the document)
+            if (pdDoc.isEncrypted()) {
+                pdDoc.setAllSecurityToBeRemoved(true);
+                logger.info("Removing encryption for save operation");
+            }
+
             // Save to temp file
             pdDoc.save(tempFile);
             logger.info("Saved to temporary file: {}", tempFile.getName());
@@ -400,12 +554,23 @@ public class PDFService {
         if (pdfDoc == null || pdfDoc.getDocument() == null || targetFile == null) {
             throw new IOException("Invalid save parameters.");
         }
+        
+        PDDocument pdDoc = pdfDoc.getDocument();
+        
         // Ensure directory exists
         Path parent = targetFile.toPath().getParent();
         if (parent != null && !Files.exists(parent)) {
             Files.createDirectories(parent);
         }
-        pdfDoc.getDocument().save(targetFile);
+        
+        // If document was encrypted, remove encryption before saving
+        // (User already has access since they opened the document)
+        if (pdDoc.isEncrypted()) {
+            pdDoc.setAllSecurityToBeRemoved(true);
+            logger.info("Removing encryption for saveAs operation");
+        }
+        
+        pdDoc.save(targetFile);
         logger.info("Saved PDF as {}", targetFile.getAbsolutePath());
     }
 
