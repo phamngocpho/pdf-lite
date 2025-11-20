@@ -4,6 +4,7 @@ import javafx.application.Platform;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.VBox;
 import org.pdflite.model.PDFDocument;
+import org.pdflite.util.ScrollCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,9 +101,7 @@ public class ScrollHandler {
         }, SCROLL_DEBOUNCE_MS);
 
         // Update current page indicator on JavaFX thread to ensure UI is updated
-        Platform.runLater(() -> {
-            updateCurrentPageFromScroll();
-        });
+        Platform.runLater(this::updateCurrentPageFromScroll);
     }
 
     /**
@@ -150,8 +149,6 @@ public class ScrollHandler {
                 double loadStart = Math.max(0, visibleStart - bufferSize);
                 double loadEnd = Math.min(contentHeight, visibleEnd + bufferSize);
 
-                double currentY = 0;
-
                 // Priority lists: visible pages first, then nearby pages
                 List<Integer> visiblePages = new ArrayList<>();
                 List<Integer> nearbyPages = new ArrayList<>();
@@ -164,24 +161,19 @@ public class ScrollHandler {
                         continue;
                     }
                     
-                    VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
-                    double pageHeight = pageBox.getPrefHeight();
-                    double pageStart = currentY;
-                    double pageEnd = currentY + pageHeight;
+                    ScrollCalculator.PageBounds bounds = ScrollCalculator.calculatePageBounds(pagesContainer, i);
 
                     // Check if page is in load range
-                    if (pageEnd >= loadStart && pageStart <= loadEnd) {
+                    if (bounds.overlaps(loadStart, loadEnd)) {
                         pagesInRange.add(i);
 
                         // Prioritize visible pages over buffer pages
-                        if (pageEnd >= visibleStart && pageStart <= visibleEnd) {
+                        if (bounds.overlaps(visibleStart, visibleEnd)) {
                             visiblePages.add(i);
                         } else {
                             nearbyPages.add(i);
                         }
                     }
-
-                    currentY = pageEnd + 10; // Add spacing
                 }
 
                 // Cancel pending renders outside the load range (fast scroll optimization)
@@ -229,16 +221,7 @@ public class ScrollHandler {
     }
 
     private double getContentHeight(int totalPages) {
-        double calculatedContentHeight = 0;
-        for (int i = 0; i < totalPages; i++) {
-            if (i < pagesContainer.getChildren().size()) {
-                VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
-                calculatedContentHeight += pageBox.getPrefHeight() + 10; // Add spacing
-            }
-        }
-
-        // Use the larger of calculated height or actual container height
-        return Math.max(calculatedContentHeight, pagesContainer.getHeight());
+        return ScrollCalculator.calculateContentHeight(pagesContainer, totalPages);
     }
 
     /**
@@ -296,18 +279,15 @@ public class ScrollHandler {
             double visibleStart = scrollValue * (contentHeight - viewportHeight);
             double visibleCenter = visibleStart + (viewportHeight / 2);
 
-            double currentY = 0;
 
             for (int i = 0; i < totalPages; i++) {
                 if (i >= pagesContainer.getChildren().size()) {
                     break;
                 }
                 
-                VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
-                double pageHeight = pageBox.getPrefHeight();
-                double pageEnd = currentY + pageHeight;
+                ScrollCalculator.PageBounds bounds = ScrollCalculator.calculatePageBounds(pagesContainer, i);
 
-                if (visibleCenter >= currentY && visibleCenter < pageEnd) {
+                if (bounds.contains(visibleCenter)) {
                     if (currentDocument.getCurrentPage() != i) {
                         currentDocument.setCurrentPage(i);
                         // Notify listener about page change
@@ -317,8 +297,6 @@ public class ScrollHandler {
                     }
                     break;
                 }
-
-                currentY = pageEnd + 10; // Add spacing
             }
         } catch (Exception e) {
             logger.error("Error updating current page from scroll", e);
@@ -349,18 +327,13 @@ public class ScrollHandler {
             double visibleCenter = visibleStart + (viewportHeight / 2);
 
             int totalPages = currentDocument.getTotalPages();
-            double currentY = 0;
 
             for (int i = 0; i < totalPages; i++) {
-                VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
-                double pageHeight = pageBox.getPrefHeight();
-                double pageEnd = currentY + pageHeight;
+                ScrollCalculator.PageBounds bounds = ScrollCalculator.calculatePageBounds(pagesContainer, i);
 
-                if (visibleCenter >= currentY && visibleCenter < pageEnd) {
+                if (bounds.contains(visibleCenter)) {
                     return i;
                 }
-
-                currentY = pageEnd + 10;
             }
         } catch (Exception e) {
             logger.error("Error getting current page from scroll", e);
@@ -381,12 +354,7 @@ public class ScrollHandler {
 
         Platform.runLater(() -> {
             try {
-                double currentY = 0;
-
-                for (int i = 0; i < pageIndex; i++) {
-                    VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
-                    currentY += pageBox.getPrefHeight() + 10; // Add spacing
-                }
+                double currentY = ScrollCalculator.calculatePageYPosition(pagesContainer, pageIndex);
 
                 double contentHeight = pagesContainer.getHeight();
                 double viewportHeight = scrollPane.getViewportBounds().getHeight();

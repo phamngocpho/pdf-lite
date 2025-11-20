@@ -43,8 +43,8 @@ public class ZipUtility {
              ZipOutputStream zos = new ZipOutputStream(fos)) {
 
             for (File file : files) {
-                if (file == null || !file.exists() || !file.canRead()) {
-                    logger.warn("Skipping invalid file: {}", file != null ? file.getName() : "null");
+                if (FileUtils.isValidFile(file)) {
+                    logger.warn("Skipping invalid file: {}", FileUtils.getFileNameOrNull(file));
                     continue;
                 }
 
@@ -53,7 +53,7 @@ public class ZipUtility {
         }
 
         logger.info("Successfully created ZIP archive: {} ({})",
-                zipFile.getName(), formatFileSize(zipFile.length()));
+                zipFile.getName(), FileUtils.formatFileSize(zipFile.length()));
     }
 
     /**
@@ -64,7 +64,7 @@ public class ZipUtility {
      * @throws IOException if an error occurs during file addition
      */
     private static void addFileToZip(File file, ZipOutputStream zos) throws IOException {
-        logger.debug("Adding file to ZIP: {} ({})", file.getName(), formatFileSize(file.length()));
+        logger.debug("Adding file to ZIP: {} ({})", file.getName(), FileUtils.formatFileSize(file.length()));
 
         ZipEntry zipEntry = new ZipEntry(file.getName());
         zos.putNextEntry(zipEntry);
@@ -108,8 +108,8 @@ public class ZipUtility {
             int processedFiles = 0;
 
             for (File file : files) {
-                if (file == null || !file.exists() || !file.canRead()) {
-                    logger.warn("Skipping invalid file: {}", file != null ? file.getName() : "null");
+                if (FileUtils.isValidFile(file)) {
+                    logger.warn("Skipping invalid file: {}", FileUtils.getFileNameOrNull(file));
                     continue;
                 }
 
@@ -124,19 +124,6 @@ public class ZipUtility {
         }
 
         logger.info("Successfully created ZIP archive: {}", zipFile.getName());
-    }
-
-    /**
-     * Formats file size in human-readable format.
-     *
-     * @param bytes File size in bytes
-     * @return Formatted string (e.g., "1.5 MB")
-     */
-    private static String formatFileSize(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        int exp = (int) (Math.log(bytes) / Math.log(1024));
-        String pre = "KMGTPE".charAt(exp - 1) + "";
-        return String.format("%.1f %sB", bytes / Math.pow(1024, exp), pre);
     }
 
     /**

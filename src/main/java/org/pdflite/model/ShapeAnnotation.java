@@ -1,7 +1,5 @@
-// File: src/main/java/org/pdflite/model/ShapeAnnotation.java
 package org.pdflite.model;
 
-import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.paint.Color;
 
 public abstract class ShapeAnnotation extends Annotation {

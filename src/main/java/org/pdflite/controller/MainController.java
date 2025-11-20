@@ -10,8 +10,11 @@ import javafx.scene.image.Image;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
+import org.pdflite.dialog.EncryptionDialog;
 import org.pdflite.manager.*;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
@@ -141,15 +144,13 @@ public class MainController {
         
         // Set page change listener to update UI when page changes during scroll
         // Must be after initializeManagers() so pageInfoManager is initialized
-        scrollHandler.setPageChangeListener(newPageIndex -> {
-            Platform.runLater(() -> {
-                if (currentDocument != null) {
-                    // The scroll handler already updated currentDocument.setCurrentPage(newPageIndex)
-                    // Just update the UI
-                    pageInfoManager.updatePageInfo(currentDocument);
-                }
-            });
-        });
+        scrollHandler.setPageChangeListener(newPageIndex -> Platform.runLater(() -> {
+            if (currentDocument != null) {
+                // The scroll handler already updated currentDocument.setCurrentPage(newPageIndex)
+                // Just update the UI
+                pageInfoManager.updatePageInfo(currentDocument);
+            }
+        }));
 
         // Initialize recent files manager
         recentFilesManager = new RecentFilesManager();
@@ -171,9 +172,7 @@ public class MainController {
 
         // Setup scroll listener
         if (scrollPane != null) {
-            scrollPane.vvalueProperty().addListener((obs, oldVal, newVal) -> {
-                scrollHandler.handleScroll();
-            });
+            scrollPane.vvalueProperty().addListener((obs, oldVal, newVal) -> scrollHandler.handleScroll());
         }
         if (drawingToolsGroup != null) {
             // Listener lắng nghe sự thay đổi trạng thái của ToggleGroup
@@ -382,11 +381,68 @@ public class MainController {
     private void handleSave() {
         if (currentDocument == null)
             return;
-        try {
-            fileManager.save(currentDocument);
-        } catch (IOException e) {
-            logger.error("Error saving document", e);
-            uiStateManager.showError("Save Error", "Could not save the document: " + e.getMessage());
+
+        // Check if document is encrypted
+        if (currentDocument.getDocument().isEncrypted()) {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Lưu file đã mã hóa");
+            alert.setHeaderText("File PDF này có mật khẩu bảo vệ");
+            alert.setContentText("""
+                    Bạn muốn:
+                    - Lưu và GIỮ mật khẩu (chọn Cancel và dùng 'Save As')
+                    - Lưu và XÓA mật khẩu (chọn OK)""");
+
+            ButtonType keepPassword = new ButtonType("Giữ mật khẩu", ButtonBar.ButtonData.CANCEL_CLOSE);
+            ButtonType removePassword = new ButtonType("Xóa mật khẩu", ButtonBar.ButtonData.OK_DONE);
+            alert.getButtonTypes().setAll(removePassword, keepPassword);
+
+            if (themeManager != null) {
+                themeManager.applyThemeToScene(alert.getDialogPane().getScene());
+            }
+
+            alert.showAndWait().ifPresent(response -> {
+                if (response == removePassword) {
+                    // User wants to remove password - proceed with save
+                    try {
+                        fileManager.save(currentDocument);
+                        
+                        Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                        successAlert.setTitle("Thành công");
+                        successAlert.setHeaderText("Đã lưu file");
+                        successAlert.setContentText("File đã được lưu và mật khẩu đã được xóa.");
+                        
+                        if (themeManager != null) {
+                            themeManager.applyThemeToScene(successAlert.getDialogPane().getScene());
+                        }
+                        
+                        successAlert.showAndWait();
+                    } catch (IOException e) {
+                        logger.error("Error saving document", e);
+                        uiStateManager.showError("Save Error", "Could not save the document: " + e.getMessage());
+                    }
+                } else {
+                    // User wants to keep password - suggest Save As
+                    Alert infoAlert = new Alert(Alert.AlertType.INFORMATION);
+                    infoAlert.setTitle("Thông tin");
+                    infoAlert.setHeaderText("Sử dụng Save As");
+                    infoAlert.setContentText("Để giữ mật khẩu, vui lòng sử dụng chức năng 'Save As'\n" +
+                            "hoặc chức năng 'Encrypt PDF' để đặt lại mật khẩu mới.");
+                    
+                    if (themeManager != null) {
+                        themeManager.applyThemeToScene(infoAlert.getDialogPane().getScene());
+                    }
+                    
+                    infoAlert.showAndWait();
+                }
+            });
+        } else {
+            // Normal save for non-encrypted documents
+            try {
+                fileManager.save(currentDocument);
+            } catch (IOException e) {
+                logger.error("Error saving document", e);
+                uiStateManager.showError("Save Error", "Could not save the document: " + e.getMessage());
+            }
         }
     }
 
@@ -394,6 +450,32 @@ public class MainController {
     private void handleSaveAs() {
         if (currentDocument == null)
             return;
+
+        // Warn user if document is encrypted
+        if (currentDocument.getDocument().isEncrypted()) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("Cảnh báo");
+            alert.setHeaderText("File có mật khẩu bảo vệ");
+            alert.setContentText("""
+                    Lưu ý: File mới sẽ KHÔNG CÓ MẬT KHẨU.
+                    
+                    Nếu muốn giữ mật khẩu hoặc đặt mật khẩu mới,
+                    vui lòng sử dụng chức năng 'Encrypt PDF' sau khi lưu.""");
+
+            ButtonType continueButton = new ButtonType("Tiếp tục lưu", ButtonBar.ButtonData.OK_DONE);
+            ButtonType cancelButton = new ButtonType("Hủy", ButtonBar.ButtonData.CANCEL_CLOSE);
+            alert.getButtonTypes().setAll(continueButton, cancelButton);
+
+            if (themeManager != null) {
+                themeManager.applyThemeToScene(alert.getDialogPane().getScene());
+            }
+
+            var result = alert.showAndWait();
+            if (result.isEmpty() || result.get() != continueButton) {
+                return; // User cancelled
+            }
+        }
+
         try {
             Stage stage = (Stage) rootPane.getScene().getWindow();
             fileManager.saveAs(currentDocument, stage);
@@ -423,19 +505,7 @@ public class MainController {
             Parent root = loader.load();
 
             PrintDialogController controller = loader.getController();
-
-            Stage dialogStage = new Stage();
-            dialogStage.setTitle("Print PDF");
-            dialogStage.initModality(Modality.APPLICATION_MODAL);
-            dialogStage.initOwner(rootPane.getScene().getWindow());
-
-            Scene dialogScene = new Scene(root);
-            dialogStage.setScene(dialogScene);
-
-            // Apply theme to dialog
-            if (themeManager != null) {
-                themeManager.applyThemeToScene(dialogScene);
-            }
+            Stage dialogStage = createDialogStage(root, "Print PDF");
 
             controller.setDialogStage(dialogStage);
             controller.setDocument(currentDocument, printService, currentDocument.getCurrentPage());
@@ -522,13 +592,11 @@ private void handleDeletePage() {
                 scrollHandler = new ScrollHandler(pageRenderer, scrollPane);
                 
                 // Set page change listener again after recreating ScrollHandler
-                scrollHandler.setPageChangeListener(newPageIndex -> {
-                    Platform.runLater(() -> {
-                        if (currentDocument != null) {
-                            pageInfoManager.updatePageInfo(currentDocument);
-                        }
-                    });
-                });
+                scrollHandler.setPageChangeListener(newPageIndex -> Platform.runLater(() -> {
+                    if (currentDocument != null) {
+                        pageInfoManager.updatePageInfo(currentDocument);
+                    }
+                }));
 
                 // 8. Mở LẠI file (để PDFBox load lại cấu trúc mới)
                 currentDocument = fileManager.openFile(currentFile);
@@ -748,6 +816,212 @@ private void handleDeletePage() {
         searchManager.navigateToResult(result);
     }
 
+    // ==================== PDF Encryption/Decryption ====================
+
+    @FXML
+    private void handleShowPDFPermissions() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No PDF Loaded",
+                    "Please open a PDF file first.");
+            return;
+        }
+
+        StringBuilder info = new StringBuilder();
+        info.append("Thông tin bảo mật PDF:\n\n");
+
+        if (!currentDocument.getDocument().isEncrypted()) {
+            info.append("File không được mã hóa\n");
+            info.append("Không có mật khẩu bảo vệ");
+        } else {
+            info.append("File được mã hóa\n\n");
+
+            AccessPermission perm =
+                    currentDocument.getDocument().getCurrentAccessPermission();
+
+            if (perm != null) {
+                if (perm.isOwnerPermission()) {
+                    info.append("Quyền: OWNER (Toàn quyền)\n\n");
+                } else {
+                    info.append("Quyền: USER (Hạn chế)\n\n");
+                }
+
+                info.append("Quyền được cấp:\n");
+                info.append("  - In ấn: ").append(perm.canPrint() ? "Có" : "Không").append("\n");
+                info.append("  - Chỉnh sửa: ").append(perm.canModify() ? "Có" : "Không").append("\n");
+                info.append("  - Sao chép text: ").append(perm.canExtractContent() ? "Có" : "Không").append("\n");
+                info.append("  - Chú thích: ").append(perm.canModifyAnnotations() ? "Có" : "Không").append("\n");
+                info.append("  - Điền form: ").append(perm.canFillInForm() ? "Có" : "Không").append("\n");
+            }
+        }
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Quyền PDF");
+        alert.setHeaderText("Thông tin bảo mật và quyền truy cập");
+        alert.setContentText(info.toString());
+        alert.getDialogPane().setPrefWidth(450);
+
+        if (themeManager != null) {
+            themeManager.applyThemeToScene(alert.getDialogPane().getScene());
+        }
+
+        alert.showAndWait();
+    }
+
+    @FXML
+    private void handleEncryptPDF() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No PDF Loaded",
+                    "Please open a PDF file first before encrypting.");
+            return;
+        }
+
+        EncryptionDialog dialog = new EncryptionDialog();
+        
+        // Apply theme if available
+        if (themeManager != null) {
+            themeManager.applyThemeToScene(dialog.getDialogPane().getScene());
+        }
+
+        dialog.showAndWait().ifPresent(result -> {
+            try {
+                Stage stage = (Stage) rootPane.getScene().getWindow();
+                FileChooser fileChooser = new FileChooser();
+                fileChooser.setTitle("Save Encrypted PDF As");
+                fileChooser.setInitialFileName("encrypted_" + currentDocument.getFileName());
+                fileChooser.getExtensionFilters().add(
+                        new FileChooser.ExtensionFilter(Constants.PDF_DESCRIPTION, Constants.PDF_EXTENSION)
+                );
+                
+                File outputFile = fileChooser.showSaveDialog(stage);
+                if (outputFile == null) {
+                    return; // User cancelled
+                }
+
+                // Encrypt the PDF
+                pdfService.encryptPDF(
+                        currentDocument.getFile(),
+                        outputFile,
+                        result.ownerPassword(),
+                        result.userPassword(),
+                        result.permissions()
+                );
+
+                Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                successAlert.setTitle("Thành công");
+                successAlert.setHeaderText("PDF đã được mã hóa");
+                successAlert.setContentText("File đã được lưu tại:\n" + outputFile.getAbsolutePath());
+                
+                if (themeManager != null) {
+                    themeManager.applyThemeToScene(successAlert.getDialogPane().getScene());
+                }
+                
+                successAlert.showAndWait();
+
+                logger.info("Successfully encrypted PDF: {}", outputFile.getName());
+
+            } catch (IOException e) {
+                logger.error("Error encrypting PDF", e);
+                uiStateManager.showError("Encryption Error",
+                        "Could not encrypt PDF: " + e.getMessage());
+            }
+        });
+    }
+
+    @FXML
+    private void handleDecryptPDF() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No PDF Loaded",
+                    "Please open a PDF file first before removing encryption.");
+            return;
+        }
+
+        if (!currentDocument.getDocument().isEncrypted()) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Thông tin");
+            alert.setHeaderText("PDF không được mã hóa");
+            alert.setContentText("File PDF này không có mật khẩu bảo vệ.");
+            
+            if (themeManager != null) {
+                themeManager.applyThemeToScene(alert.getDialogPane().getScene());
+            }
+            
+            alert.showAndWait();
+            return;
+        }
+
+        // Check if user has owner permission
+        AccessPermission permission =
+                currentDocument.getDocument().getCurrentAccessPermission();
+        
+        if (permission == null || !permission.isOwnerPermission()) {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Không có quyền");
+            alert.setHeaderText("Không thể xóa mật khẩu");
+            alert.setContentText("Bạn cần mật khẩu chủ sở hữu (Owner Password) để xóa bảo vệ.\n" +
+                    "Hiện tại bạn chỉ có quyền người dùng (User Permission).");
+            
+            if (themeManager != null) {
+                themeManager.applyThemeToScene(alert.getDialogPane().getScene());
+            }
+            
+            alert.showAndWait();
+            return;
+        }
+
+        // Confirm action
+        Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+        confirmAlert.setTitle("Xác nhận");
+        confirmAlert.setHeaderText("Xóa mật khẩu bảo vệ");
+        confirmAlert.setContentText("Bạn có chắc muốn xóa mật khẩu bảo vệ khỏi file PDF này?\n" +
+                "File mới sẽ không có mật khẩu.");
+        
+        if (themeManager != null) {
+            themeManager.applyThemeToScene(confirmAlert.getDialogPane().getScene());
+        }
+
+        confirmAlert.showAndWait().ifPresent(response -> {
+            if (response == ButtonType.OK) {
+                try {
+                    Stage stage = (Stage) rootPane.getScene().getWindow();
+                    FileChooser fileChooser = new FileChooser();
+                    fileChooser.setTitle("Save Decrypted PDF As");
+                    fileChooser.setInitialFileName("decrypted_" + currentDocument.getFileName());
+                    fileChooser.getExtensionFilters().add(
+                            new FileChooser.ExtensionFilter(Constants.PDF_DESCRIPTION, Constants.PDF_EXTENSION)
+                    );
+
+                    File outputFile = fileChooser.showSaveDialog(stage);
+                    if (outputFile == null) {
+                        return; // User cancelled
+                    }
+
+                    // Remove all security before saving
+                    currentDocument.getDocument().setAllSecurityToBeRemoved(true);
+                    pdfService.saveAs(currentDocument, outputFile);
+
+                    Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
+                    successAlert.setTitle("Thành công");
+                    successAlert.setHeaderText("Đã xóa mật khẩu");
+                    successAlert.setContentText("File không có mật khẩu đã được lưu tại:\n" +
+                            outputFile.getAbsolutePath());
+                    
+                    if (themeManager != null) {
+                        themeManager.applyThemeToScene(successAlert.getDialogPane().getScene());
+                    }
+                    
+                    successAlert.showAndWait();
+
+                    logger.info("Successfully removed encryption from PDF: {}", outputFile.getName());
+
+                } catch (IOException e) {
+                    logger.error("Error removing encryption", e);
+                    uiStateManager.showError("Decryption Error",
+                            "Could not remove encryption: " + e.getMessage());
+                }
+            }
+        });
+    }
+
     // ==================== About Dialog ====================
 
     @FXML
@@ -780,18 +1054,7 @@ private void handleDeletePage() {
             Parent root = loader.load();
 
             MergeDialogController controller = loader.getController();
-
-            Stage dialogStage = new Stage();
-            dialogStage.setTitle("Merge PDF Files");
-            dialogStage.initModality(Modality.APPLICATION_MODAL);
-            dialogStage.initOwner(rootPane.getScene().getWindow());
-
-            Scene dialogScene = new Scene(root);
-            dialogStage.setScene(dialogScene);
-
-            if (themeManager != null) {
-                themeManager.applyThemeToScene(dialogScene);
-            }
+            Stage dialogStage = createDialogStage(root, "Merge PDF Files");
 
             controller.setDialogStage(dialogStage);
 
@@ -812,26 +1075,42 @@ private void handleDeletePage() {
             return;
         }
 
+        // Check permissions for encrypted PDFs
+        if (currentDocument.getDocument().isEncrypted()) {
+            AccessPermission permission = currentDocument.getDocument().getCurrentAccessPermission();
+            if (permission != null && !permission.canExtractContent() && !permission.isOwnerPermission()) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Không có quyền");
+                alert.setHeaderText("Không thể tách PDF");
+                alert.setContentText("Bạn không có quyền trích xuất nội dung từ file PDF này.\n" +
+                        "Cần quyền Owner hoặc quyền Extract Content.");
+                
+                if (themeManager != null) {
+                    themeManager.applyThemeToScene(alert.getDialogPane().getScene());
+                }
+                
+                alert.showAndWait();
+                return;
+            }
+        }
+
         try {
             FXMLLoader loader = new FXMLLoader(
                     getClass().getResource("/org/pdflite/split-dialog.fxml"));
             Parent root = loader.load();
 
             SplitDialogController controller = loader.getController();
+            Stage dialogStage = createDialogStage(root, "Split PDF File");
 
-            Stage dialogStage = new Stage();
-            dialogStage.setTitle("Split PDF File");
-            dialogStage.initModality(Modality.APPLICATION_MODAL);
-            dialogStage.initOwner(rootPane.getScene().getWindow());
             controller.setDialogStage(dialogStage);
-            controller.setSourceFile(currentDocument.getFile());
-
-            Scene dialogScene = new Scene(root);
-            dialogStage.setScene(dialogScene);
-
-            if (themeManager != null) {
-                themeManager.applyThemeToScene(dialogScene);
+            
+            // Use PDDocument for encrypted PDFs, File for regular PDFs
+            if (currentDocument.getDocument().isEncrypted()) {
+                controller.setSourceDocument(currentDocument.getDocument(), currentDocument.getFile());
+            } else {
+                controller.setSourceFile(currentDocument.getFile());
             }
+
 
             dialogStage.setOnCloseRequest(event -> controller.shutdown());
             dialogStage.showAndWait();
@@ -878,23 +1157,40 @@ private void handleDeletePage() {
             return;
         }
 
+        // Check permissions for encrypted PDFs
+        if (currentDocument.getDocument().isEncrypted()) {
+            AccessPermission permission = currentDocument.getDocument().getCurrentAccessPermission();
+            if (permission != null && !permission.canExtractContent() && !permission.isOwnerPermission()) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Không có quyền");
+                alert.setHeaderText("Không thể trích xuất trang");
+                alert.setContentText("Bạn không có quyền trích xuất nội dung từ file PDF này.\n" +
+                        "Cần quyền Owner hoặc quyền Extract Content.");
+                
+                if (themeManager != null) {
+                    themeManager.applyThemeToScene(alert.getDialogPane().getScene());
+                }
+                
+                alert.showAndWait();
+                return;
+            }
+        }
+
         try {
             FXMLLoader loader = new FXMLLoader(
                     getClass().getResource("/org/pdflite/extract-dialog.fxml"));
             Parent root = loader.load();
 
             ExtractDialogController controller = loader.getController();
+            Stage dialogStage = createDialogStage(root, "Extract PDF Pages");
 
-            Stage dialogStage = new Stage();
-            dialogStage.setTitle("Extract PDF Pages");
-            dialogStage.initModality(Modality.APPLICATION_MODAL);
-            dialogStage.initOwner(rootPane.getScene().getWindow());
             controller.setDialogStage(dialogStage);
-            controller.setSourceFile(currentDocument.getFile());
-            Scene dialogScene = new Scene(root);
-            dialogStage.setScene(dialogScene);
-            if (themeManager != null) {
-                themeManager.applyThemeToScene(dialogScene); // Gọi phương thức đã sửa trong ThemeManager
+            
+            // Use PDDocument for encrypted PDFs, File for regular PDFs
+            if (currentDocument.getDocument().isEncrypted()) {
+                controller.setSourceDocument(currentDocument.getDocument(), currentDocument.getFile());
+            } else {
+                controller.setSourceFile(currentDocument.getFile());
             }
 
             dialogStage.setOnCloseRequest(event -> controller.shutdown());
@@ -904,6 +1200,29 @@ private void handleDeletePage() {
             logger.error("Error opening extract dialog", e);
             uiStateManager.showError("Error", "Could not open extract dialog: " + e.getMessage());
         }
+    }
+
+    /**
+     * Creates and configures a dialog stage with standard settings.
+     *
+     * @param root The dialog root node
+     * @param title The dialog title
+     * @return Configured Stage object
+     */
+    private Stage createDialogStage(Parent root, String title) {
+        Stage dialogStage = new Stage();
+        dialogStage.setTitle(title);
+        dialogStage.initModality(Modality.APPLICATION_MODAL);
+        dialogStage.initOwner(rootPane.getScene().getWindow());
+
+        Scene dialogScene = new Scene(root);
+        dialogStage.setScene(dialogScene);
+
+        if (themeManager != null) {
+            themeManager.applyThemeToScene(dialogScene);
+        }
+
+        return dialogStage;
     }
 
     public BorderPane getRootPane() {

@@ -104,12 +104,7 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
         Platform.runLater(() -> {
             try {
                 int targetPage = currentDocument.getCurrentPage();
-                double currentY = 0;
-
-                for (int i = 0; i < targetPage; i++) {
-                    VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
-                    currentY += pageBox.getPrefHeight() + 10;
-                }
+                double currentY = ScrollCalculator.calculatePageYPosition(pagesContainer, targetPage);
 
                 double contentHeight = pagesContainer.getHeight();
                 double viewportHeight = scrollPane.getViewportBounds().getHeight();

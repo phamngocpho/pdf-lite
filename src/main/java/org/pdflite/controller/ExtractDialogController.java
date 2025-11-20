@@ -6,6 +6,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.FlowPane;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+import org.apache.pdfbox.pdmodel.PDDocument;
 import org.pdflite.service.PDFMergeService;
 import org.pdflite.service.PDFService;
 import org.pdflite.service.PDFSplitService;
@@ -49,6 +50,7 @@ public class ExtractDialogController {
     @FXML private ProgressBar progressBar;
 
     private File sourceFile;
+    private PDDocument sourceDocument;
     private int totalPages;
     private final PDFSplitService splitService = new PDFSplitService();
     private final PDFMergeService mergeService = new PDFMergeService();
@@ -92,18 +94,61 @@ public class ExtractDialogController {
 
         try {
             totalPages = splitService.getPageCount(file);
-            fileNameLabel.setText(file.getName());
-            totalPagesLabel.setText(String.format("Total Pages: %d", totalPages));
-            
-            // Load thumbnails
-            loadThumbnails();
-            
-            updateStatus("Ready to extract");
-            logger.info("Loaded PDF: {} ({} pages)", file.getName(), totalPages);
+            initializeUI(file, totalPages, true);
         } catch (IOException e) {
             logger.error("Error loading PDF", e);
             showError("Error", "Failed to load PDF: " + e.getMessage());
         }
+    }
+
+    /**
+     * Sets the source PDF document (for encrypted PDFs already opened).
+     */
+    public void setSourceDocument(PDDocument document, File file) {
+        this.sourceDocument = document;
+        this.sourceFile = file;
+
+        if (document == null) {
+            return;
+        }
+
+        totalPages = document.getNumberOfPages();
+        initializeUI(file, totalPages, false);
+    }
+
+    /**
+     * Initializes the UI with file information and loads thumbnails.
+     *
+     * @param file The PDF file
+     * @param pageCount Total number of pages
+     * @param loadFromFile Whether to load thumbnails from file (true) or from document (false)
+     */
+    private void initializeUI(File file, int pageCount, boolean loadFromFile) {
+        fileNameLabel.setText(file != null ? file.getName() : "Document");
+        totalPagesLabel.setText(String.format("Total Pages: %d", pageCount));
+
+        // Load thumbnails
+        if (loadFromFile) {
+            loadThumbnails();
+        } else {
+            loadThumbnailsFromDocument();
+        }
+
+        updateStatus("Ready to extract");
+
+        if (file != null) {
+            logger.info("Loaded PDF: {} ({} pages)", file.getName(), pageCount);
+        } else {
+            logger.info("Loaded PDF document ({} pages)", pageCount);
+        }
+    }
+
+    /**
+     * Loads thumbnail previews from PDDocument.
+     */
+    private void loadThumbnailsFromDocument() {
+        ThumbnailLoader.loadThumbnailsFromDocument(sourceDocument, totalPages, previewPane,
+                pdfService, executorService, this::updateStatus);
     }
 
     /**
@@ -271,29 +316,49 @@ public class ExtractDialogController {
                 
                 // If single range, extract directly
                 if (ranges.size() == 1) {
-                    List<File> result = splitService.splitPDF(
-                        sourceFile, 
-                        outputFile.getParentFile(), 
-                        ranges
-                    );
+                    List<File> result;
+                    if (sourceDocument != null) {
+                        result = splitService.splitPDF(
+                            sourceDocument,
+                            outputFile.getParentFile(),
+                            ranges
+                        );
+                    } else {
+                        result = splitService.splitPDF(
+                            sourceFile,
+                            outputFile.getParentFile(),
+                            ranges
+                        );
+                    }
                     handleExtractSuccess(result.getFirst());
                 } else {
                     // Multiple ranges, extract and merge
                     File tempDir = new File(System.getProperty("java.io.tmpdir"), 
                         "pdf-lite-extract-" + System.currentTimeMillis());
-                    tempDir.mkdirs();
-                    
-                    List<File> tempFiles = splitService.splitPDF(sourceFile, tempDir, ranges);
+                    if (!tempDir.mkdirs() && !tempDir.exists()) {
+                        throw new IOException("Failed to create temporary directory: " + tempDir);
+                    }
+
+                    List<File> tempFiles;
+                    if (sourceDocument != null) {
+                        tempFiles = splitService.splitPDF(sourceDocument, tempDir, ranges);
+                    } else {
+                        tempFiles = splitService.splitPDF(sourceFile, tempDir, ranges);
+                    }
                     
                     // Merge all temp files into output file
                     mergeService.mergePDFs(tempFiles, outputFile);
                     
                     // Clean up temp files
                     for (File tempFile : tempFiles) {
-                        tempFile.delete();
+                        if (!tempFile.delete()) {
+                            logger.warn("Failed to delete temporary file: {}", tempFile);
+                        }
                     }
-                    tempDir.delete();
-                    
+                    if (!tempDir.delete()) {
+                        logger.warn("Failed to delete temporary directory: {}", tempDir);
+                    }
+
                     handleExtractSuccess(outputFile);
                 }
                 
@@ -334,8 +399,8 @@ public class ExtractDialogController {
         Platform.runLater(() -> {
             progressBar.setProgress(1.0);
             updateStatus("Extract completed successfully!");
-            showInfo("Extract Complete", 
-                String.format("Successfully extracted pages to:\n%s", outputFile.getAbsolutePath()));
+            showInfo(
+                    String.format("Successfully extracted pages to:\n%s", outputFile.getAbsolutePath()));
             handleCancel();
         });
     }
@@ -454,10 +519,10 @@ public class ExtractDialogController {
     /**
      * Shows an information dialog.
      */
-    private void showInfo(String title, String message) {
+    private void showInfo(String message) {
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle(title);
+            alert.setTitle("Extract Complete");
             alert.setHeaderText(null);
             alert.setContentText(message);
             alert.showAndWait();

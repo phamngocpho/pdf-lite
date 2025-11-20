@@ -1,7 +1,9 @@
 package org.pdflite.manager;
 
+import javafx.scene.control.Alert;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import org.pdflite.dialog.PasswordDialog;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
 import org.pdflite.util.Constants;
@@ -97,7 +99,41 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
             return null;
         }
 
-        PDFDocument document = pdfService.openPDF(file);
+        PDFDocument document;
+        
+        // Try to open the file normally first
+        try {
+            document = pdfService.openPDF(file);
+        } catch (IOException e) {
+            // Check if the file is encrypted
+            if (pdfService.isPDFEncrypted(file)) {
+                // Show password dialog
+                PasswordDialog passwordDialog = new PasswordDialog();
+                String password = passwordDialog.showAndGetPassword();
+                
+                if (password == null) {
+                    // User cancelled
+                    return null;
+                }
+                
+                // Try to open with password
+                try {
+                    document = pdfService.openPDF(file, password);
+                } catch (IOException passwordError) {
+                    // Wrong password or other error
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Lỗi mở file");
+                    alert.setHeaderText("Không thể mở file PDF");
+                    alert.setContentText("Mật khẩu không đúng hoặc file bị lỗi.");
+                    alert.showAndWait();
+                    throw passwordError;
+                }
+            } else {
+                // Not an encryption error, rethrow
+                throw e;
+            }
+        }
+        
         if (fileOperationListener != null) {
             fileOperationListener.onFileOpened(document, file);
         }
