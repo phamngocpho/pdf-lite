@@ -100,7 +100,7 @@
                 <VBox spacing="10">
                     <Label text="Output Options" style="-fx-font-weight: bold;"/>
                     <CheckBox fx:id="zipOutputCheckBox" text="Create ZIP archive of split files"
-                              selected="false"/>
+                    />
                 </VBox>
 
                 <Region VBox.vgrow="ALWAYS"/>
