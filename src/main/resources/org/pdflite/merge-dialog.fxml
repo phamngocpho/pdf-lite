@@ -41,7 +41,7 @@
                 <columns>
                     <TableColumn fx:id="orderColumn" text="#" prefWidth="40" minWidth="40" maxWidth="60"/>
                     <TableColumn fx:id="fileNameColumn" text="File Name" prefWidth="300" minWidth="150"/>
-                    <TableColumn fx:id="pagesColumn" text="Pages" prefWidth="80" minWidth="60"/>
+                    <TableColumn fx:id="pagesColumn" text="Pages" minWidth="60"/>
                     <TableColumn fx:id="sizeColumn" text="Size" prefWidth="100" minWidth="80"/>
                 </columns>
                 <columnResizePolicy>
