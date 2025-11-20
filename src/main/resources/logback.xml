@@ -24,6 +24,11 @@
 
     <!-- PDFBox logger (set to WARN to reduce noise) -->
     <logger name="org.apache.pdfbox" level="WARN"/>
+    
+    <!-- Suppress GlyphCache warnings about missing glyphs -->
+    <!-- These warnings are common with subset fonts and usually don't affect functionality -->
+    <logger name="org.apache.pdfbox.rendering.GlyphCache" level="ERROR"/>
+    <logger name="org.apache.pdfbox.pdmodel.font" level="ERROR"/>
 
     <!-- Root logger -->
     <root level="INFO">

@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Service class for handling PDF operations and document management.
@@ -57,6 +59,16 @@ public class PDFService {
      * </p>
      */
     private static final float DEFAULT_DPI = 150f;
+
+    /**
+     * Cache of PDFRenderer instances for each document to improve performance
+     * and ensure consistent font rendering across multiple page renders.
+     * <p>
+     * Reusing renderers prevents recreation of font caches and reduces
+     * "No glyph for code X" warnings.
+     * </p>
+     */
+    private final Map<PDDocument, PDFRenderer> rendererCache = new ConcurrentHashMap<>();
 
     /**
      * Opens a PDF file and creates a PDFDocument wrapper.
@@ -115,28 +127,36 @@ public class PDFService {
             return cachedImage;
         }
 
-        // Create renderer with optimized settings
-        PDFRenderer renderer = new PDFRenderer(pdfDoc.getDocument());
+        // Reuse renderer from cache to maintain consistent font rendering
+        // This prevents recreation of font caches and reduces glyph warnings
+        PDFRenderer renderer = rendererCache.computeIfAbsent(
+            pdfDoc.getDocument(), 
+            PDFRenderer::new
+        );
         float dpi = DEFAULT_DPI * scale;
 
         logger.debug("Rendering page {} with DPI {}", pageIndex, dpi);
 
-        // Render with RGB image type for better performance (no alpha channel overhead)
-        PDPage page = pdfDoc.getDocument().getPage(pageIndex);
-
-        // 1. Lấy góc xoay gốc của file PDF
-        int originalRotation = page.getRotation();
-        // 2. Lấy góc xoay người dùng chọn từ Model
-        int userRotation = pdfDoc.getRotation();
-        // 3. Tính tổng góc xoay (cộng dồn)
-        int finalRotation = (originalRotation + userRotation) % 360;
-        // 4. Set góc xoay tạm thời để render
-        page.setRotation(finalRotation);
+        // Synchronize on document to ensure thread-safe rendering
+        // This prevents concurrent modification of page rotation and font resources
         BufferedImage bufferedImage;
-        try {
-            bufferedImage = renderer.renderImageWithDPI(pageIndex, dpi, ImageType.RGB);
-        } finally {
-            page.setRotation(originalRotation);
+        synchronized (pdfDoc.getDocument()) {
+            // Render with RGB image type for better performance (no alpha channel overhead)
+            PDPage page = pdfDoc.getDocument().getPage(pageIndex);
+
+            // 1. Lấy góc xoay gốc của file PDF
+            int originalRotation = page.getRotation();
+            // 2. Lấy góc xoay người dùng chọn từ Model
+            int userRotation = pdfDoc.getRotation();
+            // 3. Tính tổng góc xoay (cộng dồn)
+            int finalRotation = (originalRotation + userRotation) % 360;
+            // 4. Set góc xoay tạm thời để render
+            page.setRotation(finalRotation);
+            try {
+                bufferedImage = renderer.renderImageWithDPI(pageIndex, dpi, ImageType.RGB);
+            } finally {
+                page.setRotation(originalRotation);
+            }
         }
 
         Image image = SwingFXUtils.toFXImage(bufferedImage, null);
@@ -200,6 +220,8 @@ public class PDFService {
     public void closePDF(PDFDocument pdfDoc) {
         if (pdfDoc != null && pdfDoc.getDocument() != null) {
             try {
+                // Remove renderer from cache before closing
+                rendererCache.remove(pdfDoc.getDocument());
                 pdfDoc.getDocument().close();
                 logger.info("PDF document closed");
             } catch (IOException e) {
