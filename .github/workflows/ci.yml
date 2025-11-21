@@ -8,7 +8,11 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    
+    runs-on: ${{ matrix.os }}
 
     steps:
     - name: Checkout code
@@ -21,16 +25,22 @@ jobs:
         distribution: 'temurin'
         cache: maven
     
-    - name: Make mvnw executable
+    - name: Make mvnw executable (Unix)
+      if: runner.os != 'Windows'
       run: chmod +x ./mvnw
     
-    - name: Build
+    - name: Build (Windows)
+      if: runner.os == 'Windows'
+      run: ./mvnw.cmd clean package -DskipTests -T 1C
+    
+    - name: Build (Unix)
+      if: runner.os != 'Windows'
       run: ./mvnw clean package -DskipTests -T 1C
     
-    - name: Upload Executable JAR
+    - name: Upload JAR
       uses: actions/upload-artifact@v4
       if: success()
       with:
-        name: pdf-lite-build-${{ github.run_number }}
-        path: target/*-shaded.jar
+        name: pdf-lite-${{ matrix.os }}-${{ github.run_number }}
+        path: target/*.jar
         retention-days: 30
