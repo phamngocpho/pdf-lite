@@ -37,10 +37,20 @@ jobs:
       if: runner.os != 'Windows'
       run: ./mvnw clean package -DskipTests -T 1C
     
+    - name: Rename JAR (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        move target\pdf-lite-1.0-SNAPSHOT.jar target\pdf-lite.jar
+    
+    - name: Rename JAR (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        mv target/pdf-lite-1.0-SNAPSHOT.jar target/pdf-lite.jar
+    
     - name: Upload JAR
       uses: actions/upload-artifact@v4
       if: success()
       with:
         name: pdf-lite-${{ matrix.os }}-${{ github.run_number }}
-        path: target/*.jar
+        path: target/pdf-lite.jar
         retention-days: 30
