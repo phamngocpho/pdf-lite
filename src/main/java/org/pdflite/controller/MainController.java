@@ -3,8 +3,10 @@ package org.pdflite.controller;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
 import org.pdflite.dialog.EncryptionDialog;
 import org.pdflite.manager.FileManager;
@@ -168,7 +170,7 @@ public class MainController {
 
         // Initialize managers
         initializeManagers();
-        
+
         // Set page change listener to update UI when page changes during scroll
         // Must be after initializeManagers() so pageInfoManager is initialized
         scrollHandler.setPageChangeListener(newPageIndex -> Platform.runLater(() -> {
@@ -235,10 +237,10 @@ public class MainController {
                 }
             });
         }
-            if (btnSelectText != null) makeToggleButtonDeselectable(btnSelectText);
-            if (btnDrawRect != null) makeToggleButtonDeselectable(btnDrawRect);
-            if (btnDrawCircle != null) makeToggleButtonDeselectable(btnDrawCircle);
-            if (btnDrawArrow != null) makeToggleButtonDeselectable(btnDrawArrow);
+        if (btnSelectText != null) makeToggleButtonDeselectable(btnSelectText);
+        if (btnDrawRect != null) makeToggleButtonDeselectable(btnDrawRect);
+        if (btnDrawCircle != null) makeToggleButtonDeselectable(btnDrawCircle);
+        if (btnDrawArrow != null) makeToggleButtonDeselectable(btnDrawArrow);
 
         if (colorPicker != null) {
             colorPicker.setValue(javafx.scene.paint.Color.BLACK);
@@ -303,7 +305,7 @@ public class MainController {
                         logger.error("Error switching page layout mode", e);
                     }
 
-                    renderingManager.preserveScrollPositionAndApplyZoom(newZoom);
+                    Objects.requireNonNull(renderingManager).preserveScrollPositionAndApplyZoom(newZoom);
                     Platform.runLater(() -> searchManager.updateHighlightsAfterZoom(newZoom));
                 }
             }
@@ -413,21 +415,21 @@ public class MainController {
             renderingManager.renderAllPages();
             pagesContainer = renderingManager.getPagesContainer();
             pageInfoManager.updatePageInfo(currentDocument);
-            
+
             // Scroll to top (page 1) to ensure we're viewing the first page
             Platform.runLater(() -> {
                 if (scrollPane != null && pagesContainer != null) {
                     scrollPane.setVvalue(0.0);
                 }
             });
-            
+
             uiStateManager.updateStatus("Opened: " + file.getName());
 
             // Add to recent files
             recentFilesManager.addRecentFile(file.getAbsolutePath());
             updateRecentFilesMenu();
 
-            logger.info("Successfully opened PDF: {} ({} pages, starting at page 1)", 
+            logger.info("Successfully opened PDF: {} ({} pages, starting at page 1)",
                     file.getName(), currentDocument.getTotalPages());
         } catch (IOException e) {
             logger.error("Error opening PDF file", e);
@@ -463,16 +465,16 @@ public class MainController {
                     // User wants to remove password - proceed with save
                     try {
                         fileManager.save(currentDocument);
-                        
+
                         Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
                         successAlert.setTitle("Thành công");
                         successAlert.setHeaderText("Đã lưu file");
                         successAlert.setContentText("File đã được lưu và mật khẩu đã được xóa.");
-                        
+
                         if (themeManager != null) {
                             themeManager.applyThemeToScene(successAlert.getDialogPane().getScene());
                         }
-                        
+
                         successAlert.showAndWait();
                     } catch (IOException e) {
                         logger.error("Error saving document", e);
@@ -485,11 +487,11 @@ public class MainController {
                     infoAlert.setHeaderText("Sử dụng Save As");
                     infoAlert.setContentText("Để giữ mật khẩu, vui lòng sử dụng chức năng 'Save As'\n" +
                             "hoặc chức năng 'Encrypt PDF' để đặt lại mật khẩu mới.");
-                    
+
                     if (themeManager != null) {
                         themeManager.applyThemeToScene(infoAlert.getDialogPane().getScene());
                     }
-                    
+
                     infoAlert.showAndWait();
                 }
             });
@@ -552,7 +554,7 @@ public class MainController {
 
         // Check if printing is available
         if (!printService.isPrintingAvailable()) {
-            uiStateManager.showError("No Printer Available", 
+            uiStateManager.showError("No Printer Available",
                     "No printer is available on this system. Please install a printer and try again.");
             return;
         }
@@ -602,131 +604,131 @@ public class MainController {
     }
 
     @FXML
-private void handleDeletePage() {
-    if (currentDocument == null) {
-        return;
-    }
+    private void handleDeletePage() {
+        if (currentDocument == null) {
+            return;
+        }
 
-    int total = currentDocument.getTotalPages();
-    if (total <= 1) {
-        uiStateManager.showError("Delete Page", "Cannot delete the last remaining page.");
-        return;
-    }
+        int total = currentDocument.getTotalPages();
+        if (total <= 1) {
+            uiStateManager.showError("Delete Page", "Cannot delete the last remaining page.");
+            return;
+        }
 
-    int current = currentDocument.getCurrentPage();
+        int current = currentDocument.getCurrentPage();
 
-    Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-    confirm.setTitle("Delete Page");
-    confirm.setHeaderText("Delete current page?");
-    confirm.setContentText("This will remove page " + (current + 1) + " from the document.");
-    confirm.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
-    confirm.showAndWait().ifPresent(result -> {
-        if (result == ButtonType.OK) {
-            try {
-                // 1. Lưu thông tin cần thiết
-                File currentFile = currentDocument.getFile();
-                double oldZoom = zoomManager.getCurrentZoom();
-
-                // 2. Xóa trang TRƯỚC KHI save
-                fileManager.deletePages(currentDocument, java.util.List.of(current));
-
-                // 3. Save document (sử dụng save thông thường, không dùng incremental)
-                pdfService.save(currentDocument);
-
-                // 4. CRITICAL: Đóng document cũ ĐỂ giải phóng file lock
-                pdfService.closePDF(currentDocument);
-                
-                // 5. Clear TOÀN BỘ state
-                contentPane.getChildren().clear();
-                pagesContainer = null;
-                loadingPages.clear();
-                
-                // 6. Clear cache và hủy tất cả render đang chờ
-                pageRenderer.clearCache();
-                pageRenderer.cancelAllPendingRenders();
-
-                // 7. Tạo MỚI PageRenderer và ScrollHandler
-                pageRenderer = new PageRenderer(pdfService, renderExecutor);
-                scrollHandler = new ScrollHandler(pageRenderer, scrollPane);
-                
-                // Set page change listener again after recreating ScrollHandler
-                scrollHandler.setPageChangeListener(newPageIndex -> Platform.runLater(() -> {
-                    if (currentDocument != null) {
-                        pageInfoManager.updatePageInfo(currentDocument);
-                    }
-                }));
-
-                // 8. Mở LẠI file (để PDFBox load lại cấu trúc mới)
-                currentDocument = fileManager.openFile(currentFile);
-                if (currentDocument == null) {
-                    uiStateManager.showError("Error", "Could not reopen the file after deletion.");
-                    return;
-                }
-
-                // 9. Tính current page mới
-                int newTotal = currentDocument.getTotalPages();
-                int newCurrentPage = (current >= newTotal) ? Math.max(0, newTotal - 1) : current;
-                currentDocument.setCurrentPage(newCurrentPage);
-                currentDocument.setZoomLevel(oldZoom);
-
-                // 10. Cập nhật renderer với document mới
-                pageRenderer.setDocument(currentDocument, oldZoom);
-                zoomManager.setDocument(currentDocument);
-                zoomManager.setCurrentZoom(oldZoom);
-
-                // 11. Tạo lại RenderingManager
-                renderingManager = new RenderingManager(pdfService, pageRenderer, scrollHandler, zoomManager);
-                renderingManager.setDocument(currentDocument);
-                renderingManager.setUIComponents(null, scrollPane, contentPane);
-
-                // 12. CRITICAL: Set document cho ScrollHandler SAU KHI render
-                // (chờ pagesContainer được tạo)
-                renderingManager.renderAllPages();
-                pagesContainer = renderingManager.getPagesContainer();
-                
-                // 13. Set document cho ScrollHandler với pagesContainer HỢP LỆ
-                scrollHandler.setDocument(currentDocument, pagesContainer);
-
-                // 14. Cập nhật UI
-                pageInfoManager.updatePageInfo(currentDocument);
-
-                // 15. Scroll về đầu và trigger render - CHỈ dùng 1 lớp runLater
-                Platform.runLater(() -> {
-                    // Reset scroll position
-                    scrollPane.setVvalue(0);
-                    currentDocument.setCurrentPage(0);
-                    
-                    // Clear loading pages trước khi trigger scroll
-                    loadingPages.clear();
-                    
-                    // Trigger scroll handler để load các trang cần thiết
-                    scrollHandler.handleScroll();
-                    
-                    // Update UI
-                    pageInfoManager.updatePageInfo(currentDocument);
-                    uiStateManager.updateStatus(
-                        "Deleted page " + (current + 1) + ". Total pages: " + newTotal
-                    );
-                });
-
-                logger.info("Successfully deleted page {} and reloaded document", current + 1);
-
-            } catch (Exception ex) {
-                logger.error("Error deleting page {}", current + 1, ex);
-                uiStateManager.showError("Delete Page Error", "Could not delete the page: " + ex.getMessage());
-
-                // Recovery: thử mở lại file gốc
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Delete Page");
+        confirm.setHeaderText("Delete current page?");
+        confirm.setContentText("This will remove page " + (current + 1) + " from the document.");
+        confirm.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
+        confirm.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.OK) {
                 try {
-                    if (currentDocument != null && currentDocument.getFile() != null) {
-                        openPDFFile(currentDocument.getFile());
+                    // 1. Lưu thông tin cần thiết
+                    File currentFile = currentDocument.getFile();
+                    double oldZoom = zoomManager.getCurrentZoom();
+
+                    // 2. Xóa trang TRƯỚC KHI save
+                    fileManager.deletePages(currentDocument, java.util.List.of(current));
+
+                    // 3. Save document (sử dụng save thông thường, không dùng incremental)
+                    pdfService.save(currentDocument);
+
+                    // 4. CRITICAL: Đóng document cũ ĐỂ giải phóng file lock
+                    pdfService.closePDF(currentDocument);
+
+                    // 5. Clear TOÀN BỘ state
+                    contentPane.getChildren().clear();
+                    pagesContainer = null;
+                    loadingPages.clear();
+
+                    // 6. Clear cache và hủy tất cả render đang chờ
+                    pageRenderer.clearCache();
+                    pageRenderer.cancelAllPendingRenders();
+
+                    // 7. Tạo MỚI PageRenderer và ScrollHandler
+                    pageRenderer = new PageRenderer(pdfService, renderExecutor);
+                    scrollHandler = new ScrollHandler(pageRenderer, scrollPane);
+
+                    // Set page change listener again after recreating ScrollHandler
+                    scrollHandler.setPageChangeListener(newPageIndex -> Platform.runLater(() -> {
+                        if (currentDocument != null) {
+                            pageInfoManager.updatePageInfo(currentDocument);
+                        }
+                    }));
+
+                    // 8. Mở LẠI file (để PDFBox load lại cấu trúc mới)
+                    currentDocument = fileManager.openFile(currentFile);
+                    if (currentDocument == null) {
+                        uiStateManager.showError("Error", "Could not reopen the file after deletion.");
+                        return;
                     }
-                } catch (Exception recovery) {
-                    logger.error("Failed to recover after delete error", recovery);
+
+                    // 9. Tính current page mới
+                    int newTotal = currentDocument.getTotalPages();
+                    int newCurrentPage = (current >= newTotal) ? Math.max(0, newTotal - 1) : current;
+                    currentDocument.setCurrentPage(newCurrentPage);
+                    currentDocument.setZoomLevel(oldZoom);
+
+                    // 10. Cập nhật renderer với document mới
+                    pageRenderer.setDocument(currentDocument, oldZoom);
+                    zoomManager.setDocument(currentDocument);
+                    zoomManager.setCurrentZoom(oldZoom);
+
+                    // 11. Tạo lại RenderingManager
+                    renderingManager = new RenderingManager(pdfService, pageRenderer, scrollHandler, zoomManager);
+                    renderingManager.setDocument(currentDocument);
+                    renderingManager.setUIComponents(null, scrollPane, contentPane);
+
+                    // 12. CRITICAL: Set document cho ScrollHandler SAU KHI render
+                    // (chờ pagesContainer được tạo)
+                    renderingManager.renderAllPages();
+                    pagesContainer = renderingManager.getPagesContainer();
+
+                    // 13. Set document cho ScrollHandler với pagesContainer HỢP LỆ
+                    scrollHandler.setDocument(currentDocument, pagesContainer);
+
+                    // 14. Cập nhật UI
+                    pageInfoManager.updatePageInfo(currentDocument);
+
+                    // 15. Scroll về đầu và trigger render - CHỈ dùng 1 lớp runLater
+                    Platform.runLater(() -> {
+                        // Reset scroll position
+                        scrollPane.setVvalue(0);
+                        currentDocument.setCurrentPage(0);
+
+                        // Clear loading pages trước khi trigger scroll
+                        loadingPages.clear();
+
+                        // Trigger scroll handler để load các trang cần thiết
+                        scrollHandler.handleScroll();
+
+                        // Update UI
+                        pageInfoManager.updatePageInfo(currentDocument);
+                        uiStateManager.updateStatus(
+                                "Deleted page " + (current + 1) + ". Total pages: " + newTotal
+                        );
+                    });
+
+                    logger.info("Successfully deleted page {} and reloaded document", current + 1);
+
+                } catch (Exception ex) {
+                    logger.error("Error deleting page {}", current + 1, ex);
+                    uiStateManager.showError("Delete Page Error", "Could not delete the page: " + ex.getMessage());
+
+                    // Recovery: thử mở lại file gốc
+                    try {
+                        if (currentDocument != null && currentDocument.getFile() != null) {
+                            openPDFFile(currentDocument.getFile());
+                        }
+                    } catch (Exception recovery) {
+                        logger.error("Failed to recover after delete error", recovery);
+                    }
                 }
             }
-        }
-    });
-}
+        });
+    }
     // ==================== Zoom Operations ====================
 
     @FXML
@@ -813,24 +815,6 @@ private void handleDeletePage() {
     @FXML
     private void setDarkTheme() {
         themeManager.setDarkTheme();
-    }
-
-    private void setAnnotationModeForAllPages(AnnotationLayer.AnnotationMode mode) {
-        if (pagesContainer != null) {
-            pagesContainer.getChildren().forEach(node -> {
-                if (node instanceof VBox pageBox) {
-                    pageBox.getChildren().forEach(child -> {
-                        if (child instanceof StackPane stackPane) {
-                            stackPane.getChildren().forEach(stackChild -> {
-                                if (stackChild instanceof AnnotationLayer annotationLayer) {
-                                    annotationLayer.setAnnotationMode(mode);
-                                }
-                            });
-                        }
-                    });
-                }
-            });
-        }
     }
 
     // ==================== Fullscreen Operations ====================
@@ -934,7 +918,7 @@ private void handleDeletePage() {
         }
 
         EncryptionDialog dialog = new EncryptionDialog();
-        
+
         // Apply theme if available
         if (themeManager != null) {
             themeManager.applyThemeToScene(dialog.getDialogPane().getScene());
@@ -949,7 +933,7 @@ private void handleDeletePage() {
                 fileChooser.getExtensionFilters().add(
                         new FileChooser.ExtensionFilter(Constants.PDF_DESCRIPTION, Constants.PDF_EXTENSION)
                 );
-                
+
                 File outputFile = fileChooser.showSaveDialog(stage);
                 if (outputFile == null) {
                     return; // User cancelled
@@ -968,11 +952,11 @@ private void handleDeletePage() {
                 successAlert.setTitle("Thành công");
                 successAlert.setHeaderText("PDF đã được mã hóa");
                 successAlert.setContentText("File đã được lưu tại:\n" + outputFile.getAbsolutePath());
-                
+
                 if (themeManager != null) {
                     themeManager.applyThemeToScene(successAlert.getDialogPane().getScene());
                 }
-                
+
                 successAlert.showAndWait();
 
                 logger.info("Successfully encrypted PDF: {}", outputFile.getName());
@@ -998,11 +982,11 @@ private void handleDeletePage() {
             alert.setTitle("Thông tin");
             alert.setHeaderText("PDF không được mã hóa");
             alert.setContentText("File PDF này không có mật khẩu bảo vệ.");
-            
+
             if (themeManager != null) {
                 themeManager.applyThemeToScene(alert.getDialogPane().getScene());
             }
-            
+
             alert.showAndWait();
             return;
         }
@@ -1010,18 +994,18 @@ private void handleDeletePage() {
         // Check if user has owner permission
         AccessPermission permission =
                 currentDocument.getDocument().getCurrentAccessPermission();
-        
+
         if (permission == null || !permission.isOwnerPermission()) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setTitle("Không có quyền");
             alert.setHeaderText("Không thể xóa mật khẩu");
             alert.setContentText("Bạn cần mật khẩu chủ sở hữu (Owner Password) để xóa bảo vệ.\n" +
                     "Hiện tại bạn chỉ có quyền người dùng (User Permission).");
-            
+
             if (themeManager != null) {
                 themeManager.applyThemeToScene(alert.getDialogPane().getScene());
             }
-            
+
             alert.showAndWait();
             return;
         }
@@ -1032,7 +1016,7 @@ private void handleDeletePage() {
         confirmAlert.setHeaderText("Xóa mật khẩu bảo vệ");
         confirmAlert.setContentText("Bạn có chắc muốn xóa mật khẩu bảo vệ khỏi file PDF này?\n" +
                 "File mới sẽ không có mật khẩu.");
-        
+
         if (themeManager != null) {
             themeManager.applyThemeToScene(confirmAlert.getDialogPane().getScene());
         }
@@ -1062,11 +1046,11 @@ private void handleDeletePage() {
                     successAlert.setHeaderText("Đã xóa mật khẩu");
                     successAlert.setContentText("File không có mật khẩu đã được lưu tại:\n" +
                             outputFile.getAbsolutePath());
-                    
+
                     if (themeManager != null) {
                         themeManager.applyThemeToScene(successAlert.getDialogPane().getScene());
                     }
-                    
+
                     successAlert.showAndWait();
 
                     logger.info("Successfully removed encryption from PDF: {}", outputFile.getName());
@@ -1089,9 +1073,9 @@ private void handleDeletePage() {
         alert.setHeaderText("PDF Lite - PDF Viewer & Editor");
         alert.setContentText("""
                 Version 1.0
-
+                
                 A lightweight PDF viewer with annotation features.
-
+                
                 Built with JavaFX and Apache PDFBox""");
 
         DialogPane dialogPane = alert.getDialogPane();
@@ -1100,7 +1084,7 @@ private void handleDeletePage() {
         }
 
         alert.showAndWait();
-        }
+    }
 
     // ==================== Merge and Split Operations ====================
 
@@ -1142,11 +1126,11 @@ private void handleDeletePage() {
                 alert.setHeaderText("Không thể tách PDF");
                 alert.setContentText("Bạn không có quyền trích xuất nội dung từ file PDF này.\n" +
                         "Cần quyền Owner hoặc quyền Extract Content.");
-                
+
                 if (themeManager != null) {
                     themeManager.applyThemeToScene(alert.getDialogPane().getScene());
                 }
-                
+
                 alert.showAndWait();
                 return;
             }
@@ -1161,7 +1145,7 @@ private void handleDeletePage() {
             Stage dialogStage = createDialogStage(root, "Split PDF File");
 
             controller.setDialogStage(dialogStage);
-            
+
             // Use PDDocument for encrypted PDFs, File for regular PDFs
             if (currentDocument.getDocument().isEncrypted()) {
                 controller.setSourceDocument(currentDocument.getDocument(), currentDocument.getFile());
@@ -1224,11 +1208,11 @@ private void handleDeletePage() {
                 alert.setHeaderText("Không thể trích xuất trang");
                 alert.setContentText("Bạn không có quyền trích xuất nội dung từ file PDF này.\n" +
                         "Cần quyền Owner hoặc quyền Extract Content.");
-                
+
                 if (themeManager != null) {
                     themeManager.applyThemeToScene(alert.getDialogPane().getScene());
                 }
-                
+
                 alert.showAndWait();
                 return;
             }
@@ -1243,7 +1227,7 @@ private void handleDeletePage() {
             Stage dialogStage = createDialogStage(root, "Extract PDF Pages");
 
             controller.setDialogStage(dialogStage);
-            
+
             // Use PDDocument for encrypted PDFs, File for regular PDFs
             if (currentDocument.getDocument().isEncrypted()) {
                 controller.setSourceDocument(currentDocument.getDocument(), currentDocument.getFile());
@@ -1263,7 +1247,7 @@ private void handleDeletePage() {
     /**
      * Creates and configures a dialog stage with standard settings.
      *
-     * @param root The dialog root node
+     * @param root  The dialog root node
      * @param title The dialog title
      * @return Configured Stage object
      */
@@ -1349,24 +1333,6 @@ private void handleDeletePage() {
         }
     }
 
-    // ==================== Drawing Operations ====================
-
-    private void updateAnnotationMode(AnnotationLayer.AnnotationMode mode) {
-        if (pagesContainer == null) return;
-        processAllAnnotationLayers(layer -> {
-            layer.setAnnotationMode(mode);
-            if (mode != AnnotationLayer.AnnotationMode.NONE && mode != AnnotationLayer.AnnotationMode.HIGHLIGHT) {
-                if (colorPicker != null) {
-                    layer.setDrawingColor(colorPicker.getValue());
-                }
-            }
-            if (strokeWidthSlider != null) {
-                layer.setLineWidth(strokeWidthSlider.getValue());
-            }
-        });
-        uiStateManager.updateStatus("Tool: " + mode);
-    }
-
     @FXML
     private void handleClearRecentFiles() {
         recentFilesManager.clearRecentFiles();
@@ -1384,32 +1350,12 @@ private void handleDeletePage() {
         }
     }
 
-    // ==================== Drawing Operations ====================
-
-    @FXML
-    private void handleDrawRect() {
-        updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.RECTANGLE);
-    }
-
-    @FXML
-    private void handleDrawCircle() {
-        updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.CIRCLE);
-    }
-
-    @FXML
-    private void handleDrawArrow() {
-        updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.ARROW);
-    }
-
-    @FXML
-    private void handleColorChange() {
-        updateDrawingStyleForAllPages();
-    }
     private void updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode mode) {
         if (pagesContainer == null) return;
         processAllAnnotationLayers(layer -> layer.setAnnotationMode(mode));
         uiStateManager.updateStatus("Tool: " + mode);
     }
+
     private void processAllAnnotationLayers(java.util.function.Consumer<AnnotationLayer> action) {
         for (VBox pageBox : collectPageBoxes()) {
             if (pageBox == null || pageBox.getChildren().isEmpty()) continue;
@@ -1498,7 +1444,7 @@ private void handleDeletePage() {
         if (pageIndex >= 0 && pageIndex < pagesContainer.getChildren().size()) {
             javafx.scene.Node pageNode = pagesContainer.getChildren().get(pageIndex);
             if (pageNode instanceof VBox pageBox && !pageBox.getChildren().isEmpty()) {
-                if (pageBox.getChildren().get(0) instanceof StackPane stack) {
+                if (pageBox.getChildren().getFirst() instanceof StackPane stack) {
                     stack.getChildren().stream()
                             .filter(node -> node instanceof AnnotationLayer)
                             .map(node -> (AnnotationLayer) node)
