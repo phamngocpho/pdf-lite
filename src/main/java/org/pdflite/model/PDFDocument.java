@@ -33,7 +33,7 @@ import java.util.Map;
  * @see Annotation
  */
 public class PDFDocument {
-    private final PDDocument document;
+    private PDDocument document;
     private final File file;
     private int currentPage;
     private double zoomLevel;
@@ -256,5 +256,9 @@ public class PDFDocument {
         imageCache.clear();
     }
 
+    public void updateDocument(PDDocument newDocument) {
+        this.document = newDocument;
+        clearCache();
+    }
 
 }
