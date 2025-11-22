@@ -32,8 +32,10 @@ import org.pdflite.util.NavigationHelper;
 import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.pdflite.command.*;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonBar;
@@ -50,10 +52,14 @@ import javafx.scene.control.TextFormatter;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.ToolBar;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 
 /**
  * Main Controller for the PDF Lite Application.
@@ -112,7 +118,6 @@ public class MainController {
     @FXML
     private ToggleButton btnSelectText;
 
-
     // ==================== Services and Managers ====================
 
     private PDFService pdfService;
@@ -132,6 +137,7 @@ public class MainController {
     private SearchDialogManager searchDialogManager;
     private ThemeManager themeManager;
     private RecentFilesManager recentFilesManager;
+    private CommandManager commandManager;
 
     // New managers
     private DialogManager dialogManager;
@@ -177,12 +183,36 @@ public class MainController {
 
         // Initialize managers
         initializeManagers();
+        commandManager = new CommandManager();
+        commandManager.addListener((canUndo, canRedo, undoDesc, redoDesc) -> {
+            Platform.runLater(() -> {
+                // Update button states
+                if (undoButton != null) {
+                    undoButton.setDisable(!canUndo);
+                    if (canUndo && undoDesc != null) {
+                        undoButton.setTooltip(new Tooltip("Undo: " + undoDesc));
+                    }
+                }
+                if (redoButton != null) {
+                    redoButton.setDisable(!canRedo);
+                    if (canRedo && redoDesc != null) {
+                        redoButton.setTooltip(new Tooltip("Redo: " + redoDesc));
+                    }
+                }
+            });
+        });
+        rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                setupKeyboardShortcuts(newScene);
+            }
+        });
 
         // Set page change listener to update UI when page changes during scroll
         // Must be after initializeManagers() so pageInfoManager is initialized
         scrollHandler.setPageChangeListener(newPageIndex -> Platform.runLater(() -> {
             if (currentDocument != null) {
-                // The scroll handler already updated currentDocument.setCurrentPage(newPageIndex)
+                // The scroll handler already updated
+                // currentDocument.setCurrentPage(newPageIndex)
                 // Just update the UI
                 pageInfoManager.updatePageInfo(currentDocument);
             }
@@ -211,7 +241,8 @@ public class MainController {
 
                 if (newVal == null) {
                     updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
-                    if (pageRenderer != null) pageRenderer.setSelectionModeActive(pagesContainer, false);
+                    if (pageRenderer != null)
+                        pageRenderer.setSelectionModeActive(pagesContainer, false);
                     return;
                 }
 
@@ -221,12 +252,13 @@ public class MainController {
                     // Tắt vẽ
                     updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
                     // Bật chọn Text
-                    if (pageRenderer != null) pageRenderer.setSelectionModeActive(pagesContainer, true);
+                    if (pageRenderer != null)
+                        pageRenderer.setSelectionModeActive(pagesContainer, true);
 
                     uiStateManager.updateStatus("Tool: Text Selection");
                 } else {
-                    if (pageRenderer != null) pageRenderer.setSelectionModeActive(pagesContainer, false);
-
+                    if (pageRenderer != null)
+                        pageRenderer.setSelectionModeActive(pagesContainer, false);
 
                     // Ánh xạ công cụ
                     if (selectedBtn == btnDrawRect) {
@@ -240,10 +272,14 @@ public class MainController {
                 }
             });
         }
-        if (btnSelectText != null) makeToggleButtonDeselectable(btnSelectText);
-        if (btnDrawRect != null) makeToggleButtonDeselectable(btnDrawRect);
-        if (btnDrawCircle != null) makeToggleButtonDeselectable(btnDrawCircle);
-        if (btnDrawArrow != null) makeToggleButtonDeselectable(btnDrawArrow);
+        if (btnSelectText != null)
+            makeToggleButtonDeselectable(btnSelectText);
+        if (btnDrawRect != null)
+            makeToggleButtonDeselectable(btnDrawRect);
+        if (btnDrawCircle != null)
+            makeToggleButtonDeselectable(btnDrawCircle);
+        if (btnDrawArrow != null)
+            makeToggleButtonDeselectable(btnDrawArrow);
 
         if (colorPicker != null) {
             colorPicker.setValue(javafx.scene.paint.Color.BLACK);
@@ -255,6 +291,25 @@ public class MainController {
         }
 
         uiStateManager.updateUIState(false);
+    }
+
+    private void setupKeyboardShortcuts(Scene scene) {
+        // Ctrl+Z for Undo
+        scene.getAccelerators().put(
+                new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN),
+                this::handleUndo);
+
+        // Ctrl+Y for Redo
+        scene.getAccelerators().put(
+                new KeyCodeCombination(KeyCode.Y, KeyCombination.CONTROL_DOWN),
+                this::handleRedo);
+
+        // Ctrl+Shift+Z for Redo (alternative)
+        scene.getAccelerators().put(
+                new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN),
+                this::handleRedo);
+
+        logger.info("Keyboard shortcuts registered: Ctrl+Z (Undo), Ctrl+Y (Redo)");
     }
 
     /**
@@ -402,8 +457,8 @@ public class MainController {
     }
 
     private void openPDFFile(File file) {
-        java.util.concurrent.atomic.AtomicReference<VBox> pagesContainerRef =
-                new java.util.concurrent.atomic.AtomicReference<>(pagesContainer);
+        java.util.concurrent.atomic.AtomicReference<VBox> pagesContainerRef = new java.util.concurrent.atomic.AtomicReference<>(
+                pagesContainer);
         currentDocument = documentLifecycleManager.openPDFFile(file, currentDocument, pageRenderer,
                 scrollPane, pagesContainerRef);
         pagesContainer = pagesContainerRef.get();
@@ -431,7 +486,7 @@ public class MainController {
             alert.setHeaderText("File có mật khẩu bảo vệ");
             alert.setContentText("""
                     Lưu ý: File mới sẽ KHÔNG CÓ MẬT KHẨU.
-                    
+
                     Nếu muốn giữ mật khẩu hoặc đặt mật khẩu mới,
                     vui lòng sử dụng chức năng 'Encrypt PDF' sau khi lưu.""");
 
@@ -455,6 +510,29 @@ public class MainController {
         } catch (IOException e) {
             logger.error("Error saving document as", e);
             uiStateManager.showError("Save As Error", "Could not save the document: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleRedo() {
+        if (!commandManager.canRedo()) {
+            return;
+        }
+
+        try {
+            String description = commandManager.getRedoDescription();
+            logger.info("Performing redo: {}", description);
+
+            boolean success = commandManager.redo(() -> {
+                reloadCurrentDocument();
+            });
+
+            if (success) {
+                uiStateManager.updateStatus("Redone: " + description);
+            }
+        } catch (IOException e) {
+            logger.error("Error performing redo", e);
+            uiStateManager.showError("Redo Error", "Could not redo the action: " + e.getMessage());
         }
     }
 
@@ -483,47 +561,121 @@ public class MainController {
         System.exit(0);
     }
 
+    public void reloadCurrentDocument() throws IOException {
+        if (currentDocument == null || currentDocument.getFile() == null) {
+            return;
+        }
+
+        File currentFile = currentDocument.getFile();
+        double currentZoom = zoomManager.getCurrentZoom();
+        int currentPage = currentDocument.getCurrentPage();
+
+        logger.info("Reloading document: {}", currentFile.getName());
+
+        // Close current document
+        if (currentDocument.getDocument() != null) {
+            currentDocument.getDocument().close();
+        }
+
+        // Clear UI
+        contentPane.getChildren().clear();
+        pagesContainer = null;
+        loadingPages.clear();
+
+        // Clear caches
+        pageRenderer.clearCache();
+        pageRenderer.cancelAllPendingRenders();
+
+        // Create new components
+        pageRenderer = new PageRenderer(pdfService, renderExecutor);
+        scrollHandler = new ScrollHandler(pageRenderer, scrollPane);
+
+        // Reopen file
+        currentDocument = fileManager.openFile(currentFile);
+
+        if (currentDocument == null) {
+            throw new IOException("Could not reopen document");
+        }
+
+        // Restore state
+        int newTotal = currentDocument.getTotalPages();
+        int newCurrentPage = Math.min(currentPage, newTotal - 1);
+        currentDocument.setCurrentPage(Math.max(0, newCurrentPage));
+        currentDocument.setZoomLevel(currentZoom);
+
+        // Update components
+        pageRenderer.setDocument(currentDocument, currentZoom);
+        zoomManager.setDocument(currentDocument);
+        zoomManager.setCurrentZoom(currentZoom);
+
+        // Re-render
+        renderingManager = new RenderingManager(pdfService, pageRenderer, scrollHandler, zoomManager);
+        renderingManager.setDocument(currentDocument);
+        renderingManager.setUIComponents(null, scrollPane, contentPane);
+        renderingManager.renderAllPages();
+        pagesContainer = renderingManager.getPagesContainer();
+
+        scrollHandler.setDocument(currentDocument, pagesContainer);
+
+        // Update UI
+        pageInfoManager.updatePageInfo(currentDocument);
+
+        // Scroll to current page
+        Platform.runLater(() -> {
+            scrollHandler.scrollToPage(newCurrentPage);
+            pageInfoManager.updatePageInfo(currentDocument);
+        });
+
+        logger.info("Document reloaded successfully. Total pages: {}", newTotal);
+    }
+
+    /**
+     * Gets the command manager.
+     * 
+     * @return the command manager
+     */
+    public CommandManager getCommandManager() {
+        return commandManager;
+    }
+
     @FXML
     private void handleDeletePage() {
         if (currentDocument == null) {
             return;
         }
 
-        int current = currentDocument.getCurrentPage();
-        java.util.concurrent.atomic.AtomicReference<VBox> pagesContainerRef =
-                new java.util.concurrent.atomic.AtomicReference<>(pagesContainer);
-        java.util.concurrent.atomic.AtomicReference<PageRenderer> pageRendererRef =
-                new java.util.concurrent.atomic.AtomicReference<>(pageRenderer);
-        java.util.concurrent.atomic.AtomicReference<ScrollHandler> scrollHandlerRef =
-                new java.util.concurrent.atomic.AtomicReference<>(scrollHandler);
-        java.util.concurrent.atomic.AtomicReference<RenderingManager> renderingManagerRef =
-                new java.util.concurrent.atomic.AtomicReference<>(renderingManager);
-
-        PDFDocument newDocument = documentOperationManager.deletePage(currentDocument, current,
-                renderExecutor, loadingPages, contentPane, scrollPane, pagesContainerRef,
-                pageRendererRef, scrollHandlerRef, renderingManagerRef);
-
-        if (newDocument != null) {
-            currentDocument = newDocument;
-            pagesContainer = pagesContainerRef.get();
-            pageRenderer = pageRendererRef.get();
-            scrollHandler = scrollHandlerRef.get();
-            renderingManager = renderingManagerRef.get();
-
-            // Recreate annotation manager with new document
-            if (pagesContainer != null) {
-                annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
-            }
-        } else {
-            // Recovery: try to reopen original file
-            try {
-                if (currentDocument != null && currentDocument.getFile() != null) {
-                    openPDFFile(currentDocument.getFile());
-                }
-            } catch (Exception recovery) {
-                logger.error("Failed to recover after delete error", recovery);
-            }
+        int total = currentDocument.getTotalPages();
+        if (total <= 1) {
+            uiStateManager.showError("Delete Page", "Cannot delete the last remaining page.");
+            return;
         }
+
+        int current = currentDocument.getCurrentPage();
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Delete Page");
+        confirm.setHeaderText("Delete current page?");
+        confirm.setContentText("This will remove page " + (current + 1) + " from the document.\n" +
+                "You can undo this action with Ctrl+Z.");
+        confirm.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
+        confirm.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.OK) {
+                try {
+                    // Create and execute delete command through CommandManager
+                    DeletePageCommand command = new DeletePageCommand(this, pdfService, current);
+                    commandManager.executeCommand(command, () -> {
+                        reloadCurrentDocument();
+                    });
+
+                    logger.info("Delete page command executed successfully");
+
+                } catch (Exception e) {
+                    logger.error("Error deleting page {}", current + 1, e);
+                    uiStateManager.showError("Delete Page Error",
+                            "Could not delete the page: " + e.getMessage());
+                }
+            }
+        });
     }
     // ==================== Zoom Operations ====================
 
@@ -680,9 +832,9 @@ public class MainController {
         alert.setHeaderText("PDF Lite - PDF Viewer & Editor");
         alert.setContentText("""
                 Version 1.0
-                
+
                 A lightweight PDF viewer with annotation features.
-                
+
                 Built with JavaFX and Apache PDFBox""");
 
         DialogPane dialogPane = alert.getDialogPane();
@@ -721,7 +873,6 @@ public class MainController {
     private void handleExtractPages() {
         dialogManager.openExtractDialog(currentDocument);
     }
-
 
     public BorderPane getRootPane() {
         return rootPane;
@@ -796,9 +947,36 @@ public class MainController {
 
     @FXML
     private void handleUndo() {
+        // Phần 1: Undo của annotationManager (nếu có)
         if (annotationManager != null) {
             annotationManager.handleUndo();
         }
-    }
-}
 
+        // Phần 2: Undo theo commandManager
+        if (!commandManager.canUndo()) {
+            return;
+        }
+
+        try {
+            String description = commandManager.getUndoDescription();
+            logger.info("Performing undo: {}", description);
+
+            boolean success = commandManager.undo(() -> {
+                reloadCurrentDocument();
+            });
+
+            if (success) {
+                uiStateManager.updateStatus("Undone: " + description);
+            }
+        } catch (IOException e) {
+            logger.error("Error performing undo", e);
+            uiStateManager.showError("Undo Error", "Could not undo the action: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private Button undoButton;
+    @FXML
+    private Button redoButton;
+
+}
