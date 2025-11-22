@@ -1226,6 +1226,55 @@ private void handleDeletePage() {
         }
     }
 
+    @FXML
+    private void handleInsertPage() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            return;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/pdflite/insert-dialog.fxml"));
+            Parent root = loader.load(); // Load Parent thay vì DialogPane
+            InsertDialogController controller = loader.getController();
+
+            // Tạo Stage mới (Cửa sổ con)
+            Stage stage = new Stage();
+            stage.setTitle("Insert Blank Page");
+            stage.initModality(Modality.WINDOW_MODAL);
+            stage.initOwner(rootPane.getScene().getWindow());
+            stage.setScene(new Scene(root));
+
+            if (themeManager != null) themeManager.applyThemeToScene(stage.getScene());
+
+            // Hiển thị và chờ
+            stage.showAndWait();
+
+            // Kiểm tra xem người dùng có bấm Insert không
+            if (controller.isInsertClicked()) {
+                // Lấy dữ liệu và chèn (Logic cũ giữ nguyên)
+                float w = controller.getWidth();
+                float h = controller.getHeight();
+                int count = controller.getInsertCount();
+                int index = controller.getInsertIndex(currentDocument.getCurrentPage(), currentDocument.getTotalPages());
+
+                pdfService.insertBlankPage(currentDocument, index, w, h, count);
+
+                if (index <= currentDocument.getCurrentPage()) {
+                    currentDocument.setCurrentPage(currentDocument.getCurrentPage() + count);
+                }
+
+                renderingManager.renderAllPages();
+                pageInfoManager.updatePageInfo(currentDocument);
+                uiStateManager.updateStatus("Inserted " + count + " blank page(s).");
+            }
+
+        } catch (IOException e) {
+            logger.error("Error showing insert dialog", e);
+            uiStateManager.showError("Error", "Could not open dialog: " + e.getMessage());
+        }
+    }
+
     /**
      * Creates and configures a dialog stage with standard settings.
      *

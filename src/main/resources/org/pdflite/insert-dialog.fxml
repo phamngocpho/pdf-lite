@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="org.pdflite.controller.InsertDialogController"
+            prefWidth="450" prefHeight="400">
+
+    <top>
+        <VBox spacing="10" style="-fx-background-color: #f5f5f5; -fx-border-color: #cccccc; -fx-border-width: 0 0 1 0;">
+            <padding>
+                <Insets top="15" right="15" bottom="15" left="15"/>
+            </padding>
+            <Label text="Configure New Page" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+            <Label text="Select page size, orientation and position." style="-fx-text-fill: #666666;"/>
+        </VBox>
+    </top>
+
+    <center>
+        <VBox spacing="15" style="-fx-background-color: white;">
+            <padding>
+                <Insets top="20" right="20" bottom="20" left="20"/>
+            </padding>
+
+            <GridPane hgap="15" vgap="15">
+                <Label text="Page Size:" style="-fx-font-weight: bold;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <ComboBox fx:id="pageSizeCombo" prefWidth="200" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+                <Label text="Dimensions (pt):" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                <HBox spacing="10" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="1">
+                    <TextField fx:id="widthField" promptText="Width" prefWidth="90" disable="true"/>
+                    <Label text="x"/>
+                    <TextField fx:id="heightField" promptText="Height" prefWidth="90" disable="true"/>
+                </HBox>
+
+                <Label text="Orientation:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                <HBox spacing="15" alignment="CENTER_LEFT" GridPane.rowIndex="2" GridPane.columnIndex="1">
+                    <RadioButton fx:id="radioPortrait" text="Portrait" selected="true"/>
+                    <RadioButton fx:id="radioLandscape" text="Landscape"/>
+                </HBox>
+
+                <Label text="Position:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                <VBox spacing="8" GridPane.rowIndex="3" GridPane.columnIndex="1">
+                    <RadioButton fx:id="radioAfter" text="After current page" selected="true"/>
+                    <RadioButton fx:id="radioBefore" text="Before current page"/>
+                    <RadioButton fx:id="radioEnd" text="At end of document"/>
+                </VBox>
+
+                <Label text="Quantity:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                <Spinner fx:id="countSpinner" min="1" max="100" initialValue="1" editable="true" prefWidth="100" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+            </GridPane>
+        </VBox>
+    </center>
+
+    <bottom>
+        <HBox spacing="10" alignment="CENTER_RIGHT"
+              style="-fx-background-color: #f5f5f5; -fx-border-color: #cccccc; -fx-border-width: 1 0 0 0;">
+            <padding>
+                <Insets top="10" right="15" bottom="10" left="15"/>
+            </padding>
+
+            <Button fx:id="btnCancel" text="Cancel" onAction="#handleCancel" prefWidth="80"/>
+
+            <Button fx:id="btnInsert" text="Insert Page" onAction="#handleInsert" prefWidth="100"
+                    style="-fx-background-color: #2196F3; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        </HBox>
+    </bottom>
+
+</BorderPane>

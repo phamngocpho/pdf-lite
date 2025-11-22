@@ -711,4 +711,45 @@ public class PDFService {
         cs.lineTo(x4, y4);
         cs.stroke();
     }
+
+    /**
+     * Insert blank pages into PDF documents.
+     *
+     * @param pdfDoc Current document
+     * @param index Insertion position (0-based).
+     * @param width Width (points).
+     * @param height Height (points).
+     * @param count Number of pages to insert.
+     */
+    public void insertBlankPage(PDFDocument pdfDoc, int index, float width, float height, int count) {
+        if (pdfDoc == null || pdfDoc.getDocument() == null || count <= 0) return;
+
+        PDDocument doc = pdfDoc.getDocument();
+
+        try {
+            int totalPages = doc.getNumberOfPages();
+            if (index < 0) index = 0;
+            if (index > totalPages) index = totalPages;
+
+            for (int i = 0; i < count; i++) {
+                // PDRectangle nhận đơn vị là Point (1 inch = 72 points)
+                PDPage newPage = new PDPage(new PDRectangle(width, height));
+
+                if (index >= doc.getNumberOfPages()) {
+                    doc.addPage(newPage);
+                } else {
+                    PDPage targetPage = doc.getPage(index);
+                    doc.getPages().insertBefore(newPage, targetPage);
+                }
+
+                index++;
+            }
+            pdfDoc.clearCache();
+
+            logger.info("Inserted {} blank page(s) size {}x{}", count, width, height);
+
+        } catch (Exception e) {
+            logger.error("Error inserting blank pages", e);
+        }
+    }
 }
