@@ -26,6 +26,9 @@
                 </Menu>
                 
                 <Menu text="Edit">
+                    <MenuItem text="Undo" onAction="#handleUndo" accelerator="Ctrl+Z"/>
+                    <MenuItem text="Redo" onAction="#handleRedo" accelerator="Ctrl+Y"/>
+                    <SeparatorMenuItem/>
                     <MenuItem text="Find..." onAction="#handleSearch" accelerator="Ctrl+F"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Hide Search Panel" onAction="#handleHideSearch" accelerator="Escape"/>
@@ -63,6 +66,20 @@
                 <Button text="Open" onAction="#handleOpenPDF"/>
                 <Button text="Save" onAction="#handleSave"/>
                 <Separator orientation="VERTICAL"/>
+                
+                <!-- UNDO/REDO BUTTONS -->
+                <Button fx:id="undoButton" text="↶ Undo" onAction="#handleUndo" disable="true">
+                    <tooltip>
+                        <Tooltip text="Undo (Ctrl+Z)"/>
+                    </tooltip>
+                </Button>
+                <Button fx:id="redoButton" text="↷ Redo" onAction="#handleRedo" disable="true">
+                    <tooltip>
+                        <Tooltip text="Redo (Ctrl+Y)"/>
+                    </tooltip>
+                </Button>
+                <Separator orientation="VERTICAL"/>
+                
                 <Button fx:id="prevButton" text="Previous" onAction="#handlePreviousPage"/>
                 <Label text="Page:"/>
                 <TextField fx:id="pageNumberField" prefWidth="50" onAction="#handleGoToPage"/>

@@ -34,7 +34,7 @@ public class PageRenderer {
     private final Map<String, Image> imageCache;
     private final Set<Integer> loadingPages;
     private final Map<Integer, Future<?>> pendingRenders;
-    
+
     private PDFDocument currentDocument;
     private double currentZoom;
     private boolean highlightModeActive;
@@ -50,7 +50,7 @@ public class PageRenderer {
         this.loadingPages = ConcurrentHashMap.newKeySet();
         this.pendingRenders = new ConcurrentHashMap<>();
         this.contextMenuHandler = new ContextMenuHandler();
-        
+
         // LRU cache with max 50 pages
         this.imageCache = new java.util.LinkedHashMap<>(50, 0.75f, true) {
             @Override
@@ -58,7 +58,7 @@ public class PageRenderer {
                 return size() > 50;
             }
         };
-        
+
         logger.info("PageRenderer initialized with new cache");
     }
 
@@ -153,7 +153,7 @@ public class PageRenderer {
         // Check cache first - use CONSISTENT cache key format
         String cacheKey = getCacheKey(pageIndex, currentZoom);
         Image cachedImage = imageCache.get(cacheKey);
-        
+
         if (cachedImage != null) {
             logger.debug("Using cached image for page {} (key: {})", pageIndex + 1, cacheKey);
             Platform.runLater(() -> {
@@ -173,10 +173,9 @@ public class PageRenderer {
 
                 // Render the page
                 Image image = pdfService.renderPage(
-                    currentDocument,
-                    pageIndex,
-                    (float) currentZoom
-                );
+                        currentDocument,
+                        pageIndex,
+                        (float) currentZoom);
 
                 // Cache with CONSISTENT key format
                 imageCache.put(cacheKey, image);
@@ -194,11 +193,11 @@ public class PageRenderer {
             } catch (IOException e) {
                 logger.error("Error loading page {}", pageIndex + 1, e);
                 loadingPages.remove(pageIndex);
-                
+
                 // Show error in UI
                 Platform.runLater(() -> {
                     if (!pageBox.getChildren().isEmpty() &&
-                        pageBox.getChildren().getFirst() instanceof StackPane stackPane) {
+                            pageBox.getChildren().getFirst() instanceof StackPane stackPane) {
                         Label errorLabel = new Label("Error loading page " + (pageIndex + 1));
                         errorLabel.setStyle("-fx-text-fill: red;");
                         stackPane.getChildren().clear();
@@ -234,7 +233,7 @@ public class PageRenderer {
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
         imageView.setCache(true);
-        
+
         imageView.setPickOnBounds(false);
         imageView.setMouseTransparent(false);
 
@@ -253,7 +252,7 @@ public class PageRenderer {
         contextPane.setDocumentInfo(currentDocument, pageIndex, currentZoom);
         contextPane.setPrefSize(image.getWidth(), image.getHeight());
         contextPane.setMaxSize(image.getWidth(), image.getHeight());
-        
+
         contextPane.toFront();
 
         // Stack layers: Image (bottom) -> Annotation -> ContextMenu (top)

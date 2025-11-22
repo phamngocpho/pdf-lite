@@ -12,6 +12,9 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import org.pdflite.manager.*;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
@@ -21,6 +24,7 @@ import org.pdflite.util.NavigationHelper;
 import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.pdflite.command.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -89,7 +93,7 @@ public class MainController {
     private SearchDialogManager searchDialogManager;
     private ThemeManager themeManager;
     private RecentFilesManager recentFilesManager;
-
+    private CommandManager commandManager;
     // ==================== Document State ====================
 
     private PDFDocument currentDocument;
@@ -122,7 +126,29 @@ public class MainController {
 
         // Initialize managers
         initializeManagers();
-
+        commandManager = new CommandManager();
+        commandManager.addListener((canUndo, canRedo, undoDesc, redoDesc) -> {
+            Platform.runLater(() -> {
+                // Update button states
+                if (undoButton != null) {
+                    undoButton.setDisable(!canUndo);
+                    if (canUndo && undoDesc != null) {
+                        undoButton.setTooltip(new Tooltip("Undo: " + undoDesc));
+                    }
+                }
+                if (redoButton != null) {
+                    redoButton.setDisable(!canRedo);
+                    if (canRedo && redoDesc != null) {
+                        redoButton.setTooltip(new Tooltip("Redo: " + redoDesc));
+                    }
+                }
+            });
+        });
+        rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                setupKeyboardShortcuts(newScene);
+            }
+        });
         // Initialize recent files manager
         recentFilesManager = new RecentFilesManager();
         updateRecentFilesMenu();
@@ -187,6 +213,25 @@ public class MainController {
         // Search Dialog Manager
         searchDialogManager = new SearchDialogManager(rootPane, pageRenderer, zoomManager, renderingManager,
                 uiStateManager);
+    }
+
+    private void setupKeyboardShortcuts(Scene scene) {
+        // Ctrl+Z for Undo
+        scene.getAccelerators().put(
+                new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN),
+                this::handleUndo);
+
+        // Ctrl+Y for Redo
+        scene.getAccelerators().put(
+                new KeyCodeCombination(KeyCode.Y, KeyCombination.CONTROL_DOWN),
+                this::handleRedo);
+
+        // Ctrl+Shift+Z for Redo (alternative)
+        scene.getAccelerators().put(
+                new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN),
+                this::handleRedo);
+
+        logger.info("Keyboard shortcuts registered: Ctrl+Z (Undo), Ctrl+Y (Redo)");
     }
 
     /**
@@ -361,124 +406,44 @@ public class MainController {
     }
 
     @FXML
-private void handleDeletePage() {
-    if (currentDocument == null) {
-        return;
-    }
+    private void handleDeletePage() {
+        if (currentDocument == null) {
+            return;
+        }
 
-    int total = currentDocument.getTotalPages();
-    if (total <= 1) {
-        uiStateManager.showError("Delete Page", "Cannot delete the last remaining page.");
-        return;
-    }
+        int total = currentDocument.getTotalPages();
+        if (total <= 1) {
+            uiStateManager.showError("Delete Page", "Cannot delete the last remaining page.");
+            return;
+        }
 
-    int current = currentDocument.getCurrentPage();
+        int current = currentDocument.getCurrentPage();
 
-    Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-    confirm.setTitle("Delete Page");
-    confirm.setHeaderText("Delete current page?");
-    confirm.setContentText("This will remove page " + (current + 1) + " from the document.");
-    confirm.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
-    confirm.showAndWait().ifPresent(result -> {
-        if (result == ButtonType.OK) {
-            try {
-                // 1. Lưu thông tin cần thiết
-                File currentFile = currentDocument.getFile();
-                double oldZoom = zoomManager.getCurrentZoom();
-
-                // 2. Xóa trang TRƯỚC KHI save
-                fileManager.deletePages(currentDocument, java.util.List.of(current));
-
-                // 3. Save document (sử dụng save thông thường, không dùng incremental)
-                pdfService.save(currentDocument);
-
-                // 4. CRITICAL: Đóng document cũ ĐỂ giải phóng file lock
-                pdfService.closePDF(currentDocument);
-                
-                // 5. Clear TOÀN BỘ state
-                contentPane.getChildren().clear();
-                pagesContainer = null;
-                loadingPages.clear();
-                
-                // 6. Clear cache và hủy tất cả render đang chờ
-                pageRenderer.clearCache();
-                pageRenderer.cancelAllPendingRenders();
-
-                // 7. Tạo MỚI PageRenderer và ScrollHandler
-                pageRenderer = new PageRenderer(pdfService, renderExecutor);
-                scrollHandler = new ScrollHandler(pageRenderer, scrollPane);
-
-                // 8. Mở LẠI file (để PDFBox load lại cấu trúc mới)
-                currentDocument = fileManager.openFile(currentFile);
-                if (currentDocument == null) {
-                    uiStateManager.showError("Error", "Could not reopen the file after deletion.");
-                    return;
-                }
-
-                // 9. Tính current page mới
-                int newTotal = currentDocument.getTotalPages();
-                int newCurrentPage = (current >= newTotal) ? Math.max(0, newTotal - 1) : current;
-                currentDocument.setCurrentPage(newCurrentPage);
-                currentDocument.setZoomLevel(oldZoom);
-
-                // 10. Cập nhật renderer với document mới
-                pageRenderer.setDocument(currentDocument, oldZoom);
-                zoomManager.setDocument(currentDocument);
-                zoomManager.setCurrentZoom(oldZoom);
-
-                // 11. Tạo lại RenderingManager
-                renderingManager = new RenderingManager(pdfService, pageRenderer, scrollHandler, zoomManager);
-                renderingManager.setDocument(currentDocument);
-                renderingManager.setUIComponents(null, scrollPane, contentPane);
-
-                // 12. CRITICAL: Set document cho ScrollHandler SAU KHI render
-                // (chờ pagesContainer được tạo)
-                renderingManager.renderAllPages();
-                pagesContainer = renderingManager.getPagesContainer();
-                
-                // 13. Set document cho ScrollHandler với pagesContainer HỢP LỆ
-                scrollHandler.setDocument(currentDocument, pagesContainer);
-
-                // 14. Cập nhật UI
-                pageInfoManager.updatePageInfo(currentDocument);
-
-                // 15. Scroll về đầu và trigger render - CHỈ dùng 1 lớp runLater
-                Platform.runLater(() -> {
-                    // Reset scroll position
-                    scrollPane.setVvalue(0);
-                    currentDocument.setCurrentPage(0);
-                    
-                    // Clear loading pages trước khi trigger scroll
-                    loadingPages.clear();
-                    
-                    // Trigger scroll handler để load các trang cần thiết
-                    scrollHandler.handleScroll();
-                    
-                    // Update UI
-                    pageInfoManager.updatePageInfo(currentDocument);
-                    uiStateManager.updateStatus(
-                        "Deleted page " + (current + 1) + ". Total pages: " + newTotal
-                    );
-                });
-
-                logger.info("Successfully deleted page {} and reloaded document", current + 1);
-
-            } catch (Exception e) {
-                logger.error("Error deleting page {}", current + 1, e);
-                uiStateManager.showError("Delete Page Error", "Could not delete the page: " + e.getMessage());
-
-                // Recovery: thử mở lại file gốc
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Delete Page");
+        confirm.setHeaderText("Delete current page?");
+        confirm.setContentText("This will remove page " + (current + 1) + " from the document.\n" +
+                              "You can undo this action with Ctrl+Z.");
+        confirm.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
+        confirm.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.OK) {
                 try {
-                    if (currentDocument != null && currentDocument.getFile() != null) {
-                        openPDFFile(currentDocument.getFile());
-                    }
-                } catch (Exception ex) {
-                    logger.error("Failed to recover after delete error", ex);
+                    // Create and execute delete command through CommandManager
+                    DeletePageCommand command = new DeletePageCommand(this, pdfService, current);
+                    commandManager.executeCommand(command, () -> {
+                        reloadCurrentDocument();
+                    });
+                    
+                    logger.info("Delete page command executed successfully");
+                    
+                } catch (Exception e) {
+                    logger.error("Error deleting page {}", current + 1, e);
+                    uiStateManager.showError("Delete Page Error", 
+                        "Could not delete the page: " + e.getMessage());
                 }
             }
-        }
-    });
-}
+        });
+    }
     // ==================== Zoom Operations ====================
 
     @FXML
@@ -778,5 +743,140 @@ private void handleDeletePage() {
                 openPDFFile(file);
             }
         }
+    }
+
+    @FXML
+    private Button undoButton;
+    @FXML
+    private Button redoButton;
+
+    @FXML
+    private void handleUndo() {
+        if (!commandManager.canUndo()) {
+            return;
+        }
+
+        try {
+            String description = commandManager.getUndoDescription();
+            logger.info("Performing undo: {}", description);
+
+            boolean success = commandManager.undo(() -> {
+                reloadCurrentDocument();
+            });
+
+            if (success) {
+                uiStateManager.updateStatus("Undone: " + description);
+            }
+        } catch (IOException e) {
+            logger.error("Error performing undo", e);
+            uiStateManager.showError("Undo Error", "Could not undo the action: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Handles redo action.
+     */
+    @FXML
+    private void handleRedo() {
+        if (!commandManager.canRedo()) {
+            return;
+        }
+
+        try {
+            String description = commandManager.getRedoDescription();
+            logger.info("Performing redo: {}", description);
+
+            boolean success = commandManager.redo(() -> {
+                reloadCurrentDocument();
+            });
+
+            if (success) {
+                uiStateManager.updateStatus("Redone: " + description);
+            }
+        } catch (IOException e) {
+            logger.error("Error performing redo", e);
+            uiStateManager.showError("Redo Error", "Could not redo the action: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Reloads the current document after a command execution.
+     * This is called by commands that modify the document.
+     */
+    public void reloadCurrentDocument() throws IOException {
+        if (currentDocument == null || currentDocument.getFile() == null) {
+            return;
+        }
+
+        File currentFile = currentDocument.getFile();
+        double currentZoom = zoomManager.getCurrentZoom();
+        int currentPage = currentDocument.getCurrentPage();
+
+        logger.info("Reloading document: {}", currentFile.getName());
+
+        // Close current document
+        if (currentDocument.getDocument() != null) {
+            currentDocument.getDocument().close();
+        }
+
+        // Clear UI
+        contentPane.getChildren().clear();
+        pagesContainer = null;
+        loadingPages.clear();
+
+        // Clear caches
+        pageRenderer.clearCache();
+        pageRenderer.cancelAllPendingRenders();
+
+        // Create new components
+        pageRenderer = new PageRenderer(pdfService, renderExecutor);
+        scrollHandler = new ScrollHandler(pageRenderer, scrollPane);
+
+        // Reopen file
+        currentDocument = fileManager.openFile(currentFile);
+
+        if (currentDocument == null) {
+            throw new IOException("Could not reopen document");
+        }
+
+        // Restore state
+        int newTotal = currentDocument.getTotalPages();
+        int newCurrentPage = Math.min(currentPage, newTotal - 1);
+        currentDocument.setCurrentPage(Math.max(0, newCurrentPage));
+        currentDocument.setZoomLevel(currentZoom);
+
+        // Update components
+        pageRenderer.setDocument(currentDocument, currentZoom);
+        zoomManager.setDocument(currentDocument);
+        zoomManager.setCurrentZoom(currentZoom);
+
+        // Re-render
+        renderingManager = new RenderingManager(pdfService, pageRenderer, scrollHandler, zoomManager);
+        renderingManager.setDocument(currentDocument);
+        renderingManager.setUIComponents(null, scrollPane, contentPane);
+        renderingManager.renderAllPages();
+        pagesContainer = renderingManager.getPagesContainer();
+
+        scrollHandler.setDocument(currentDocument, pagesContainer);
+
+        // Update UI
+        pageInfoManager.updatePageInfo(currentDocument);
+
+        // Scroll to current page
+        Platform.runLater(() -> {
+            scrollHandler.scrollToPage(newCurrentPage);
+            pageInfoManager.updatePageInfo(currentDocument);
+        });
+
+        logger.info("Document reloaded successfully. Total pages: {}", newTotal);
+    }
+
+    /**
+     * Gets the command manager.
+     * 
+     * @return the command manager
+     */
+    public CommandManager getCommandManager() {
+        return commandManager;
     }
 }
