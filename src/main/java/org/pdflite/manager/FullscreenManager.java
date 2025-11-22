@@ -47,8 +47,8 @@ public class FullscreenManager {
     /**
      * Creates a new FullscreenManager.
      *
-     * @param rootPane the root pane
-     * @param toolbar the toolbar to hide/show
+     * @param rootPane           the root pane
+     * @param toolbar            the toolbar to hide/show
      * @param fullscreenListener listener for fullscreen events
      */
     public FullscreenManager(BorderPane rootPane, ToolBar toolbar, FullscreenListener fullscreenListener) {

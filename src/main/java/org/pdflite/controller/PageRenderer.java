@@ -48,7 +48,7 @@ public class PageRenderer {
         this.loadingPages = ConcurrentHashMap.newKeySet();
         this.pendingRenders = new ConcurrentHashMap<>();
         this.contextMenuHandler = new ContextMenuHandler();
-        
+
         // LRU cache with max 50 pages
         this.imageCache = new java.util.LinkedHashMap<>(50, 0.75f, true) {
             @Override
@@ -56,7 +56,7 @@ public class PageRenderer {
                 return size() > 50;
             }
         };
-        
+
         logger.info("PageRenderer initialized with new cache");
     }
 
@@ -65,7 +65,7 @@ public class PageRenderer {
      * Clears the image cache when switching to a new document.
      *
      * @param document the PDF document
-     * @param zoom the zoom level
+     * @param zoom     the zoom level
      */
     public void setDocument(PDFDocument document, double zoom) {
         // Clear cache when switching documents to prevent showing old document's pages
@@ -89,7 +89,8 @@ public class PageRenderer {
     /**
      * Sets whether highlight mode is active.
      */
-    public void setHighlightModeActive() {}
+    public void setHighlightModeActive() {
+    }
 
     /**
      * Clears all cached images and resets state.
@@ -200,11 +201,11 @@ public class PageRenderer {
             } catch (IOException e) {
                 logger.error("Error loading page {}", pageIndex + 1, e);
                 loadingPages.remove(pageIndex);
-                
+
                 // Show error in UI
                 Platform.runLater(() -> {
                     if (!pageBox.getChildren().isEmpty() &&
-                        pageBox.getChildren().getFirst() instanceof StackPane stackPane) {
+                            pageBox.getChildren().getFirst() instanceof StackPane stackPane) {
                         Label errorLabel = new Label("Error loading page " + (pageIndex + 1));
                         errorLabel.setStyle("-fx-text-fill: red;");
                         stackPane.getChildren().clear();
@@ -240,7 +241,7 @@ public class PageRenderer {
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
         imageView.setCache(true);
-        
+
         imageView.setPickOnBounds(false);
         imageView.setMouseTransparent(false);
 

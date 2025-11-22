@@ -32,11 +32,11 @@ public class SearchDialogManager {
     /**
      * Creates a new SearchDialogManager.
      *
-     * @param rootPane the root pane for dialog owner
-     * @param pageRenderer the page renderer
-     * @param zoomManager the zoom manager
+     * @param rootPane         the root pane for dialog owner
+     * @param pageRenderer     the page renderer
+     * @param zoomManager      the zoom manager
      * @param renderingManager the rendering manager
-     * @param uiStateManager the UI state manager
+     * @param uiStateManager   the UI state manager
      */
     public SearchDialogManager(BorderPane rootPane, PageRenderer pageRenderer,
                                ZoomManager zoomManager, RenderingManager renderingManager,
@@ -52,7 +52,7 @@ public class SearchDialogManager {
      * Opens or shows the search dialog.
      *
      * @param currentDocument the current PDF document
-     * @param mainController the main controller
+     * @param mainController  the main controller
      */
     public void openSearchDialog(PDFDocument currentDocument, MainController mainController) {
         if (currentDocument == null) {

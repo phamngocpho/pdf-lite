@@ -13,8 +13,7 @@ public class ArrowAnnotation extends ShapeAnnotation {
 
     @Override
     public void draw(GraphicsContext gc, double scale) {
-        gc.setStroke(color);
-        gc.setLineWidth(lineWidth * scale);
+        prepareGraphicsContext(gc, scale);
 
         // x và y của lớp cha là startX, startY.
         // Vẽ đường thẳng

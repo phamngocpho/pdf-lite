@@ -2,6 +2,7 @@ package org.pdflite.model;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import javafx.scene.image.Image;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,9 +29,9 @@ import java.util.Map;
  *
  * @author PDF Lite Team
  * @version 1.0.0
- * @since 1.0.0
  * @see org.apache.pdfbox.pdmodel.PDDocument
  * @see Annotation
+ * @since 1.0.0
  */
 public class PDFDocument {
     private PDDocument document;
@@ -63,7 +64,7 @@ public class PDFDocument {
      * </p>
      *
      * @param document the Apache PDFBox document to wrap
-     * @param file the source file of the PDF document
+     * @param file     the source file of the PDF document
      * @throws NullPointerException if document or file is null
      */
     public PDFDocument(PDDocument document, File file) {
@@ -242,7 +243,7 @@ public class PDFDocument {
      * </p>
      *
      * @param pageIndex the zero-based page index
-     * @param zoom the zoom level as a multiplier
+     * @param zoom      the zoom level as a multiplier
      * @return the cached Image, or null if not cached
      */
     public Image getCachedImage(int pageIndex, float zoom) {
@@ -257,8 +258,8 @@ public class PDFDocument {
      * </p>
      *
      * @param pageIndex the zero-based page index
-     * @param zoom the zoom level as a multiplier
-     * @param image the rendered image to cache
+     * @param zoom      the zoom level as a multiplier
+     * @param image     the rendered image to cache
      */
     public void cacheImage(int pageIndex, float zoom, Image image) {
         String key = pageIndex + "_" + zoom;

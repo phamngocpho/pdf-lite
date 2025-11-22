@@ -74,7 +74,7 @@ public class PageContainerUtils {
      * </p>
      *
      * @param pagesContainer the container holding the page boxes, may be null
-     * @param pageIndex the zero-based index of the page to find
+     * @param pageIndex      the zero-based index of the page to find
      * @return the VBox page box at the given index, or null if not found or container is null
      */
     public static VBox findPageBox(VBox pagesContainer, int pageIndex) {

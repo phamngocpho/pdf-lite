@@ -2,6 +2,7 @@ package org.pdflite.util;
 
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,13 +50,13 @@ public class CoordinateConverter {
      * {@code pdfWidth/Height = canvasWidth/Height / scale}</li>
      * </ol>
      *
-     * @param canvasX X coordinate on canvas (pixels, origin at top-left)
-     * @param canvasY Y coordinate on canvas (pixels, origin at top-left)
-     * @param canvasWidth Width of rectangle (pixels)
+     * @param canvasX      X coordinate on canvas (pixels, origin at top-left)
+     * @param canvasY      Y coordinate on canvas (pixels, origin at top-left)
+     * @param canvasWidth  Width of rectangle (pixels)
      * @param canvasHeight Height of rectangle (pixels)
-     * @param pageHeight PDF page height in points (unused for Java coords, kept
-     * for API compatibility)
-     * @param zoom Current zoom level (e.g., 1.0, 1.5, 2.0)
+     * @param pageHeight   PDF page height in points (unused for Java coords, kept
+     *                     for API compatibility)
+     * @param zoom         Current zoom level (e.g., 1.0, 1.5, 2.0)
      * @return Rectangle in PDF Java/AWT coordinate system (Y=top, units in
      * points)
      */
@@ -79,10 +80,10 @@ public class CoordinateConverter {
     /**
      * Converts single canvas point to PDF Java/AWT point (Y=top).
      *
-     * @param canvasX X coordinate on canvas (pixels)
-     * @param canvasY Y coordinate on canvas (pixels)
+     * @param canvasX    X coordinate on canvas (pixels)
+     * @param canvasY    Y coordinate on canvas (pixels)
      * @param pageHeight PDF page height (unused, kept for API compatibility)
-     * @param zoom Current zoom level
+     * @param zoom       Current zoom level
      * @return Point in PDF Java/AWT coordinate system (Y=top, units in points)
      */
     public static Point2D.Float canvasToPdfJavaPoint(
@@ -98,10 +99,10 @@ public class CoordinateConverter {
     }
 
     /**
-     * @param pdfX X in PDF points
-     * @param pdfY Y in PDF points (bottom-origin)
+     * @param pdfX       X in PDF points
+     * @param pdfY       Y in PDF points (bottom-origin)
      * @param pageHeight Page height in PDF points
-     * @param zoom Current zoom level
+     * @param zoom       Current zoom level
      * @return Point in canvas coordinates (pixels, Y=top)
      */
     public static Point2D.Float pdfToCanvasPoint(
@@ -120,12 +121,12 @@ public class CoordinateConverter {
     /**
      * Converts a PDF rectangle to canvas coordinates.
      *
-     * @param pdfX X coordinate in PDF points (bottom-origin)
-     * @param pdfY Y coordinate in PDF points (bottom-origin)
-     * @param pdfWidth Width in PDF points
-     * @param pdfHeight Height in PDF points
+     * @param pdfX       X coordinate in PDF points (bottom-origin)
+     * @param pdfY       Y coordinate in PDF points (bottom-origin)
+     * @param pdfWidth   Width in PDF points
+     * @param pdfHeight  Height in PDF points
      * @param pageHeight Page height in PDF points
-     * @param zoom Current zoom level
+     * @param zoom       Current zoom level
      * @return Rectangle in canvas coordinates (pixels, Y=top)
      */
     public static Rectangle2D.Float pdfToCanvasRect(
@@ -147,14 +148,14 @@ public class CoordinateConverter {
     /**
      * Validates if PDF coordinates are within page bounds.
      *
-     * @param pdfX X coordinate in PDF points
-     * @param pdfY Y coordinate in PDF points
-     * @param pageWidth Page width in points
+     * @param pdfX       X coordinate in PDF points
+     * @param pdfY       Y coordinate in PDF points
+     * @param pageWidth  Page width in points
      * @param pageHeight Page height in points
      * @return true if coordinates are valid
      */
     public static boolean isValidPdfCoordinate(float pdfX, float pdfY,
-            float pageWidth, float pageHeight) {
+                                               float pageWidth, float pageHeight) {
 
         //logger.warn("Invalid PDF coordinates: ({:.2f},{:.2f}) outside bounds (0,0)-({:.2f},{:.2f})",pdfX, pdfY, pageWidth, pageHeight);
 

@@ -1,6 +1,5 @@
 package org.pdflite.controller;
 
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -8,14 +7,11 @@ import javafx.scene.control.*;
 import javafx.stage.Stage;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
-import org.pdflite.service.SearchService;
+import org.pdflite.util.SearchHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Controller for the Search Dialog
@@ -25,31 +21,41 @@ public class SearchDialogController {
 
     private static final Logger logger = LoggerFactory.getLogger(SearchDialogController.class);
 
-    @FXML private TextField searchField;
-    @FXML private CheckBox caseSensitiveCheckbox;
-    @FXML private CheckBox wholeWordCheckbox;
-    @FXML private Button searchButton;
-    @FXML private Button cancelButton;
-    @FXML private Button closeButton;
-    @FXML private Button prevResultButton;
-    @FXML private Button nextResultButton;
-    @FXML private ProgressIndicator progressIndicator;
-    @FXML private Label statusLabel;
-    @FXML private ListView<SearchResult> resultsListView;
+    @FXML
+    private TextField searchField;
+    @FXML
+    private CheckBox caseSensitiveCheckbox;
+    @FXML
+    private CheckBox wholeWordCheckbox;
+    @FXML
+    private Button searchButton;
+    @FXML
+    private Button cancelButton;
+    @FXML
+    private Button closeButton;
+    @FXML
+    private Button prevResultButton;
+    @FXML
+    private Button nextResultButton;
+    @FXML
+    private ProgressIndicator progressIndicator;
+    @FXML
+    private Label statusLabel;
+    @FXML
+    private ListView<SearchResult> resultsListView;
 
     private PDFDocument pdfDocument;
-    private SearchService searchService;
+    private SearchHandler searchHandler;
     private MainController mainController;
 
-    private ExecutorService searchExecutor;
     private final ObservableList<SearchResult> searchResults =
             FXCollections.observableArrayList();
 
     @FXML
     public void initialize() {
-        searchService = new SearchService();
+        searchHandler = new SearchHandler("SearchExecutor");
 
-        createExecutorService();
+        searchHandler.createExecutorService();
 
         resultsListView.setItems(searchResults);
         resultsListView.setCellFactory(lv -> new SearchResultCell());
@@ -69,21 +75,6 @@ public class SearchDialogController {
         logger.debug("SearchDialogController initialized");
     }
 
-    private void createExecutorService() {
-        if (searchExecutor != null && !searchExecutor.isShutdown()) {
-            searchExecutor.shutdown();
-        }
-
-        searchExecutor = Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r);
-            t.setDaemon(true); // Make daemon thread to not block JVM shutdown
-            t.setName("SearchExecutor");
-            return t;
-        });
-
-        logger.debug("Search executor service created");
-    }
-
     public void setPDFDocument(PDFDocument pdfDocument) {
         this.pdfDocument = pdfDocument;
 
@@ -99,85 +90,78 @@ public class SearchDialogController {
 
     @FXML
     private void handleSearch() {
-        String keyword = searchField.getText().trim();
-
-        if (keyword.isEmpty()) {
-            showError("Please enter a search keyword");
-            return;
-        }
-
-        if (pdfDocument == null) {
-            showError("No PDF document loaded");
-            return;
-        }
-
-        if (searchExecutor == null || searchExecutor.isShutdown()) {
-            createExecutorService();
-        }
-
-        searchResults.clear();
-
-        searchButton.setDisable(true);
-        cancelButton.setDisable(false);
-        progressIndicator.setVisible(true);
-        prevResultButton.setDisable(true);
-        nextResultButton.setDisable(true);
-        updateStatus("Searching...");
-
-        boolean caseSensitive = caseSensitiveCheckbox.isSelected();
-        boolean wholeWord = wholeWordCheckbox.isSelected();
-
-        searchExecutor.submit(() -> performSearch(keyword, caseSensitive, wholeWord));
+        searchHandler.executeSearch(pdfDocument, createCallbacks());
     }
 
-    private void performSearch(String keyword, boolean caseSensitive, boolean wholeWord) {
-        try {
-            logger.info("Starting search for: {}", keyword);
+    /**
+     * Creates the UI callbacks for the search handler.
+     */
+    private SearchHandler.SearchUICallbacks createCallbacks() {
+        return new SearchHandler.SearchUICallbacks() {
+            @Override
+            public String getSearchKeyword() {
+                return searchField.getText().trim();
+            }
 
-            List<SearchResult> results = searchService.searchInDocument(
-                    pdfDocument.getDocument(),
-                    keyword,
-                    caseSensitive,
-                    wholeWord
-            );
+            @Override
+            public boolean isCaseSensitive() {
+                return caseSensitiveCheckbox.isSelected();
+            }
 
-            Platform.runLater(() -> {
-                if (searchService.isCancelled()) {
-                    updateStatus("Search cancelled");
-                } else {
-                    searchResults.addAll(results);
-                    updateStatus(String.format("Found %d result(s)", results.size()));
+            @Override
+            public boolean isWholeWord() {
+                return wholeWordCheckbox.isSelected();
+            }
 
-                    if (mainController != null && !results.isEmpty()) {
-                        mainController.highlightSearchResults(results);
-                        logger.info("Applied {} highlights from search panel", results.size());
-                    }
+            @Override
+            public ObservableList<SearchResult> getSearchResults() {
+                return searchResults;
+            }
 
-                    if (!results.isEmpty()) {
-                        resultsListView.getSelectionModel().selectFirst();
-                        nextResultButton.setDisable(results.size() <= 1);
-                    }
-                }
-            });
+            @Override
+            public MainController getMainController() {
+                return mainController;
+            }
 
-        } catch (IOException e) {
-            logger.error("Error during search", e);
-            Platform.runLater(() -> {
-                showError("Error during search: " + e.getMessage());
-                updateStatus("Search failed");
-            });
-        } finally {
-            Platform.runLater(() -> {
+            @Override
+            public void updateStatus(String message) {
+                SearchDialogController.this.updateStatus(message);
+            }
+
+            @Override
+            public void showError(String message) {
+                SearchDialogController.this.showError(message);
+            }
+
+            @Override
+            public void onSearchStart() {
+                searchButton.setDisable(true);
+                cancelButton.setDisable(false);
+                progressIndicator.setVisible(true);
+                prevResultButton.setDisable(true);
+                nextResultButton.setDisable(true);
+            }
+
+            @Override
+            public void onSearchComplete() {
                 searchButton.setDisable(false);
                 cancelButton.setDisable(true);
                 progressIndicator.setVisible(false);
-            });
-        }
+            }
+
+            @Override
+            public void onSearchResultsReady(List<SearchResult> results) {
+                if (!results.isEmpty()) {
+                    resultsListView.getSelectionModel().selectFirst();
+                    nextResultButton.setDisable(results.size() <= 1);
+                }
+            }
+        };
     }
 
     @FXML
     private void handleCancel() {
-        searchService.cancelSearch();
+        searchHandler.cancelSearch();
         cancelButton.setDisable(true);
     }
 
@@ -216,9 +200,9 @@ public class SearchDialogController {
             mainController.highlightSearchResult(result);
 
             int position = resultsListView.getSelectionModel().getSelectedIndex() + 1;
-            updateStatus(String.format("Result %d of %d on page %d", 
-                                    position, searchResults.size(), result.pageNumber()));
-            
+            updateStatus(String.format("Result %d of %d on page %d",
+                    position, searchResults.size(), result.pageNumber()));
+
             updateNavigationButtons();
         }
     }
@@ -236,13 +220,7 @@ public class SearchDialogController {
     }
 
     public void cleanup() {
-        searchService.cancelSearch();
-
-        if (searchExecutor != null && !searchExecutor.isShutdown()) {
-            searchExecutor.shutdown();
-            logger.info("Search executor shutdown");
-        }
-
+        searchHandler.cleanup();
         logger.info("SearchDialogController cleanup completed");
     }
 

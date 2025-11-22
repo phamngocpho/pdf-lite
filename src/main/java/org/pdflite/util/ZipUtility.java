@@ -43,8 +43,7 @@ public class ZipUtility {
              ZipOutputStream zos = new ZipOutputStream(fos)) {
 
             for (File file : files) {
-                if (FileUtils.isValidFile(file)) {
-                    logger.warn("Skipping invalid file: {}", FileUtils.getFileNameOrNull(file));
+                if (shouldSkipFile(file)) {
                     continue;
                 }
 
@@ -54,6 +53,21 @@ public class ZipUtility {
 
         logger.info("Successfully created ZIP archive: {} ({})",
                 zipFile.getName(), FileUtils.formatFileSize(zipFile.length()));
+    }
+
+    /**
+     * Checks if a file should be skipped (invalid file).
+     * Logs a warning if the file is invalid.
+     *
+     * @param file The file to check
+     * @return true if the file should be skipped, false otherwise
+     */
+    private static boolean shouldSkipFile(File file) {
+        if (FileUtils.isValidFile(file)) {
+            logger.warn("Skipping invalid file: {}", FileUtils.getFileNameOrNull(file));
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -108,8 +122,7 @@ public class ZipUtility {
             int processedFiles = 0;
 
             for (File file : files) {
-                if (FileUtils.isValidFile(file)) {
-                    logger.warn("Skipping invalid file: {}", FileUtils.getFileNameOrNull(file));
+                if (shouldSkipFile(file)) {
                     continue;
                 }
 

@@ -52,7 +52,7 @@ public class ScrollHandler {
      * Creates a new ScrollHandler.
      *
      * @param pageRenderer the page renderer for loading pages
-     * @param scrollPane the scroll pane to monitor
+     * @param scrollPane   the scroll pane to monitor
      */
     public ScrollHandler(PageRenderer pageRenderer, ScrollPane scrollPane) {
         this.pageRenderer = pageRenderer;
@@ -62,7 +62,7 @@ public class ScrollHandler {
     /**
      * Sets the current document and pages container.
      *
-     * @param document the PDF document
+     * @param document       the PDF document
      * @param pagesContainer the container holding all page boxes
      */
     public void setDocument(PDFDocument document, VBox pagesContainer) {
@@ -123,9 +123,9 @@ public class ScrollHandler {
             try {
                 double bufferSize = scrollPane.getViewportBounds().getHeight();
                 double scrollValue = scrollPane.getVvalue();
-                
+
                 int totalPages = currentDocument.getTotalPages();
-                
+
                 // Calculate total content height based on all page placeholders
                 // This ensures accurate calculation even when pages haven't been rendered yet
                 double contentHeight = getContentHeight(totalPages);
@@ -197,7 +197,7 @@ public class ScrollHandler {
                         }
                     }
                 }
-                
+
                 // Additional safeguard: if we're near the end (last 5 pages), ensure they get loaded
                 if (scrollValue > 0.8 && totalPages > 0) {
                     int startPage = Math.max(0, totalPages - 5);
@@ -238,7 +238,7 @@ public class ScrollHandler {
                     .anyMatch(child -> child instanceof javafx.scene.image.ImageView);
             return !hasImageView;
         }
-        
+
         // If it's not a StackPane, it's likely a placeholder
         return true;
     }
@@ -262,7 +262,7 @@ public class ScrollHandler {
         try {
             double viewportHeight = scrollPane.getViewportBounds().getHeight();
             double scrollValue = scrollPane.getVvalue();
-            
+
             // Use calculated content height instead of actual height for more accurate calculation
             int totalPages = currentDocument.getTotalPages();
             double contentHeight = getContentHeight(totalPages);

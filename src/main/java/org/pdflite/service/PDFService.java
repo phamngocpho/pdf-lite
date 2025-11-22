@@ -49,9 +49,9 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * @author PDF Lite Team
  * @version 1.0.0
- * @since 1.0.0
  * @see PDFDocument
  * @see org.apache.pdfbox.pdmodel.PDDocument
+ * @since 1.0.0
  */
 public class PDFService {
     private static final Logger logger = LoggerFactory.getLogger(PDFService.class);
@@ -155,15 +155,15 @@ public class PDFService {
      * based on the specified permissions.
      * </p>
      *
-     * @param inputFile      the source PDF file
-     * @param outputFile     the destination for encrypted PDF
-     * @param ownerPassword  the owner password (full access)
-     * @param userPassword   the user password (restricted access)
-     * @param permissions    access permissions for user password
+     * @param inputFile     the source PDF file
+     * @param outputFile    the destination for encrypted PDF
+     * @param ownerPassword the owner password (full access)
+     * @param userPassword  the user password (restricted access)
+     * @param permissions   access permissions for user password
      * @throws IOException if encryption fails or file operations fail
      */
     public void encryptPDF(File inputFile, File outputFile, String ownerPassword,
-                          String userPassword, AccessPermission permissions) throws IOException {
+                           String userPassword, AccessPermission permissions) throws IOException {
         logger.info("Encrypting PDF: {}", inputFile.getName());
 
         try (PDDocument document = Loader.loadPDF(inputFile)) {
@@ -197,7 +197,7 @@ public class PDFService {
      * @throws IOException if encryption fails
      */
     public void encryptPDF(File inputFile, File outputFile, String ownerPassword,
-                          String userPassword) throws IOException {
+                           String userPassword) throws IOException {
         AccessPermission permissions = new AccessPermission();
         permissions.setCanPrint(true);
         permissions.setCanModify(false);
@@ -279,8 +279,8 @@ public class PDFService {
         // Reuse renderer from cache to maintain consistent font rendering
         // This prevents recreation of font caches and reduces glyph warnings
         PDFRenderer renderer = rendererCache.computeIfAbsent(
-            pdfDoc.getDocument(), 
-            PDFRenderer::new
+                pdfDoc.getDocument(),
+                PDFRenderer::new
         );
         float dpi = DEFAULT_DPI * scale;
 
@@ -330,23 +330,23 @@ public class PDFService {
         }
 
         PDPage page = pdfDoc.getDocument().getPage(pageIndex);
-        
+
         // Get rotation-aware dimensions
         int originalRotation = page.getRotation();
         int userRotation = pdfDoc.getRotation();
         int finalRotation = (originalRotation + userRotation) % 360;
-        
+
         // Get page media box (dimensions)
         org.apache.pdfbox.pdmodel.common.PDRectangle mediaBox = page.getMediaBox();
-        
+
         // Calculate dimensions based on DPI and scale
         float dpi = DEFAULT_DPI * scale;
         double widthInInches = mediaBox.getWidth() / 72.0; // PDF uses 72 points per inch
         double heightInInches = mediaBox.getHeight() / 72.0;
-        
+
         double width = widthInInches * dpi;
         double height = heightInInches * dpi;
-        
+
         // Return swapped dimensions if rotated 90 or 270 degrees
         boolean isRotated = (finalRotation == 90 || finalRotation == 270);
         return isRotated ? new double[]{height, width} : new double[]{width, height};
@@ -558,22 +558,22 @@ public class PDFService {
         if (pdfDoc == null || pdfDoc.getDocument() == null || targetFile == null) {
             throw new IOException("Invalid save parameters.");
         }
-        
+
         PDDocument pdDoc = pdfDoc.getDocument();
-        
+
         // Ensure directory exists
         Path parent = targetFile.toPath().getParent();
         if (parent != null && !Files.exists(parent)) {
             Files.createDirectories(parent);
         }
-        
+
         // If document was encrypted, remove encryption before saving
         // (User already has access since they opened the document)
         if (pdDoc.isEncrypted()) {
             pdDoc.setAllSecurityToBeRemoved(true);
             logger.info("Removing encryption for saveAs operation");
         }
-        
+
         pdDoc.save(targetFile);
         logger.info("Saved PDF as {}", targetFile.getAbsolutePath());
     }
@@ -618,7 +618,7 @@ public class PDFService {
 
         logger.info("Deleted {} page(s). New total pages: {}", toDelete, newTotal);
     }
-  
+
     private void flattenAnnotationsToPDF(PDFDocument pdfDoc) {
         PDDocument doc = pdfDoc.getDocument();
         List<Annotation> annotations = pdfDoc.getAnnotations();

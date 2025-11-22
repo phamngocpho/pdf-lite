@@ -36,25 +36,44 @@ public class SplitDialogController {
 
     private static final Logger logger = LoggerFactory.getLogger(SplitDialogController.class);
 
-    @FXML private Label fileNameLabel;
-    @FXML private Label totalPagesLabel;
-    @FXML private ScrollPane previewScrollPane;
-    @FXML private FlowPane previewPane;
-    @FXML private RadioButton splitByRangeRadio;
-    @FXML private RadioButton splitByPagesRadio;
-    @FXML private RadioButton splitAllPagesRadio;
-    @FXML private VBox rangeInputBox;
-    @FXML private VBox pagesInputBox;
-    @FXML private TextField rangeTextField;
-    @FXML private TextField pagesPerFileTextField;
-    @FXML private ListView<String> rangesListView;
-    @FXML private Button addRangeButton;
-    @FXML private Button removeRangeButton;
-    @FXML private Button splitButton;
-    @FXML private Button cancelButton;
-    @FXML private CheckBox zipOutputCheckBox;
-    @FXML private Label statusLabel;
-    @FXML private ProgressBar progressBar;
+    @FXML
+    private Label fileNameLabel;
+    @FXML
+    private Label totalPagesLabel;
+    @FXML
+    private ScrollPane previewScrollPane;
+    @FXML
+    private FlowPane previewPane;
+    @FXML
+    private RadioButton splitByRangeRadio;
+    @FXML
+    private RadioButton splitByPagesRadio;
+    @FXML
+    private RadioButton splitAllPagesRadio;
+    @FXML
+    private VBox rangeInputBox;
+    @FXML
+    private VBox pagesInputBox;
+    @FXML
+    private TextField rangeTextField;
+    @FXML
+    private TextField pagesPerFileTextField;
+    @FXML
+    private ListView<String> rangesListView;
+    @FXML
+    private Button addRangeButton;
+    @FXML
+    private Button removeRangeButton;
+    @FXML
+    private Button splitButton;
+    @FXML
+    private Button cancelButton;
+    @FXML
+    private CheckBox zipOutputCheckBox;
+    @FXML
+    private Label statusLabel;
+    @FXML
+    private ProgressBar progressBar;
 
     private File sourceFile;
     private PDDocument sourceDocument;
@@ -167,8 +186,8 @@ public class SplitDialogController {
      * Loads thumbnail previews for all pages.
      */
     private void loadThumbnails() {
-        ThumbnailLoader.loadThumbnails(sourceFile, totalPages, previewPane, 
-            pdfService, executorService, this::updateStatus);
+        ThumbnailLoader.loadThumbnails(sourceFile, totalPages, previewPane,
+                pdfService, executorService, this::updateStatus);
     }
 
     /**

@@ -64,10 +64,10 @@ public class ImageExtractor extends PDFStreamEngine {
         if ("Do".equals(operatorName)) {
             COSName objectName = (COSName) operands.getFirst();
             PDXObject pdxObject = getResources().getXObject(objectName);
-            
+
             if (pdxObject instanceof PDImageXObject) {
                 processImageXObject((PDImageXObject) pdxObject, objectName.getName());
-                
+
             } else if (pdxObject instanceof PDFormXObject form) {
                 showForm(form);
             }

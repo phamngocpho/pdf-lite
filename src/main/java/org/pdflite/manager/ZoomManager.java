@@ -31,13 +31,14 @@ public class ZoomManager {
      */
     public interface ZoomChangeListener {
         void onZoomChanged(double newZoom);
+
         void onZoomApplied(double newZoom, String statusMessage);
     }
 
     /**
      * Creates a new ZoomManager.
      *
-     * @param pdfService the PDF service for rendering pages
+     * @param pdfService         the PDF service for rendering pages
      * @param zoomChangeListener listener for zoom change events
      */
     public ZoomManager(PDFService pdfService, ZoomChangeListener zoomChangeListener) {
@@ -49,7 +50,7 @@ public class ZoomManager {
      * Initializes the zoom manager with UI components.
      *
      * @param zoomComboBox the zoom combo box
-     * @param scrollPane the scroll pane for viewport calculations
+     * @param scrollPane   the scroll pane for viewport calculations
      */
     public void initialize(ComboBox<String> zoomComboBox, ScrollPane scrollPane) {
         this.zoomComboBox = zoomComboBox;
@@ -156,7 +157,7 @@ public class ZoomManager {
     /**
      * Calculates optimal zoom to fit page in viewport.
      *
-     * @param imageWidth the image width
+     * @param imageWidth  the image width
      * @param imageHeight the image height
      * @return the calculated zoom level
      */

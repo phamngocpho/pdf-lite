@@ -100,7 +100,7 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
         }
 
         PDFDocument document;
-        
+
         // Try to open the file normally first
         try {
             document = pdfService.openPDF(file);
@@ -110,12 +110,12 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
                 // Show password dialog
                 PasswordDialog passwordDialog = new PasswordDialog();
                 String password = passwordDialog.showAndGetPassword();
-                
+
                 if (password == null) {
                     // User cancelled
                     return null;
                 }
-                
+
                 // Try to open with password
                 try {
                     document = pdfService.openPDF(file, password);
@@ -133,7 +133,7 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
                 throw e;
             }
         }
-        
+
         if (fileOperationListener != null) {
             fileOperationListener.onFileOpened(document, file);
         }

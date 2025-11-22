@@ -9,7 +9,6 @@ import java.util.concurrent.ExecutorService;
 import org.pdflite.controller.MainController;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
-import org.pdflite.util.PageContainerUtils;
 import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

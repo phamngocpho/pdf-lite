@@ -10,14 +10,8 @@ public class CircleAnnotation extends ShapeAnnotation {
 
     @Override
     public void draw(GraphicsContext gc, double scale) {
-        gc.setStroke(color);
-        gc.setLineWidth(lineWidth * scale);
-
-        double drawX = Math.min(x, endX) * scale;
-        double drawY = Math.min(y, endY) * scale;
-        double w = Math.abs(endX - x) * scale;
-        double h = Math.abs(endY - y) * scale;
-
-        gc.strokeOval(drawX, drawY, w, h);
+        prepareGraphicsContext(gc, scale);
+        DrawingBounds bounds = calculateDrawingBounds(scale);
+        gc.strokeOval(bounds.drawX(), bounds.drawY(), bounds.width(), bounds.height());
     }
 }
