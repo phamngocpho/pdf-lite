@@ -2,16 +2,16 @@
 
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.*?>
+<?import javafx.geometry.Insets?>
 
-<?import javafx.scene.shape.Circle?>
-<?import javafx.scene.shape.Rectangle?>
 <BorderPane fx:id="rootPane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="org.pdflite.controller.MainController"
             prefHeight="800.0" prefWidth="1200.0">
 
-<fx:define>
-    <ToggleGroup fx:id="drawingToolsGroup"/>
-</fx:define>
+    <fx:define>
+        <ToggleGroup fx:id="drawingToolsGroup"/>
+    </fx:define>
 
     <!-- Top: Menu Bar and Toolbar -->
     <top>
@@ -19,49 +19,15 @@
             <!-- Menu Bar -->
             <MenuBar>
                 <Menu text="File">
-                    <MenuItem text="Open PDF..." onAction="#handleOpenPDF" accelerator="Ctrl+O"/>
-                    <Menu fx:id="recentFilesMenu" text="Recent Files">
-                        <MenuItem text="No recent files" disable="true"/>
-                    </Menu>
-                    <MenuItem text="Clear Recent Files" onAction="#handleClearRecentFiles"/>
-                    <SeparatorMenuItem/>
-                    <MenuItem text="Print..." onAction="#handlePrint" accelerator="Ctrl+P"/>
-                    <SeparatorMenuItem/>
-                    <MenuItem text="Save" onAction="#handleSave"/>
+                    <MenuItem text="Open..." onAction="#handleOpenPDF" accelerator="Ctrl+O"/>
+                    <MenuItem text="Save" onAction="#handleSave" accelerator="Ctrl+S"/>
                     <MenuItem text="Save As..." onAction="#handleSaveAs"/>
-                    <SeparatorMenuItem/>
+                    <MenuItem text="Print..." onAction="#handlePrint" accelerator="Ctrl+P"/>
                     <MenuItem text="Exit" onAction="#handleExit"/>
                 </Menu>
-
-                <Menu text="Edit">
-                    <MenuItem text="Find..." onAction="#handleSearch" accelerator="Ctrl+F"/>
-                    <SeparatorMenuItem/>
-                    <MenuItem text="Hide Search Panel" onAction="#handleHideSearch" accelerator="Escape"/>
-                </Menu>
-
                 <Menu text="View">
-                    <MenuItem text="Zoom In" onAction="#handleZoomIn" accelerator="Ctrl+Plus"/>
-                    <MenuItem text="Zoom Out" onAction="#handleZoomOut" accelerator="Ctrl+Minus"/>
-                    <MenuItem text="Fit to Width" onAction="#handleFitToWidth"/>
-                    <MenuItem text="Fit to Page" onAction="#handleFitToPage"/>
-                    <SeparatorMenuItem/>
-                    <MenuItem text="Toggle Full Screen" onAction="#handleToggleFullScreen" accelerator="F11"/>
+                    <MenuItem text="Fullscreen" onAction="#handleToggleFullScreen" accelerator="F11"/>
                 </Menu>
-
-                <Menu text="Tools">
-                    <MenuItem text="Highlight" onAction="#handleHighlight"/>
-                    <SeparatorMenuItem/>
-                    <MenuItem text="Merge PDFs..." onAction="#handleMergePDFs"/>
-                    <MenuItem text="Split PDF..." onAction="#handleSplitPDF"/>
-                    <MenuItem text="Extract Pages..." onAction="#handleExtractPages"/>
-                    <SeparatorMenuItem/>
-                    <MenuItem text="Encrypt PDF..." onAction="#handleEncryptPDF"/>
-                    <MenuItem text="Remove Password..." onAction="#handleDecryptPDF"/>
-                    <MenuItem text="Show Permissions..." onAction="#handleShowPDFPermissions"/>
-                    <SeparatorMenuItem/>
-                    <MenuItem text="Delete Page" onAction="#handleDeletePage"/>
-                </Menu>
-
                 <Menu text="Help">
                     <MenuItem text="About" onAction="#handleAbout"/>
                 </Menu>
@@ -71,142 +37,166 @@
                 </Menu>
             </MenuBar>
 
-            <!-- Modern Minimalist Toolbar -->
-            <ToolBar fx:id="toolbar" style="-fx-padding: 5 8; -fx-spacing: 6; -fx-background-color: #ffffff; -fx-border-color: #e0e0e0; -fx-border-width: 0 0 1 0;">
-                
-                <!-- File Operations -->
-                <Button text="Open" onAction="#handleOpenPDF" 
-                        style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-background-color: transparent; -fx-text-fill: #424242;">
-                    <tooltip><Tooltip text="Open PDF (Ctrl+O)"/></tooltip>
-                </Button>
-                <Button text="Save" onAction="#handleSave" 
-                        style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-background-color: transparent; -fx-text-fill: #424242;">
-                    <tooltip><Tooltip text="Save (Ctrl+S)"/></tooltip>
-                </Button>
-                <Button text="Print" onAction="#handlePrint" 
-                        style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-background-color: transparent; -fx-text-fill: #424242;">
-                    <tooltip><Tooltip text="Print (Ctrl+P)"/></tooltip>
-                </Button>
-                
-                <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
-                
-                <!-- Navigation Group -->
-                <HBox spacing="3" alignment="CENTER" style="-fx-padding: 1; -fx-background-color: #f5f5f5; -fx-background-radius: 3;">
-                    <Button fx:id="prevButton" text="Previous" onAction="#handlePreviousPage"
-                            style="-fx-font-size: 10px; -fx-padding: 3 6; -fx-background-color: transparent; -fx-text-fill: #616161;">
-                        <tooltip><Tooltip text="Previous Page"/></tooltip>
-                    </Button>
-                    <TextField fx:id="pageNumberField" prefWidth="45" onAction="#handleGoToPage"
-                               style="-fx-font-size: 10px; -fx-padding: 3; -fx-background-color: white;"/>
-                    <Label fx:id="totalPagesLabel" text="/ 0" style="-fx-font-size: 10px; -fx-text-fill: #757575;"/>
-                    <Button fx:id="nextButton" text="Next" onAction="#handleNextPage"
-                            style="-fx-font-size: 10px; -fx-padding: 3 6; -fx-background-color: transparent; -fx-text-fill: #616161;">
-                        <tooltip><Tooltip text="Next Page"/></tooltip>
-                    </Button>
-                </HBox>
-                
-                <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
-                
-                <!-- Zoom Group -->
-                <HBox spacing="3" alignment="CENTER" style="-fx-padding: 1; -fx-background-color: #f5f5f5; -fx-background-radius: 3;">
-                    <Button text="Zoom Out" onAction="#handleZoomOut"
-                            style="-fx-font-size: 10px; -fx-padding: 3 6; -fx-background-color: transparent; -fx-text-fill: #616161;">
-                        <tooltip><Tooltip text="Zoom Out (Ctrl+−)"/></tooltip>
-                    </Button>
-                    <ComboBox fx:id="zoomComboBox" onAction="#handleZoomChange"
-                              prefWidth="80" style="-fx-font-size: 10px; -fx-background-color: white;"/>
-                    <Button text="Zoom In" onAction="#handleZoomIn"
-                            style="-fx-font-size: 10px; -fx-padding: 3 6; -fx-background-color: transparent; -fx-text-fill: #616161;">
-                        <tooltip><Tooltip text="Zoom In (Ctrl++)"/></tooltip>
-                    </Button>
-                </HBox>
-                
-                <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
+            <!-- Tab Pane -->
+            <TabPane tabClosingPolicy="UNAVAILABLE" style="-fx-background-color: #f4f4f4; -fx-border-color: #d0d0d0; -fx-border-width: 0 0 1 0;">
 
-                <!-- Context -->
-                <ToggleButton fx:id="btnSelectText" text="Select Text">
-                    <toggleGroup>
-                        <fx:reference source="drawingToolsGroup"/>
-                    </toggleGroup>
-                    <tooltip><Tooltip text="Select Text mode"/></tooltip>
-                </ToggleButton>
+                <Tab text="Home">
+                    <content>
+                        <!-- Modern Minimalist Toolbar -->
+                        <ToolBar style="-fx-padding: 5 8; -fx-spacing: 6; -fx-background-color: #ffffff;">
 
-                <HBox spacing="2" alignment="CENTER">
-                    <ToggleButton fx:id="btnDrawRect" toggleGroup="$drawingToolsGroup">
-                        <graphic>
-                            <Rectangle width="16" height="12" fill="TRANSPARENT" stroke="BLACK" strokeWidth="1.5"/>
-                        </graphic>
-                        <tooltip><Tooltip text="Draw Rectangle"/></tooltip>
-                    </ToggleButton>
+                            <!-- File Operations -->
+                            <Button text="Open" onAction="#handleOpenPDF"
+                                    style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-background-color: transparent; -fx-text-fill: #424242;">
+                                <tooltip><Tooltip text="Open PDF (Ctrl+O)"/></tooltip>
+                            </Button>
+                            <Button text="Save" onAction="#handleSave"
+                                    style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-background-color: transparent; -fx-text-fill: #424242;">
+                                <tooltip><Tooltip text="Save (Ctrl+S)"/></tooltip>
+                            </Button>
+                            <Button text="Print" onAction="#handlePrint"
+                                    style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-background-color: transparent; -fx-text-fill: #424242;">
+                                <tooltip><Tooltip text="Print (Ctrl+P)"/></tooltip>
+                            </Button>
 
-                    <ToggleButton fx:id="btnDrawCircle" toggleGroup="$drawingToolsGroup">
-                        <graphic>
-                            <Circle radius="6" fill="TRANSPARENT" stroke="BLACK" strokeWidth="1.5"/>
-                        </graphic>
-                        <tooltip><Tooltip text="Draw Circle"/></tooltip>
-                    </ToggleButton>
+                            <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
 
-                    <ToggleButton fx:id="btnDrawArrow" text="↗" toggleGroup="$drawingToolsGroup">
-                        <tooltip><Tooltip text="Draw Arrow"/></tooltip>
-                    </ToggleButton>
-                </HBox>
+                            <!-- Navigation Group -->
+                            <HBox spacing="3" alignment="CENTER" style="-fx-padding: 1; -fx-background-color: #f5f5f5; -fx-background-radius: 3;">
+                                <Button fx:id="prevButton" text="Previous" onAction="#handlePreviousPage"
+                                        style="-fx-font-size: 10px; -fx-padding: 3 6; -fx-background-color: transparent; -fx-text-fill: #616161;">
+                                    <tooltip><Tooltip text="Previous Page"/></tooltip>
+                                </Button>
+                                <TextField fx:id="pageNumberField" prefWidth="45" onAction="#handleGoToPage"
+                                           style="-fx-font-size: 10px; -fx-padding: 3; -fx-background-color: white;"/>
+                                <Label fx:id="totalPagesLabel" text="/ 0" style="-fx-font-size: 10px; -fx-text-fill: #757575;"/>
+                                <Button fx:id="nextButton" text="Next" onAction="#handleNextPage"
+                                        style="-fx-font-size: 10px; -fx-padding: 3 6; -fx-background-color: transparent; -fx-text-fill: #616161;">
+                                    <tooltip><Tooltip text="Next Page"/></tooltip>
+                                </Button>
+                            </HBox>
 
-                <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
+                            <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
 
+                            <!-- Zoom Group -->
+                            <HBox spacing="3" alignment="CENTER" style="-fx-padding: 1; -fx-background-color: #f5f5f5; -fx-background-radius: 3;">
+                                <Button text="Zoom Out" onAction="#handleZoomOut"
+                                        style="-fx-font-size: 10px; -fx-padding: 3 6; -fx-background-color: transparent; -fx-text-fill: #616161;">
+                                    <tooltip><Tooltip text="Zoom Out (Ctrl+−)"/></tooltip>
+                                </Button>
+                                <ComboBox fx:id="zoomComboBox" onAction="#handleZoomChange"
+                                          prefWidth="80" style="-fx-font-size: 10px; -fx-background-color: white;"/>
+                                <Button text="Zoom In" onAction="#handleZoomIn"
+                                        style="-fx-font-size: 10px; -fx-padding: 3 6; -fx-background-color: transparent; -fx-text-fill: #616161;">
+                                    <tooltip><Tooltip text="Zoom In (Ctrl++)"/></tooltip>
+                                </Button>
+                            </HBox>
 
-                <Button text="Undo" onAction="#handleUndo" style="-fx-font-size: 11px;">
-                    <tooltip><Tooltip text="Undo last drawing (Ctrl+Z)"/></tooltip>
-                </Button>
+                            <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
 
-                <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
+                            <!-- PDF Tools Menu -->
+                            <MenuButton text="PDF Tools" style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-background-color: #e8f5e9; -fx-text-fill: #2e7d32; -fx-background-radius: 3;">
+                                <tooltip><Tooltip text="Merge, Split, Encrypt..."/></tooltip>
+                                <items>
+                                    <MenuItem text="Merge PDFs..." onAction="#handleMergePDFs"/>
+                                    <MenuItem text="Split PDF..." onAction="#handleSplitPDF"/>
+                                    <MenuItem text="Extract Pages..." onAction="#handleExtractPages"/>
+                                    <SeparatorMenuItem/>
+                                    <MenuItem text="Encrypt PDF..." onAction="#handleEncryptPDF"/>
+                                    <MenuItem text="Remove Password..." onAction="#handleDecryptPDF"/>
+                                    <SeparatorMenuItem/>
+                                    <MenuItem text="Delete Current Page" onAction="#handleDeletePage"/>
+                                </items>
+                            </MenuButton>
 
-                <HBox spacing="5" alignment="CENTER">
-                    <ColorPicker fx:id="colorPicker" prefWidth="40" style="-fx-color-label-visible: false;"/>
+                            <!-- View Menu -->
+                            <MenuButton text="View" style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-background-color: transparent; -fx-text-fill: #424242;">
+                                <items>
+                                    <MenuItem text="Rotate Left (90°)" onAction="#handleRotateLeft"/>
+                                    <MenuItem text="Rotate Right (90°)" onAction="#handleRotateRight"/>
+                                    <MenuItem text="Fit to Width" onAction="#handleFitToWidth"/>
+                                    <MenuItem text="Fit to Page" onAction="#handleFitToPage"/>
+                                    <SeparatorMenuItem/>
+                                    <MenuItem text="Fullscreen" onAction="#handleToggleFullScreen"/>
+                                </items>
+                            </MenuButton>
 
-                    <VBox alignment="CENTER" spacing="0">
-                        <Slider fx:id="strokeWidthSlider" min="1" max="10" value="2" prefWidth="60" blockIncrement="1"/>
-                        <Label text="Width" style="-fx-font-size: 8px;"/>
-                    </VBox>
-                </HBox>
-                <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
+                        </ToolBar>
+                    </content>
+                </Tab>
 
-                <!-- PDF Tools Menu -->
-                <MenuButton text="PDF Tools" style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-background-color: #e8f5e9; -fx-text-fill: #2e7d32; -fx-background-radius: 3; -fx-font-weight: normal;">
-                    <tooltip><Tooltip text="PDF Operations"/></tooltip>
-                    <items>
-                        <MenuItem text="Merge PDFs..." onAction="#handleMergePDFs"/>
-                        <MenuItem text="Split PDF..." onAction="#handleSplitPDF"/>
-                        <MenuItem text="Extract Pages..." onAction="#handleExtractPages"/>
-                        <SeparatorMenuItem/>
-                        <MenuItem text="Delete Current Page" onAction="#handleDeletePage"/>
-                    </items>
-                </MenuButton>
-                
-                <!-- View Menu -->
-                <MenuButton text="View" style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-background-color: transparent; -fx-text-fill: #424242;">
-                    <tooltip><Tooltip text="View Options"/></tooltip>
-                    <items>
-                        <MenuItem text="Rotate Left (90°)" onAction="#handleRotateLeft"/>
-                        <MenuItem text="Rotate Right (90°)" onAction="#handleRotateRight"/>
-                        <SeparatorMenuItem/>
-                        <MenuItem text="Fullscreen" onAction="#handleToggleFullScreen"/>
-                    </items>
-                </MenuButton>
-                
-                <!-- Annotation Tools Menu -->
-                <MenuButton text="Annotate" style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-background-color: transparent; -fx-text-fill: #424242;">
-                    <tooltip><Tooltip text="Annotation Tools"/></tooltip>
-                    <items>
-                        <MenuItem text="Highlight" onAction="#handleHighlight"/>
-                        <SeparatorMenuItem/>
-                        <MenuItem text="Search..." onAction="#handleSearch"/>
-                        <MenuItem text="Search Panel (Left)" onAction="#handleSearchLeft"/>
-                        <MenuItem text="Search Panel (Right)" onAction="#handleSearchRight"/>
-                    </items>
-                </MenuButton>
-                
-                <Region HBox.hgrow="ALWAYS"/>
-            </ToolBar>
+                <Tab text="Shapes">
+                    <content>
+
+                        <!-- Modern Minimalist Toolbar -->
+                        <ToolBar style="-fx-padding: 5 8; -fx-spacing: 6; -fx-background-color: #ffffff;">
+
+                            <!-- Context -->
+                            <ToggleButton fx:id="btnSelectText" text="Select Text" toggleGroup="$drawingToolsGroup"
+                                          style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-text-fill: #424242;">
+                                <tooltip><Tooltip text="Select Text  Mode"/></tooltip>
+                            </ToggleButton>
+
+                            <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
+
+                            <!-- Draw Shapes -->
+                            <HBox spacing="2" alignment="CENTER">
+                                <ToggleButton fx:id="btnDrawRect" toggleGroup="$drawingToolsGroup" style="-fx-padding: 4;">
+                                    <graphic>
+                                        <Rectangle width="16" height="12" fill="TRANSPARENT" stroke="BLACK" strokeWidth="1.5"/>
+                                    </graphic>
+                                    <tooltip><Tooltip text="Draw Rectangle"/></tooltip>
+                                </ToggleButton>
+
+                                <ToggleButton fx:id="btnDrawCircle" toggleGroup="$drawingToolsGroup" style="-fx-padding: 4;">
+                                    <graphic>
+                                        <Circle radius="6" fill="TRANSPARENT" stroke="BLACK" strokeWidth="1.5"/>
+                                    </graphic>
+                                    <tooltip><Tooltip text="Draw Circle"/></tooltip>
+                                </ToggleButton>
+
+                                <ToggleButton fx:id="btnDrawArrow" text="↗" toggleGroup="$drawingToolsGroup"
+                                              style="-fx-font-size: 14px; -fx-padding: 2 8; -fx-text-fill: black;">
+                                    <tooltip><Tooltip text="Draw Arrow"/></tooltip>
+                                </ToggleButton>
+                            </HBox>
+
+                            <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
+
+                            <!-- Undo Shapes -->
+                            <Button text="Undo" onAction="#handleUndo"
+                                    style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-background-color: transparent; -fx-text-fill: #424242;">
+                                <tooltip><Tooltip text="Undo last action (Ctrl+Z)"/></tooltip>
+                            </Button>
+
+                            <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
+
+                            <!-- Color Shape -->
+                            <HBox spacing="8" alignment="CENTER">
+                                <ColorPicker fx:id="colorPicker" prefWidth="40" style="-fx-color-label-visible: false;"/>
+
+                                <!-- Slider Shape -->
+                                <VBox alignment="CENTER" spacing="0">
+                                    <Slider fx:id="strokeWidthSlider" min="1" max="10" value="2" prefWidth="80" blockIncrement="1"/>
+                                    <Label text="Width" style="-fx-font-size: 9px; -fx-text-fill: #666666;"/>
+                                </VBox>
+                            </HBox>
+
+                            <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
+
+                            <ToggleButton text="Highlight" onAction="#handleHighlight"
+                                          style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-text-fill: #424242;">
+                                <toggleGroup>
+                                    <fx:reference source="drawingToolsGroup"/>
+                                </toggleGroup>
+                                <tooltip><Tooltip text="Text Highlight Tool"/></tooltip>
+                            </ToggleButton>
+
+                        </ToolBar>
+                    </content>
+                </Tab>
+
+            </TabPane>
         </VBox>
     </top>
 
