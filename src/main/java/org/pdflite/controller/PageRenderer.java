@@ -1,26 +1,27 @@
 package org.pdflite.controller;
 
-import javafx.application.Platform;
-import javafx.geometry.Pos;
-import javafx.scene.control.Label;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
-import org.pdflite.model.PDFDocument;
-import org.pdflite.service.PDFService;
-import org.pdflite.view.AnnotationLayer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import javafx.scene.input.MouseEvent;
+
+import org.pdflite.model.PDFDocument;
+import org.pdflite.service.PDFService;
+import org.pdflite.view.AnnotationLayer;
 import org.pdflite.view.ContextMenuPane;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javafx.application.Platform;
+import javafx.geometry.Pos;
+import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 
 /**
  * Handles page rendering, caching, and display management.

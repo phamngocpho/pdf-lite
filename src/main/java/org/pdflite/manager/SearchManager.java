@@ -1,5 +1,19 @@
 package org.pdflite.manager;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.pdflite.controller.MainController;
+import org.pdflite.model.PDFDocument;
+import org.pdflite.model.SearchResult;
+import org.pdflite.util.NavigationHelper;
+import org.pdflite.view.AnnotationLayer;
+import org.pdflite.view.SearchPanel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.image.Image;
@@ -7,16 +21,6 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import org.pdflite.controller.MainController;
-import org.pdflite.model.PDFDocument;
-import org.pdflite.model.SearchResult;
-import org.pdflite.view.AnnotationLayer;
-import org.pdflite.view.SearchPanel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.*;
-import org.pdflite.util.NavigationHelper;
 
 /**
  * Manages all search-related functionality including:
@@ -223,14 +227,14 @@ public class SearchManager {
         int pageIndex = pageIndices.get(currentIndex);
         VBox pagesContainer = mainController.getPagesContainer();
 
-        if (pageIndex < 0 || pageIndex >= pagesContainer.getChildren().size()) {
+        if (pagesContainer == null || pageIndex < 0 || pageIndex >= mainController.getTotalPages()) {
             loadPagesRecursive(pageIndices, currentIndex + 1, onComplete);
             return;
         }
 
-        VBox pageBox = (VBox) pagesContainer.getChildren().get(pageIndex);
+        VBox pageBox = findPageBox(pagesContainer, pageIndex);
 
-        if (navigationHelper.isPageRendered(pageBox)) {
+        if (pageBox != null && navigationHelper.isPageRendered(pageBox)) {
             logger.debug("Page {} already rendered, skipping", pageIndex + 1);
             loadPagesRecursive(pageIndices, currentIndex + 1, onComplete);
         } else {
@@ -256,12 +260,11 @@ public class SearchManager {
             int pageIndex = entry.getKey();
             List<SearchResult> pageResults = entry.getValue();
 
-            if (pageIndex < 0 || pageIndex >= pagesContainer.getChildren().size()) {
+            if (pageIndex < 0 || pageIndex >= mainController.getTotalPages()) {
                 logger.warn("Invalid page index: {}", pageIndex);
                 continue;
             }
-
-            VBox pageBox = (VBox) pagesContainer.getChildren().get(pageIndex);
+            VBox pageBox = findPageBox(pagesContainer, pageIndex);
             AnnotationLayer layer = findAnnotationLayer(pageBox);
 
             if (layer != null) {
@@ -307,13 +310,10 @@ public class SearchManager {
         if (pagesContainer == null) {
             return;
         }
-
-        for (Node child : pagesContainer.getChildren()) {
-            if (child instanceof VBox pageBox) {
-                AnnotationLayer layer = findAnnotationLayer(pageBox);
-                if (layer != null) {
-                    layer.clearSearchHighlights();
-                }
+        for (VBox pageBox : collectPageBoxes(pagesContainer)) {
+            AnnotationLayer layer = findAnnotationLayer(pageBox);
+            if (layer != null) {
+                layer.clearSearchHighlights();
             }
         }
 
@@ -326,7 +326,6 @@ public class SearchManager {
         if (pageBox.getChildren().isEmpty()) {
             return null;
         }
-
         if (pageBox.getChildren().getFirst() instanceof StackPane stackPane) {
             for (Node node : stackPane.getChildren()) {
                 if (node instanceof AnnotationLayer layer) {
@@ -363,16 +362,65 @@ public class SearchManager {
         if (pagesContainer == null) {
             return;
         }
+        for (VBox pageBox : collectPageBoxes(pagesContainer)) {
+            AnnotationLayer layer = findAnnotationLayer(pageBox);
+            if (layer != null) {
+                layer.setScale(newZoom);
+                layer.redraw();
+            }
+        }
+    }
 
-        for (Node child : pagesContainer.getChildren()) {
-            if (child instanceof VBox pageBox) {
-                AnnotationLayer layer = findAnnotationLayer(pageBox);
-                if (layer != null) {
-                    layer.setScale(newZoom);
-                    layer.redraw();
+    private java.util.List<VBox> collectPageBoxes(VBox pagesContainer) {
+        java.util.List<VBox> list = new ArrayList<>();
+        if (pagesContainer == null) return list;
+
+        Object twoMode = pagesContainer.getProperties().get("twoPageMode");
+        boolean twoPage = twoMode instanceof Boolean && (Boolean) twoMode;
+
+        if (!twoPage) {
+            for (javafx.scene.Node node : pagesContainer.getChildren()) {
+                if (node instanceof VBox vb) list.add(vb);
+            }
+            return list;
+        }
+
+        for (javafx.scene.Node node : pagesContainer.getChildren()) {
+            if (node instanceof javafx.scene.layout.HBox row) {
+                for (javafx.scene.Node child : row.getChildren()) {
+                    if (child instanceof VBox vb) list.add(vb);
                 }
             }
         }
+
+        return list;
+    }
+
+    private VBox findPageBox(VBox pagesContainer, int pageIndex) {
+        if (pagesContainer == null) return null;
+        Object twoMode = pagesContainer.getProperties().get("twoPageMode");
+        boolean twoPage = twoMode instanceof Boolean && (Boolean) twoMode;
+
+        if (!twoPage) {
+            if (pageIndex < pagesContainer.getChildren().size()) {
+                javafx.scene.Node node = pagesContainer.getChildren().get(pageIndex);
+                if (node instanceof VBox vb) return vb;
+            }
+            return null;
+        }
+
+        int rowIndex = pageIndex / 2;
+        int innerIndex = pageIndex % 2;
+
+        if (rowIndex < 0 || rowIndex >= pagesContainer.getChildren().size()) return null;
+        javafx.scene.Node rowNode = pagesContainer.getChildren().get(rowIndex);
+        if (rowNode instanceof javafx.scene.layout.HBox row) {
+            if (innerIndex < row.getChildren().size()) {
+                javafx.scene.Node child = row.getChildren().get(innerIndex);
+                if (child instanceof VBox vb) return vb;
+            }
+        }
+        return null;
     }
 
     // ==================== GETTERS ====================

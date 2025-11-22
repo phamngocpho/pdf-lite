@@ -1,19 +1,20 @@
 package org.pdflite.controller;
 
-import javafx.application.Platform;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.layout.VBox;
-import org.pdflite.model.PDFDocument;
-import org.pdflite.util.ScrollCalculator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import org.pdflite.model.PDFDocument;
+import org.pdflite.util.ScrollCalculator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javafx.application.Platform;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.layout.VBox;
 
 /**
  * Handles scroll events and lazy loading of PDF pages.
@@ -132,8 +133,8 @@ public class ScrollHandler {
                     // All content is visible, load all pages
                     for (int i = 0; i < totalPages; i++) {
                         if (pageRenderer.isPageLoading(i)) {
-                            VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
-                            if (isPlaceholder(pageBox)) {
+                            VBox pageBox = getPageBox(i);
+                            if (pageBox != null && isPlaceholder(pageBox)) {
                                 pageRenderer.loadPage(i, pageBox);
                             }
                         }
@@ -156,11 +157,6 @@ public class ScrollHandler {
 
                 for (int i = 0; i < totalPages; i++) {
                     // Safety check: ensure page box exists
-                    if (i >= pagesContainer.getChildren().size()) {
-                        logger.warn("Page {} placeholder missing, creating it", i + 1);
-                        continue;
-                    }
-                    
                     ScrollCalculator.PageBounds bounds = ScrollCalculator.calculatePageBounds(pagesContainer, i);
 
                     // Check if page is in load range
@@ -184,8 +180,8 @@ public class ScrollHandler {
                 // Load visible pages first (high priority)
                 for (int pageIndex : visiblePages) {
                     if (pageRenderer.isPageLoading(pageIndex)) {
-                        VBox pageBox = (VBox) pagesContainer.getChildren().get(pageIndex);
-                        if (isPlaceholder(pageBox)) {
+                        VBox pageBox = getPageBox(pageIndex);
+                        if (pageBox != null && isPlaceholder(pageBox)) {
                             pageRenderer.loadPage(pageIndex, pageBox);
                         }
                     }
@@ -194,8 +190,8 @@ public class ScrollHandler {
                 // Then load nearby pages (lower priority)
                 for (int pageIndex : nearbyPages) {
                     if (pageRenderer.isPageLoading(pageIndex)) {
-                        VBox pageBox = (VBox) pagesContainer.getChildren().get(pageIndex);
-                        if (isPlaceholder(pageBox)) {
+                        VBox pageBox = getPageBox(pageIndex);
+                        if (pageBox != null && isPlaceholder(pageBox)) {
                             pageRenderer.loadPage(pageIndex, pageBox);
                         }
                     }
@@ -205,11 +201,9 @@ public class ScrollHandler {
                 if (scrollValue > 0.8 && totalPages > 0) {
                     int startPage = Math.max(0, totalPages - 5);
                     for (int i = startPage; i < totalPages; i++) {
-                        if (i < pagesContainer.getChildren().size() && pageRenderer.isPageLoading(i)) {
-                            VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
-                            if (isPlaceholder(pageBox)) {
-                                pageRenderer.loadPage(i, pageBox);
-                            }
+                        VBox pageBox = getPageBox(i);
+                        if (pageBox != null && pageRenderer.isPageLoading(i) && isPlaceholder(pageBox)) {
+                            pageRenderer.loadPage(i, pageBox);
                         }
                     }
                 }
@@ -236,7 +230,7 @@ public class ScrollHandler {
             return true;
         }
 
-        Object firstChild = pageBox.getChildren().getFirst();
+        Object firstChild = pageBox.getChildren().isEmpty() ? null : pageBox.getChildren().getFirst();
         if (firstChild instanceof javafx.scene.layout.StackPane stackPane) {
             // If StackPane contains an ImageView, it's rendered
             boolean hasImageView = stackPane.getChildren().stream()
@@ -246,6 +240,37 @@ public class ScrollHandler {
         
         // If it's not a StackPane, it's likely a placeholder
         return true;
+    }
+
+    /**
+     * Returns the VBox that represents the page at the given pageIndex regardless
+     * of whether pagesContainer is arranged as single VBoxes or rows (HBox)
+     */
+    private VBox getPageBox(int pageIndex) {
+        if (pagesContainer == null) return null;
+        Object twoMode = pagesContainer.getProperties().get("twoPageMode");
+        boolean twoPage = twoMode instanceof Boolean && (Boolean) twoMode;
+
+        if (!twoPage) {
+            if (pageIndex < pagesContainer.getChildren().size()) {
+                javafx.scene.Node node = pagesContainer.getChildren().get(pageIndex);
+                if (node instanceof VBox vb) return vb;
+            }
+            return null;
+        }
+
+        int rowIndex = pageIndex / 2;
+        int innerIndex = pageIndex % 2;
+
+        if (rowIndex < 0 || rowIndex >= pagesContainer.getChildren().size()) return null;
+        javafx.scene.Node rowNode = pagesContainer.getChildren().get(rowIndex);
+        if (rowNode instanceof javafx.scene.layout.HBox row) {
+            if (innerIndex < row.getChildren().size()) {
+                javafx.scene.Node child = row.getChildren().get(innerIndex);
+                if (child instanceof VBox vb) return vb;
+            }
+        }
+        return null;
     }
 
     /**
@@ -281,10 +306,6 @@ public class ScrollHandler {
 
 
             for (int i = 0; i < totalPages; i++) {
-                if (i >= pagesContainer.getChildren().size()) {
-                    break;
-                }
-                
                 ScrollCalculator.PageBounds bounds = ScrollCalculator.calculatePageBounds(pagesContainer, i);
 
                 if (bounds.contains(visibleCenter)) {
