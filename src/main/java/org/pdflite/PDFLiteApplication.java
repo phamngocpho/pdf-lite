@@ -27,8 +27,8 @@ import java.util.Objects;
  *
  * @author PDF Lite Team
  * @version 1.0.0
- * @since 1.0.0
  * @see javafx.application.Application
+ * @since 1.0.0
  */
 public class PDFLiteApplication extends Application {
     private static final Logger logger = LoggerFactory.getLogger(PDFLiteApplication.class);
@@ -85,17 +85,17 @@ public class PDFLiteApplication extends Application {
         } catch (Exception e) {
             logger.warn("Could not load application icon");
         }
-        
+
         // Get controller and set up window close handler
         MainController controller = fxmlLoader.getController();
         stage.setOnCloseRequest(event -> {
             controller.performExit();
             event.consume();
         });
-        
+
         stage.show();
         logger.info("Application started successfully");
-        
+
         // Open last file after UI is shown
         Platform.runLater(controller::openLastFile);
     }

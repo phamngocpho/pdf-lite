@@ -1,6 +1,5 @@
 package org.pdflite.view;
 
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
@@ -10,14 +9,11 @@ import javafx.scene.layout.*;
 import org.pdflite.controller.MainController;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
-import org.pdflite.service.SearchService;
+import org.pdflite.util.SearchHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * Reusable Search Panel component
@@ -41,11 +37,10 @@ public class SearchPanel extends VBox {
 
     // Dependencies
     private PDFDocument pdfDocument;
-    private final SearchService searchService;
+    private final SearchHandler searchHandler;
     private MainController mainController;
 
     // State
-    private ExecutorService searchExecutor;
     private final ObservableList<SearchResult> searchResults =
             FXCollections.observableArrayList();
 
@@ -53,7 +48,7 @@ public class SearchPanel extends VBox {
      * Constructor
      */
     public SearchPanel() {
-        searchService = new SearchService();
+        searchHandler = new SearchHandler("SearchPanelExecutor");
 
         // Initialize UI components
         searchField = new TextField();
@@ -70,7 +65,7 @@ public class SearchPanel extends VBox {
         // Setup UI
         setupUI();
         setupEventHandlers();
-        createExecutorService();
+        searchHandler.createExecutorService();
 
         logger.debug("SearchPanel created");
     }
@@ -156,21 +151,6 @@ public class SearchPanel extends VBox {
                 });
     }
 
-    /**
-     * Create executor service
-     */
-    private void createExecutorService() {
-        if (searchExecutor != null && !searchExecutor.isShutdown()) {
-            searchExecutor.shutdown();
-        }
-
-        searchExecutor = Executors.newSingleThreadExecutor(r -> {
-            Thread t = new Thread(r);
-            t.setDaemon(true);
-            t.setName("SearchPanelExecutor");
-            return t;
-        });
-    }
 
     /**
      * Set PDF document
@@ -194,90 +174,80 @@ public class SearchPanel extends VBox {
      * Handle search
      */
     private void handleSearch() {
-        String keyword = searchField.getText().trim();
-
-        if (keyword.isEmpty()) {
-            showError("Please enter a search keyword");
-            return;
-        }
-
-        if (pdfDocument == null) {
-            showError("No PDF document loaded");
-            return;
-        }
-
-        if (searchExecutor == null || searchExecutor.isShutdown()) {
-            createExecutorService();
-        }
-
-        searchResults.clear();
-        searchButton.setDisable(true);
-        cancelButton.setDisable(false);
-        progressIndicator.setVisible(true);
-        prevResultButton.setDisable(true);
-        nextResultButton.setDisable(true);
-        updateStatus("Searching...");
-
-        boolean caseSensitive = caseSensitiveCheckbox.isSelected();
-        boolean wholeWord = wholeWordCheckbox.isSelected();
-
-        searchExecutor.submit(() -> performSearch(keyword, caseSensitive, wholeWord));
+        searchHandler.executeSearch(pdfDocument, createCallbacks());
     }
 
     /**
-     * Perform search
+     * Creates the UI callbacks for the search handler.
      */
-    private void performSearch(String keyword, boolean caseSensitive, boolean wholeWord) {
-        try {
-            logger.info("Starting search for: {}", keyword);
+    private SearchHandler.SearchUICallbacks createCallbacks() {
+        return new SearchHandler.SearchUICallbacks() {
+            @Override
+            public String getSearchKeyword() {
+                return searchField.getText().trim();
+            }
 
-            List<SearchResult> results = searchService.searchInDocument(
-                    pdfDocument.getDocument(),
-                    keyword,
-                    caseSensitive,
-                    wholeWord
-            );
+            @Override
+            public boolean isCaseSensitive() {
+                return caseSensitiveCheckbox.isSelected();
+            }
 
-            Platform.runLater(() -> {
-                if (searchService.isCancelled()) {
-                    updateStatus("Search cancelled");
-                } else {
-                    searchResults.addAll(results);
-                    updateStatus(String.format("Found %d result(s)", results.size()));
+            @Override
+            public boolean isWholeWord() {
+                return wholeWordCheckbox.isSelected();
+            }
 
-                    // Apply highlights to main viewer
-                    if (mainController != null && !results.isEmpty()) {
-                        mainController.highlightSearchResults(results);
-                        logger.info("Applied {} highlights from search panel", results.size());
-                    }
+            @Override
+            public ObservableList<SearchResult> getSearchResults() {
+                return searchResults;
+            }
 
-                    if (!results.isEmpty()) {
-                        resultsListView.getSelectionModel().selectFirst();
-                        nextResultButton.setDisable(results.size() <= 1);
-                    }
-                }
-            });
+            @Override
+            public MainController getMainController() {
+                return mainController;
+            }
 
-        } catch (IOException e) {
-            logger.error("Error during search", e);
-            Platform.runLater(() -> {
-                showError("Error during search: " + e.getMessage());
-                updateStatus("Search failed");
-            });
-        } finally {
-            Platform.runLater(() -> {
+            @Override
+            public void updateStatus(String message) {
+                SearchPanel.this.updateStatus(message);
+            }
+
+            @Override
+            public void showError(String message) {
+                SearchPanel.this.showError(message);
+            }
+
+            @Override
+            public void onSearchStart() {
+                searchButton.setDisable(true);
+                cancelButton.setDisable(false);
+                progressIndicator.setVisible(true);
+                prevResultButton.setDisable(true);
+                nextResultButton.setDisable(true);
+            }
+
+            @Override
+            public void onSearchComplete() {
                 searchButton.setDisable(false);
                 cancelButton.setDisable(true);
                 progressIndicator.setVisible(false);
-            });
-        }
+            }
+
+            @Override
+            public void onSearchResultsReady(List<SearchResult> results) {
+                if (!results.isEmpty()) {
+                    resultsListView.getSelectionModel().selectFirst();
+                    nextResultButton.setDisable(results.size() <= 1);
+                }
+            }
+        };
     }
 
     /**
      * Handle cancel
      */
     private void handleCancel() {
-        searchService.cancelSearch();
+        searchHandler.cancelSearch();
         cancelButton.setDisable(true);
     }
 
@@ -316,14 +286,14 @@ public class SearchPanel extends VBox {
      * Handle result selected
      */
     private void handleResultSelected(SearchResult result) {
-    if (mainController != null && result != null) {
-        mainController.highlightSearchResult(result);
-        
-        int position = resultsListView.getSelectionModel().getSelectedIndex() + 1;
-        updateStatus(String.format("Result %d of %d on page %d", 
-                                 position, searchResults.size(), result.pageNumber()));
-        
-        updateNavigationButtons();
+        if (mainController != null && result != null) {
+            mainController.highlightSearchResult(result);
+
+            int position = resultsListView.getSelectionModel().getSelectedIndex() + 1;
+            updateStatus(String.format("Result %d of %d on page %d",
+                    position, searchResults.size(), result.pageNumber()));
+
+            updateNavigationButtons();
         }
     }
 
@@ -349,10 +319,7 @@ public class SearchPanel extends VBox {
      * Cleanup
      */
     public void cleanup() {
-        searchService.cancelSearch();
-        if (searchExecutor != null && !searchExecutor.isShutdown()) {
-            searchExecutor.shutdown();
-        }
+        searchHandler.cleanup();
         logger.info("SearchPanel cleanup completed");
     }
 

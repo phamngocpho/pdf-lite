@@ -16,8 +16,8 @@ import javafx.scene.paint.Color;
  *
  * @author PDF Lite Team
  * @version 1.0.0
- * @since 1.0.0
  * @see Annotation
+ * @since 1.0.0
  */
 public class HighlightAnnotation extends Annotation {
     /**
@@ -42,11 +42,11 @@ public class HighlightAnnotation extends Annotation {
      * </p>
      *
      * @param pageNumber the zero-based page number this highlight belongs to
-     * @param x the X coordinate of the top-left corner
-     * @param y the Y coordinate of the top-left corner
-     * @param width the width of the highlight rectangle
-     * @param height the height of the highlight rectangle
-     * @param color the color to use for the highlight
+     * @param x          the X coordinate of the top-left corner
+     * @param y          the Y coordinate of the top-left corner
+     * @param width      the width of the highlight rectangle
+     * @param height     the height of the highlight rectangle
+     * @param color      the color to use for the highlight
      */
     public HighlightAnnotation(int pageNumber, double x, double y, double width, double height, Color color) {
         super(pageNumber, x, y, "HIGHLIGHT");

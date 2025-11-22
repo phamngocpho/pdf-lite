@@ -18,8 +18,8 @@ package org.pdflite.model;
  *
  * @author PDF Lite Team
  * @version 1.0.0
- * @since 1.0.0
  * @see HighlightAnnotation
+ * @since 1.0.0
  */
 public abstract class Annotation {
     /**
@@ -46,9 +46,9 @@ public abstract class Annotation {
      * Creates a new annotation with the specified properties.
      *
      * @param pageNumber the zero-based page number
-     * @param x the X coordinate on the page
-     * @param y the Y coordinate on the page
-     * @param type the type identifier for this annotation
+     * @param x          the X coordinate on the page
+     * @param y          the Y coordinate on the page
+     * @param type       the type identifier for this annotation
      */
     public Annotation(int pageNumber, double x, double y, String type) {
         this.pageNumber = pageNumber;

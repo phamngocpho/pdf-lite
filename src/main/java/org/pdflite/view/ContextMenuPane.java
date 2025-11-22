@@ -78,7 +78,7 @@ public class ContextMenuPane extends StackPane {
                     selectionRect.getWidth() >= MIN_SELECTION_SIZE &&
                     selectionRect.getHeight() >= MIN_SELECTION_SIZE;
 
-            // Show menu if has text OR image
+            // Show menu if it has text OR image
             if (hasSelection || handler.hasImageAtPosition()) {
                 updateContextMenuItems();
                 contextMenu.show(this, event.getScreenX(), event.getScreenY());

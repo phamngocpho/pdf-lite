@@ -4,6 +4,7 @@ import org.pdflite.controller.PageRenderer;
 import org.pdflite.controller.ScrollHandler;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
+import org.pdflite.util.PageContainerUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,10 +36,10 @@ public class RenderingManager {
     /**
      * Creates a new RenderingManager.
      *
-     * @param pdfService the PDF service for rendering pages
-     * @param pageRenderer the page renderer
+     * @param pdfService    the PDF service for rendering pages
+     * @param pageRenderer  the page renderer
      * @param scrollHandler the scroll handler
-     * @param zoomManager the zoom manager
+     * @param zoomManager   the zoom manager
      */
     public RenderingManager(PDFService pdfService, PageRenderer pageRenderer,
                             ScrollHandler scrollHandler, ZoomManager zoomManager) {
@@ -52,8 +53,8 @@ public class RenderingManager {
      * Sets the UI components.
      *
      * @param pagesContainer the container for pages
-     * @param scrollPane the scroll pane
-     * @param contentPane the content pane
+     * @param scrollPane     the scroll pane
+     * @param contentPane    the content pane
      */
     public void setUIComponents(VBox pagesContainer, ScrollPane scrollPane, Pane contentPane) {
         this.pagesContainer = pagesContainer;
@@ -95,7 +96,7 @@ public class RenderingManager {
 
             int totalPages = currentDocument.getTotalPages();
             double currentZoom = zoomManager.getCurrentZoom();
-            
+
             logger.info("Creating continuous scroll view for {} pages", totalPages);
 
             // Create placeholders for all pages - calculate individual page dimensions efficiently
@@ -104,7 +105,7 @@ public class RenderingManager {
                 double[] dimensions = pdfService.getPageDimensions(currentDocument, i, (float) currentZoom);
                 double pageWidth = dimensions[0];
                 double pageHeight = dimensions[1];
-                
+
                 VBox pageBox = pageRenderer.createPagePlaceholder(i, pageWidth, pageHeight);
                 pagesContainer.getChildren().add(pageBox);
             }
@@ -142,28 +143,17 @@ public class RenderingManager {
             javafx.geometry.Bounds contentBounds = pagesContainer.getBoundsInLocal();
             double oldVValue = scrollPane.getVvalue();
             double oldContentHeight = contentBounds.getHeight();
-            
+
             // CRITICAL: Clear cache trước để không dùng image cũ
             pageRenderer.clearCache();
             pageRenderer.cancelAllPendingRenders();
-            
+
             // Cập nhật zoom level
             currentDocument.setZoomLevel(newZoom);
             pageRenderer.setZoom(newZoom);
-            
+
             // Update ONLY dimensions của tất cả pages, KHÔNG render
-            java.util.List<javafx.scene.layout.VBox> pageBoxes = new java.util.ArrayList<>();
-            for (javafx.scene.Node child : pagesContainer.getChildren()) {
-                if (child instanceof javafx.scene.layout.VBox vb) {
-                    pageBoxes.add(vb);
-                } else if (child instanceof javafx.scene.layout.HBox row) {
-                    for (javafx.scene.Node inner : row.getChildren()) {
-                        if (inner instanceof javafx.scene.layout.VBox vb) {
-                            pageBoxes.add(vb);
-                        }
-                    }
-                }
-            }
+            java.util.List<javafx.scene.layout.VBox> pageBoxes = PageContainerUtils.collectPageBoxes(pagesContainer);
 
             for (javafx.scene.layout.VBox box : pageBoxes) {
                 String id = box.getId();
@@ -190,15 +180,15 @@ public class RenderingManager {
                     box.getChildren().add(placeholder);
                 }
             }
-            
+
             // Khôi phục vị trí scroll (tỷ lệ tương đối)
             Platform.runLater(() -> {
                 pagesContainer.applyCss();
                 pagesContainer.layout();
-                
+
                 javafx.geometry.Bounds newContentBounds = pagesContainer.getBoundsInLocal();
                 double newContentHeight = newContentBounds.getHeight();
-                
+
                 if (newContentHeight > 0 && oldContentHeight > 0) {
                     // Giữ nguyên tỷ lệ scroll
                     double oldScrollY = oldVValue * (oldContentHeight - viewportBounds.getHeight());
@@ -206,8 +196,8 @@ public class RenderingManager {
                     double newVValue = newScrollY / (newContentHeight - viewportBounds.getHeight());
                     scrollPane.setVvalue(Math.max(0, Math.min(1, newVValue)));
                 }
-                
-                // Trigger lazy loading cho các trang visible
+
+                // Trigger lazy loading for visible pages
                 if (scrollHandler != null) {
                     scrollHandler.handleScroll();
                 }
@@ -230,18 +220,7 @@ public class RenderingManager {
         int currentPage = (scrollHandler != null) ? scrollHandler.getCurrentPageFromScroll() : currentDocument.getCurrentPage();
 
         // Collect existing page boxes (whether currently single or arranged in rows)
-        java.util.List<javafx.scene.layout.VBox> pageBoxes = new java.util.ArrayList<>();
-        for (javafx.scene.Node child : pagesContainer.getChildren()) {
-            if (child instanceof javafx.scene.layout.VBox box) {
-                pageBoxes.add(box);
-            } else if (child instanceof javafx.scene.layout.HBox row) {
-                for (javafx.scene.Node inner : row.getChildren()) {
-                    if (inner instanceof javafx.scene.layout.VBox box) {
-                        pageBoxes.add(box);
-                    }
-                }
-            }
-        }
+        java.util.List<javafx.scene.layout.VBox> pageBoxes = PageContainerUtils.collectPageBoxes(pagesContainer);
 
         // Rebuild pagesContainer children according to mode
         pagesContainer.getChildren().clear();

@@ -296,6 +296,7 @@ public class SearchService {
          * @param width  Width in PDF points
          * @param height Height in PDF points
          */
-        private record BoundingBox(float x, float y, float width, float height) { }
+        private record BoundingBox(float x, float y, float width, float height) {
+        }
     }
 }

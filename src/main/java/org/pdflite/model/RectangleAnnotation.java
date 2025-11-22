@@ -10,15 +10,8 @@ public class RectangleAnnotation extends ShapeAnnotation {
 
     @Override
     public void draw(GraphicsContext gc, double scale) {
-        gc.setStroke(color);
-        gc.setLineWidth(lineWidth * scale);
-
-        // Tính toán toạ độ vẽ (xử lý cả trường hợp kéo ngược chiều)
-        double drawX = Math.min(x, endX) * scale;
-        double drawY = Math.min(y, endY) * scale;
-        double w = Math.abs(endX - x) * scale;
-        double h = Math.abs(endY - y) * scale;
-
-        gc.strokeRect(drawX, drawY, w, h);
+        prepareGraphicsContext(gc, scale);
+        DrawingBounds bounds = calculateDrawingBounds(scale);
+        gc.strokeRect(bounds.drawX(), bounds.drawY(), bounds.width(), bounds.height());
     }
 }

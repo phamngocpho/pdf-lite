@@ -1,7 +1,6 @@
 package org.pdflite.manager;
 
 import javafx.scene.Scene;
-import javafx.scene.control.DialogPane; // Cần thiết cho Alert
 
 public record ThemeManager(Scene mainScene) { // Đổi tên 'scene' thành 'mainScene' để rõ ràng hơn
     private static final String LIGHT_THEME = "/org/pdflite/light-theme.css"; // Đảm bảo đường dẫn đúng

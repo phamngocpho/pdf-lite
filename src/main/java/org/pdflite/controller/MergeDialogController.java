@@ -34,19 +34,32 @@ public class MergeDialogController {
     private static final Logger logger = LoggerFactory.getLogger(MergeDialogController.class);
     private static final DataFormat SERIALIZED_MIME_TYPE = new DataFormat("application/x-java-serialized-object");
 
-    @FXML private TableView<PDFFileItem> filesTable;
-    @FXML private TableColumn<PDFFileItem, Integer> orderColumn;
-    @FXML private TableColumn<PDFFileItem, String> fileNameColumn;
-    @FXML private TableColumn<PDFFileItem, String> pagesColumn;
-    @FXML private TableColumn<PDFFileItem, String> sizeColumn;
-    @FXML private Button addFilesButton;
-    @FXML private Button removeButton;
-    @FXML private Button moveUpButton;
-    @FXML private Button moveDownButton;
-    @FXML private Button mergeButton;
-    @FXML private Button cancelButton;
-    @FXML private Label statusLabel;
-    @FXML private ProgressBar progressBar;
+    @FXML
+    private TableView<PDFFileItem> filesTable;
+    @FXML
+    private TableColumn<PDFFileItem, Integer> orderColumn;
+    @FXML
+    private TableColumn<PDFFileItem, String> fileNameColumn;
+    @FXML
+    private TableColumn<PDFFileItem, String> pagesColumn;
+    @FXML
+    private TableColumn<PDFFileItem, String> sizeColumn;
+    @FXML
+    private Button addFilesButton;
+    @FXML
+    private Button removeButton;
+    @FXML
+    private Button moveUpButton;
+    @FXML
+    private Button moveDownButton;
+    @FXML
+    private Button mergeButton;
+    @FXML
+    private Button cancelButton;
+    @FXML
+    private Label statusLabel;
+    @FXML
+    private ProgressBar progressBar;
 
     private final ObservableList<PDFFileItem> fileItems = FXCollections.observableArrayList();
     private final PDFMergeService mergeService = new PDFMergeService();
@@ -453,12 +466,29 @@ public class MergeDialogController {
             this.fileSize = fileSize;
         }
 
-        public int getOrder() { return order; }
-        public void setOrder(int order) { this.order = order; }
-        public File getFile() { return file; }
-        public String getFileName() { return fileName; }
-        public int getPages() { return pages; }
-        public String getFileSize() { return fileSize; }
+        public int getOrder() {
+            return order;
+        }
+
+        public void setOrder(int order) {
+            this.order = order;
+        }
+
+        public File getFile() {
+            return file;
+        }
+
+        public String getFileName() {
+            return fileName;
+        }
+
+        public int getPages() {
+            return pages;
+        }
+
+        public String getFileSize() {
+            return fileSize;
+        }
     }
 }
 

@@ -218,12 +218,12 @@ public class PDFSplitService {
         // Create temporary files for each page to extract
         // This approach ensures all resources are properly copied
         List<File> tempFiles = new ArrayList<>();
-        
+
         try {
             // First, extract each page individually to ensure resources are preserved
             for (int i = startPage - 1; i < endPage; i++) {
                 org.apache.pdfbox.pdmodel.PDPage sourcePage = sourceDoc.getPage(i);
-                
+
                 // Create a temporary document for this single page
                 PDDocument tempDoc = new PDDocument();
                 File tempFile;
@@ -231,23 +231,23 @@ public class PDFSplitService {
                     // Import the page - this should copy all resources
                     org.apache.pdfbox.pdmodel.PDPage importedPage = tempDoc.importPage(sourcePage);
                     importedPage.setRotation(sourcePage.getRotation());
-                    
+
                     // Save to temporary file
                     tempFile = File.createTempFile("pdf_extract_page_", ".pdf");
                     tempFile.deleteOnExit();
-                    
+
                     // Save and ensure file is flushed
                     tempDoc.save(tempFile);
-                    
+
                     // CRITICAL: Close document BEFORE adding to list to ensure file is fully written
                     tempDoc.close();
                     tempDoc = null;
-                    
+
                     // Force file system sync to ensure file is completely written
                     try (java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile, true)) {
                         fos.getFD().sync();
                     }
-                    
+
                     // Verify temp file is valid before adding
                     if (tempFile.exists() && tempFile.length() > 0) {
                         tempFiles.add(tempFile);
@@ -266,7 +266,7 @@ public class PDFSplitService {
                     }
                 }
             }
-            
+
             // CRITICAL: Ensure all temp files are fully written and closed before merging
             // Verify all temp files exist and have content
             for (File tempFile : tempFiles) {
@@ -274,17 +274,17 @@ public class PDFSplitService {
                     throw new IOException("Temporary file is invalid: " + tempFile.getName());
                 }
             }
-            
+
             // Now merge all temporary files into the final output
             // PDFMergerUtility properly handles resource merging including fonts
             if (tempFiles.size() == 1) {
                 // Single page - just copy the temp file
                 java.nio.file.Files.copy(
-                    tempFiles.getFirst().toPath(),
-                    outputFile.toPath(),
-                    java.nio.file.StandardCopyOption.REPLACE_EXISTING
+                        tempFiles.getFirst().toPath(),
+                        outputFile.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING
                 );
-                
+
                 // Force sync after copy
                 try (java.io.FileOutputStream fos = new java.io.FileOutputStream(outputFile, true)) {
                     fos.getFD().sync();
@@ -297,21 +297,21 @@ public class PDFSplitService {
                 }
                 merger.setDestinationFileName(outputFile.getAbsolutePath());
                 merger.mergeDocuments(null);
-                
+
                 // Force sync after merge
                 try (java.io.FileOutputStream fos = new java.io.FileOutputStream(outputFile, true)) {
                     fos.getFD().sync();
                 }
             }
-            
+
             // Verify final output file
             if (!outputFile.exists() || outputFile.length() == 0) {
                 throw new IOException("Failed to create output file: " + outputFile.getName());
             }
-            
-            logger.debug("Extracted pages {}-{} to: {} ({} bytes) with properly embedded resources", 
+
+            logger.debug("Extracted pages {}-{} to: {} ({} bytes) with properly embedded resources",
                     startPage, endPage, outputFile.getName(), outputFile.length());
-                    
+
         } finally {
             // Clean up temporary files
             for (File tempFile : tempFiles) {

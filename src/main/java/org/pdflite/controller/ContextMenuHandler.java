@@ -15,6 +15,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import org.pdflite.model.ImageInfo;
@@ -63,13 +64,13 @@ public class ContextMenuHandler {
      * <li>Extract: Pass to PDFTextStripperByArea (expects Y=top)</li>
      * </ol>
      *
-     * @param document The PDF document
+     * @param document  The PDF document
      * @param pageIndex Zero-based page index
-     * @param canvasX1 Canvas X coordinate of first corner (pixels)
-     * @param canvasY1 Canvas Y coordinate of first corner (pixels)
-     * @param canvasX2 Canvas X coordinate of opposite corner (pixels)
-     * @param canvasY2 Canvas Y coordinate of opposite corner (pixels)
-     * @param zoom Current zoom level (e.g., 1.0 = 100%)
+     * @param canvasX1  Canvas X coordinate of first corner (pixels)
+     * @param canvasY1  Canvas Y coordinate of first corner (pixels)
+     * @param canvasX2  Canvas X coordinate of opposite corner (pixels)
+     * @param canvasY2  Canvas Y coordinate of opposite corner (pixels)
+     * @param zoom      Current zoom level (e.g., 1.0 = 100%)
      */
     public void analyzeSelection(PDFDocument document, int pageIndex,
                                  double canvasX1, double canvasY1,
@@ -105,7 +106,7 @@ public class ContextMenuHandler {
             currentSelection = extractTextFromRegion(page, pdfRect, pageIndex);
 
             if (currentSelection.hasText()) {
-                logger.info("Length:   {} characters",currentSelection.getText().length());
+                logger.info("Length:   {} characters", currentSelection.getText().length());
 
             } else {
                 logger.info("No text found in selection");
@@ -127,8 +128,8 @@ public class ContextMenuHandler {
      * <li>Use {@code setShouldSeparateByBeads(false)} for area extraction</li>
      * </ul>
      *
-     * @param page The PDF page
-     * @param rect Rectangle in PDF Java coordinates (Y=top)
+     * @param page      The PDF page
+     * @param rect      Rectangle in PDF Java coordinates (Y=top)
      * @param pageIndex Page index for tracking
      * @return SelectionInfo containing extracted text
      * @throws IOException if extraction fails

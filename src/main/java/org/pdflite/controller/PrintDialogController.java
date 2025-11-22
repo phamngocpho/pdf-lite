@@ -204,7 +204,7 @@ public class PrintDialogController {
                     int end = Integer.parseInt(range[1].trim()) - 1;
 
                     if (start < 0 || end >= document.getTotalPages() || start > end) {
-                        showError("Invalid Page Range", 
+                        showError("Invalid Page Range",
                                 "Invalid page range: " + (start + 1) + "-" + (end + 1));
                         return false;
                     }
@@ -218,7 +218,7 @@ public class PrintDialogController {
                     int page = Integer.parseInt(part.trim()) - 1; // Convert to 0-based
 
                     if (page < 0 || page >= document.getTotalPages()) {
-                        showError("Invalid Page Number", 
+                        showError("Invalid Page Number",
                                 "Invalid page number: " + (page + 1));
                         return false;
                     }

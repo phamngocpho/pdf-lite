@@ -200,9 +200,9 @@ public class EncryptionDialog extends Dialog<EncryptionDialog.EncryptionResult> 
     }
 
     /**
-         * Result class containing encryption parameters.
-         */
-        public record EncryptionResult(String ownerPassword, String userPassword, AccessPermission permissions) {
+     * Result class containing encryption parameters.
+     */
+    public record EncryptionResult(String ownerPassword, String userPassword, AccessPermission permissions) {
     }
 }
 

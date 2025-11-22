@@ -17,10 +17,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import javafx.scene.Cursor;
 import org.pdflite.model.SearchResult;
 
-import static org.pdflite.model.DrawingTool.CIRCLE;
 import static org.pdflite.util.Constants.LOW_RENDER_SCALE;
 
 /**
@@ -45,9 +43,9 @@ import static org.pdflite.util.Constants.LOW_RENDER_SCALE;
  *
  * @author PDF Lite Team
  * @version 1.0.0
- * @since 1.0.0
  * @see Annotation
  * @see HighlightAnnotation
+ * @since 1.0.0
  */
 public class AnnotationLayer extends Canvas {
 
@@ -99,7 +97,7 @@ public class AnnotationLayer extends Canvas {
      * to ensure proper alignment of annotations.
      * </p>
      *
-     * @param width the width of the layer in pixels
+     * @param width  the width of the layer in pixels
      * @param height the height of the layer in pixels
      */
     public AnnotationLayer(double width, double height) {
@@ -187,8 +185,7 @@ public class AnnotationLayer extends Canvas {
                 double w = Math.abs(event.getX() - startX);
                 double h = Math.abs(event.getY() - startY);
                 gc.fillRect(x, y, w, h);
-            }
-            else {
+            } else {
                 switch (currentMode) {
                     case RECTANGLE:
                         tempAnnotation = new RectangleAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY, currentColor, currentLineWidth);
@@ -209,8 +206,7 @@ public class AnnotationLayer extends Canvas {
 
                 if (currentMode == AnnotationMode.HIGHLIGHT) {
                     addHighlight(startX, startY, event.getX(), event.getY());
-                }
-                else if (tempAnnotation != null) {
+                } else if (tempAnnotation != null) {
                     annotations.add(tempAnnotation); // Lưu vào danh sách
                     if (onAnnotationAdded != null) {
                         onAnnotationAdded.accept(tempAnnotation);
@@ -223,7 +219,7 @@ public class AnnotationLayer extends Canvas {
             }
         });
 
-       //nạp lại hình cũ khi cuộn trang
+        //nạp lại hình cũ khi cuộn trang
     }
 
     public void setAnnotations(List<Annotation> loadedAnnotations) {
@@ -278,8 +274,7 @@ public class AnnotationLayer extends Canvas {
                 gc.setFill(getColorWithAlpha(highlight.getColor(), 0.4));
                 gc.fillRect(highlight.getX(), highlight.getY(),
                         highlight.getWidth(), highlight.getHeight());
-            }
-            else if (annotation instanceof ShapeAnnotation shape) {
+            } else if (annotation instanceof ShapeAnnotation shape) {
                 shape.draw(gc, scale);
             }
         }
