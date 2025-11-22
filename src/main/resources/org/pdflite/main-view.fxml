@@ -3,9 +3,15 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.shape.Rectangle?>
 <BorderPane fx:id="rootPane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="org.pdflite.controller.MainController"
             prefHeight="800.0" prefWidth="1200.0">
+
+<fx:define>
+    <ToggleGroup fx:id="drawingToolsGroup"/>
+</fx:define>
 
     <!-- Top: Menu Bar and Toolbar -->
     <top>
@@ -116,7 +122,54 @@
                 </HBox>
                 
                 <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
-                
+
+                <!-- Context -->
+                <ToggleButton fx:id="btnSelectText" text="Select Text">
+                    <toggleGroup>
+                        <fx:reference source="drawingToolsGroup"/>
+                    </toggleGroup>
+                    <tooltip><Tooltip text="Select Text mode"/></tooltip>
+                </ToggleButton>
+
+                <HBox spacing="2" alignment="CENTER">
+                    <ToggleButton fx:id="btnDrawRect" toggleGroup="$drawingToolsGroup">
+                        <graphic>
+                            <Rectangle width="16" height="12" fill="TRANSPARENT" stroke="BLACK" strokeWidth="1.5"/>
+                        </graphic>
+                        <tooltip><Tooltip text="Draw Rectangle"/></tooltip>
+                    </ToggleButton>
+
+                    <ToggleButton fx:id="btnDrawCircle" toggleGroup="$drawingToolsGroup">
+                        <graphic>
+                            <Circle radius="6" fill="TRANSPARENT" stroke="BLACK" strokeWidth="1.5"/>
+                        </graphic>
+                        <tooltip><Tooltip text="Draw Circle"/></tooltip>
+                    </ToggleButton>
+
+                    <ToggleButton fx:id="btnDrawArrow" text="↗" toggleGroup="$drawingToolsGroup">
+                        <tooltip><Tooltip text="Draw Arrow"/></tooltip>
+                    </ToggleButton>
+                </HBox>
+
+                <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
+
+
+                <Button text="Undo" onAction="#handleUndo" style="-fx-font-size: 11px;">
+                    <tooltip><Tooltip text="Undo last drawing (Ctrl+Z)"/></tooltip>
+                </Button>
+
+                <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
+
+                <HBox spacing="5" alignment="CENTER">
+                    <ColorPicker fx:id="colorPicker" prefWidth="40" style="-fx-color-label-visible: false;"/>
+
+                    <VBox alignment="CENTER" spacing="0">
+                        <Slider fx:id="strokeWidthSlider" min="1" max="10" value="2" prefWidth="60" blockIncrement="1"/>
+                        <Label text="Width" style="-fx-font-size: 8px;"/>
+                    </VBox>
+                </HBox>
+                <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>
+
                 <!-- PDF Tools Menu -->
                 <MenuButton text="PDF Tools" style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-background-color: #e8f5e9; -fx-text-fill: #2e7d32; -fx-background-radius: 3; -fx-font-weight: normal;">
                     <tooltip><Tooltip text="PDF Operations"/></tooltip>

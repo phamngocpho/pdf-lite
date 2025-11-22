@@ -247,6 +247,28 @@ public class PageRenderer {
         // Create annotation layer
         AnnotationLayer annotationLayer = new AnnotationLayer(image.getWidth(), image.getHeight());
         annotationLayer.setPickOnBounds(false);
+
+        annotationLayer.setScale(currentZoom);
+        annotationLayer.setPageIndex(pageIndex);
+
+        if (currentDocument != null) {
+            java.util.List<org.pdflite.model.Annotation> pageAnns = new java.util.ArrayList<>();
+            for (org.pdflite.model.Annotation a : currentDocument.getAnnotations()) {
+                if (a.getPageNumber() == pageIndex) {
+                    pageAnns.add(a);
+                }
+            }
+            annotationLayer.setAnnotations(pageAnns);
+        }
+
+        annotationLayer.setOnAnnotationAdded(newAnn -> {
+            if (currentDocument != null) {
+                currentDocument.addAnnotation(newAnn);
+                logger.info("Vẽ xong hình trên trang {}", pageIndex);
+            }
+        });
+
+
         annotationLayer.setOnContextMenuRequested(null);
         annotationLayer.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
             // Do nothing - let context menu handle it
@@ -257,7 +279,9 @@ public class PageRenderer {
         contextPane.setDocumentInfo(currentDocument, pageIndex, currentZoom);
         contextPane.setPrefSize(image.getWidth(), image.getHeight());
         contextPane.setMaxSize(image.getWidth(), image.getHeight());
-        
+
+        contextPane.setMouseTransparent(true);
+
         contextPane.toFront();
 
         // Stack layers: Image (bottom) -> Annotation -> ContextMenu (top)
@@ -303,5 +327,33 @@ public class PageRenderer {
 
         pageBox.getChildren().add(placeholder);
         return pageBox;
+    }
+
+    public void setSelectionModeActive(VBox pagesContainer, boolean active) {
+        if (pagesContainer == null) return;
+
+        // Duyệt qua tất cả các trang đang hiển thị
+        pagesContainer.getChildren().forEach(node -> {
+            if (node instanceof VBox pageBox && !pageBox.getChildren().isEmpty()) {
+                // Lấy StackPane (chứa Ảnh, Annotation, ContextMenu)
+                if (pageBox.getChildren().get(0) instanceof StackPane stack) {
+                    stack.getChildren().forEach(layer -> {
+
+                        // Xử lý lớp chọn Text (ContextMenuPane)
+                        if (layer instanceof ContextMenuPane) {
+                            // Nếu active = true -> MouseTransparent = false (Bắt chuột)
+                            // Nếu active = false -> MouseTransparent = true (Cho xuyên qua)
+                            layer.setMouseTransparent(!active);
+                        }
+
+                        // Xử lý lớp vẽ (AnnotationLayer)
+                        // Khi đang chọn Text thì không được vẽ (cho chuột xuyên qua lớp vẽ luôn cho chắc)
+                        if (layer instanceof AnnotationLayer) {
+                            layer.setMouseTransparent(active);
+                        }
+                    });
+                }
+            }
+        });
     }
 }

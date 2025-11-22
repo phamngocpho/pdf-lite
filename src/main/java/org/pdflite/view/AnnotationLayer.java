@@ -15,6 +15,8 @@ import org.pdflite.model.ArrowAnnotation;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
+
 import javafx.scene.Cursor;
 import org.pdflite.model.SearchResult;
 
@@ -54,7 +56,7 @@ public class AnnotationLayer extends Canvas {
     private int pageIndex = 0;
     private Annotation tempAnnotation;
     private double currentLineWidth = 2.0;
-    private Runnable onAnnotationAdded;
+    private Consumer<Annotation> onAnnotationAdded;
 
     /**
      * List of annotations currently on this layer.
@@ -88,6 +90,7 @@ public class AnnotationLayer extends Canvas {
     private static final double SEARCH_HIGHLIGHT_OPACITY = 0.4;
     private static final double ACTIVE_SEARCH_HIGHLIGHT_OPACITY = 0.6;
     private double scale = 1.0;
+    private int pageNumber;
 
     /**
      * Creates a new annotation layer with the specified dimensions.
@@ -105,8 +108,11 @@ public class AnnotationLayer extends Canvas {
         logger.debug("AnnotationLayer created: {}x{}", width, height);
     }
 
+    public void setPageIndex(int index) {
+        this.pageIndex = index;
+    }
 
-    public void setOnAnnotationAdded(Runnable callback) {
+    public void setOnAnnotationAdded(Consumer<Annotation> callback) {
         this.onAnnotationAdded = callback;
     }
 
@@ -121,6 +127,15 @@ public class AnnotationLayer extends Canvas {
 
     public void setScale(double scale) {
         this.scale = scale;
+    }
+
+    public void setPageNumber(int pageNumber) {
+        this.pageNumber = pageNumber;
+    }
+
+    // Nếu chưa có getter thì thêm luôn cho chắc
+    public int getPageNumber() {
+        return pageNumber;
     }
 
     /**
@@ -197,7 +212,9 @@ public class AnnotationLayer extends Canvas {
                 }
                 else if (tempAnnotation != null) {
                     annotations.add(tempAnnotation); // Lưu vào danh sách
-                    if (onAnnotationAdded != null) onAnnotationAdded.run(); // Báo Controller
+                    if (onAnnotationAdded != null) {
+                        onAnnotationAdded.accept(tempAnnotation);
+                    }
                 }
 
                 isDrawing = false;
@@ -205,6 +222,16 @@ public class AnnotationLayer extends Canvas {
                 redraw();
             }
         });
+
+       //nạp lại hình cũ khi cuộn trang
+    }
+
+    public void setAnnotations(List<Annotation> loadedAnnotations) {
+        this.annotations.clear();
+        if (loadedAnnotations != null) {
+            this.annotations.addAll(loadedAnnotations);
+        }
+        redraw();
     }
 
     /**
