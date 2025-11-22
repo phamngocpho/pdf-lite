@@ -184,23 +184,21 @@ public class MainController {
         // Initialize managers
         initializeManagers();
         commandManager = new CommandManager();
-        commandManager.addListener((canUndo, canRedo, undoDesc, redoDesc) -> {
-            Platform.runLater(() -> {
-                // Update button states
-                if (undoButton != null) {
-                    undoButton.setDisable(!canUndo);
-                    if (canUndo && undoDesc != null) {
-                        undoButton.setTooltip(new Tooltip("Undo: " + undoDesc));
-                    }
+        commandManager.addListener((canUndo, canRedo, undoDesc, redoDesc) -> Platform.runLater(() -> {
+            // Update button states
+            if (undoButton != null) {
+                undoButton.setDisable(!canUndo);
+                if (canUndo && undoDesc != null) {
+                    undoButton.setTooltip(new Tooltip("Undo: " + undoDesc));
                 }
-                if (redoButton != null) {
-                    redoButton.setDisable(!canRedo);
-                    if (canRedo && redoDesc != null) {
-                        redoButton.setTooltip(new Tooltip("Redo: " + redoDesc));
-                    }
+            }
+            if (redoButton != null) {
+                redoButton.setDisable(!canRedo);
+                if (canRedo && redoDesc != null) {
+                    redoButton.setTooltip(new Tooltip("Redo: " + redoDesc));
                 }
-            });
-        });
+            }
+        }));
         rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
                 setupKeyboardShortcuts(newScene);
@@ -515,25 +513,7 @@ public class MainController {
 
     @FXML
     private void handleRedo() {
-        if (!commandManager.canRedo()) {
-            return;
-        }
-
-        try {
-            String description = commandManager.getRedoDescription();
-            logger.info("Performing redo: {}", description);
-
-            boolean success = commandManager.redo(() -> {
-                reloadCurrentDocument();
-            });
-
-            if (success) {
-                uiStateManager.updateStatus("Redone: " + description);
-            }
-        } catch (IOException e) {
-            logger.error("Error performing redo", e);
-            uiStateManager.showError("Redo Error", "Could not redo the action: " + e.getMessage());
-        }
+        documentOperationManager.handleRedo(commandManager, this::reloadCurrentDocument);
     }
 
     @FXML
@@ -631,7 +611,7 @@ public class MainController {
 
     /**
      * Gets the command manager.
-     * 
+     *
      * @return the command manager
      */
     public CommandManager getCommandManager() {
@@ -640,42 +620,12 @@ public class MainController {
 
     @FXML
     private void handleDeletePage() {
-        if (currentDocument == null) {
-            return;
-        }
-
-        int total = currentDocument.getTotalPages();
-        if (total <= 1) {
-            uiStateManager.showError("Delete Page", "Cannot delete the last remaining page.");
-            return;
-        }
-
-        int current = currentDocument.getCurrentPage();
-
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Delete Page");
-        confirm.setHeaderText("Delete current page?");
-        confirm.setContentText("This will remove page " + (current + 1) + " from the document.\n" +
-                "You can undo this action with Ctrl+Z.");
-        confirm.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
-        confirm.showAndWait().ifPresent(result -> {
-            if (result == ButtonType.OK) {
-                try {
-                    // Create and execute delete command through CommandManager
-                    DeletePageCommand command = new DeletePageCommand(this, pdfService, current);
-                    commandManager.executeCommand(command, () -> {
-                        reloadCurrentDocument();
-                    });
-
-                    logger.info("Delete page command executed successfully");
-
-                } catch (Exception e) {
-                    logger.error("Error deleting page {}", current + 1, e);
-                    uiStateManager.showError("Delete Page Error",
-                            "Could not delete the page: " + e.getMessage());
-                }
-            }
-        });
+        documentOperationManager.handleDeletePageWithCommand(
+                currentDocument,
+                this,
+                commandManager,
+                this::reloadCurrentDocument
+        );
     }
     // ==================== Zoom Operations ====================
 
@@ -953,25 +903,7 @@ public class MainController {
         }
 
         // Phần 2: Undo theo commandManager
-        if (!commandManager.canUndo()) {
-            return;
-        }
-
-        try {
-            String description = commandManager.getUndoDescription();
-            logger.info("Performing undo: {}", description);
-
-            boolean success = commandManager.undo(() -> {
-                reloadCurrentDocument();
-            });
-
-            if (success) {
-                uiStateManager.updateStatus("Undone: " + description);
-            }
-        } catch (IOException e) {
-            logger.error("Error performing undo", e);
-            uiStateManager.showError("Undo Error", "Could not undo the action: " + e.getMessage());
-        }
+        documentOperationManager.handleUndo(commandManager, this::reloadCurrentDocument);
     }
 
     @FXML
