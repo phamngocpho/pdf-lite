@@ -1,16 +1,17 @@
 package org.pdflite.manager;
 
-import javafx.application.Platform;
-import javafx.geometry.Pos;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.layout.VBox;
-import javafx.scene.layout.Pane;
 import org.pdflite.controller.PageRenderer;
 import org.pdflite.controller.ScrollHandler;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javafx.application.Platform;
+import javafx.geometry.Pos;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
 
 /**
  * Manages PDF page rendering operations including initial rendering
@@ -28,6 +29,8 @@ public class RenderingManager {
     private VBox pagesContainer;
     private ScrollPane scrollPane;
     private Pane contentPane;
+    // Two-page mode flag
+    private boolean twoPageMode = false;
 
     /**
      * Creates a new RenderingManager.
@@ -83,6 +86,8 @@ public class RenderingManager {
                 if (contentPane != null) {
                     contentPane.getChildren().add(pagesContainer);
                 }
+                // default to single-page layout
+                pagesContainer.getProperties().put("twoPageMode", false);
             }
 
             // Clear existing pages
@@ -147,32 +152,42 @@ public class RenderingManager {
             pageRenderer.setZoom(newZoom);
             
             // Update ONLY dimensions của tất cả pages, KHÔNG render
-            for (int i = 0; i < pagesContainer.getChildren().size(); i++) {
-                javafx.scene.Node node = pagesContainer.getChildren().get(i);
-                if (node instanceof VBox box) {
-                    String id = box.getId();
-                    if (id != null && id.startsWith("page-")) {
-                        int pageIndex = Integer.parseInt(id.replace("page-", ""));
-                        
-                        // Get new dimensions
-                        double[] dimensions = pdfService.getPageDimensions(currentDocument, pageIndex, (float) newZoom);
-                        double newWidth = dimensions[0];
-                        double newHeight = dimensions[1];
-                        
-                        // Update VBox size
-                        box.setPrefSize(newWidth, newHeight);
-                        box.setMinSize(newWidth, newHeight);
-                        box.setMaxSize(newWidth, newHeight);
-                        
-                        // Clear nội dung cũ và tạo placeholder mới
-                        box.getChildren().clear();
-                        javafx.scene.layout.StackPane placeholder = new javafx.scene.layout.StackPane();
-                        placeholder.setPrefSize(newWidth, newHeight);
-                        placeholder.setMinSize(newWidth, newHeight);
-                        placeholder.setMaxSize(newWidth, newHeight);
-                        placeholder.setStyle("-fx-background-color: #606060; -fx-padding: 0;");
-                        box.getChildren().add(placeholder);
+            java.util.List<javafx.scene.layout.VBox> pageBoxes = new java.util.ArrayList<>();
+            for (javafx.scene.Node child : pagesContainer.getChildren()) {
+                if (child instanceof javafx.scene.layout.VBox vb) {
+                    pageBoxes.add(vb);
+                } else if (child instanceof javafx.scene.layout.HBox row) {
+                    for (javafx.scene.Node inner : row.getChildren()) {
+                        if (inner instanceof javafx.scene.layout.VBox vb) {
+                            pageBoxes.add(vb);
+                        }
                     }
+                }
+            }
+
+            for (javafx.scene.layout.VBox box : pageBoxes) {
+                String id = box.getId();
+                if (id != null && id.startsWith("page-")) {
+                    int pageIndex = Integer.parseInt(id.replace("page-", ""));
+
+                    // Get new dimensions
+                    double[] dimensions = pdfService.getPageDimensions(currentDocument, pageIndex, (float) newZoom);
+                    double newWidth = dimensions[0];
+                    double newHeight = dimensions[1];
+
+                    // Update VBox size
+                    box.setPrefSize(newWidth, newHeight);
+                    box.setMinSize(newWidth, newHeight);
+                    box.setMaxSize(newWidth, newHeight);
+
+                    // Clear nội dung cũ và tạo placeholder mới
+                    box.getChildren().clear();
+                    javafx.scene.layout.StackPane placeholder = new javafx.scene.layout.StackPane();
+                    placeholder.setPrefSize(newWidth, newHeight);
+                    placeholder.setMinSize(newWidth, newHeight);
+                    placeholder.setMaxSize(newWidth, newHeight);
+                    placeholder.setStyle("-fx-background-color: #606060; -fx-padding: 0;");
+                    box.getChildren().add(placeholder);
                 }
             }
             
@@ -201,6 +216,71 @@ public class RenderingManager {
         } catch (Exception e) {
             logger.error("Error preserving scroll position during zoom", e);
         }
+    }
+
+    /**
+     * Enables or disables two-page mode. This rearranges placeholders into rows
+     * but does not trigger re-render of images — existing ImageViews are preserved.
+     */
+    public void setTwoPageMode(boolean enable) {
+        if (pagesContainer == null || currentDocument == null) return;
+        if (this.twoPageMode == enable) return;
+
+        // Remember current page and scroll position
+        int currentPage = (scrollHandler != null) ? scrollHandler.getCurrentPageFromScroll() : currentDocument.getCurrentPage();
+
+        // Collect existing page boxes (whether currently single or arranged in rows)
+        java.util.List<javafx.scene.layout.VBox> pageBoxes = new java.util.ArrayList<>();
+        for (javafx.scene.Node child : pagesContainer.getChildren()) {
+            if (child instanceof javafx.scene.layout.VBox box) {
+                pageBoxes.add(box);
+            } else if (child instanceof javafx.scene.layout.HBox row) {
+                for (javafx.scene.Node inner : row.getChildren()) {
+                    if (inner instanceof javafx.scene.layout.VBox box) {
+                        pageBoxes.add(box);
+                    }
+                }
+            }
+        }
+
+        // Rebuild pagesContainer children according to mode
+        pagesContainer.getChildren().clear();
+        pagesContainer.setSpacing(10);
+
+        if (enable) {
+            // Build rows of two pages (HBox per row)
+            for (int i = 0; i < pageBoxes.size(); i += 2) {
+                javafx.scene.layout.HBox row = new javafx.scene.layout.HBox(20);
+                row.setAlignment(javafx.geometry.Pos.CENTER);
+                javafx.scene.layout.VBox left = pageBoxes.get(i);
+                // Ensure widths/heights preserved
+                row.getChildren().add(left);
+                if (i + 1 < pageBoxes.size()) {
+                    javafx.scene.layout.VBox right = pageBoxes.get(i + 1);
+                    row.getChildren().add(right);
+                }
+                pagesContainer.getChildren().add(row);
+            }
+        } else {
+            // Flatten back to single page VBoxes
+            for (javafx.scene.layout.VBox box : pageBoxes) {
+                pagesContainer.getChildren().add(box);
+            }
+        }
+
+        // Mark property for helpers
+        pagesContainer.getProperties().put("twoPageMode", enable);
+        this.twoPageMode = enable;
+
+        // Layout and restore view to current page
+        Platform.runLater(() -> {
+            pagesContainer.applyCss();
+            pagesContainer.layout();
+            if (scrollHandler != null) {
+                scrollHandler.scrollToPage(Math.max(0, currentPage));
+                scrollHandler.handleScroll();
+            }
+        });
     }
 
     /**

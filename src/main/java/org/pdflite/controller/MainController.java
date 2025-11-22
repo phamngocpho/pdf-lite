@@ -1,21 +1,23 @@
 package org.pdflite.controller;
 
-import javafx.application.Platform;
-import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
+import java.io.File;
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
 import org.pdflite.dialog.EncryptionDialog;
-import org.pdflite.manager.*;
+import org.pdflite.manager.FileManager;
+import org.pdflite.manager.FullscreenManager;
+import org.pdflite.manager.PageInfoManager;
+import org.pdflite.manager.RecentFilesManager;
+import org.pdflite.manager.RenderingManager;
+import org.pdflite.manager.SearchDialogManager;
+import org.pdflite.manager.SearchManager;
+import org.pdflite.manager.ThemeManager;
+import org.pdflite.manager.UIStateManager;
+import org.pdflite.manager.ZoomManager;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
 import org.pdflite.service.PDFPrintService;
@@ -26,11 +28,35 @@ import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import javafx.application.Platform;
+import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ColorPicker;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.DialogPane;
+import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Slider;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.ToolBar;
+import javafx.scene.image.Image;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 
 /**
  * Main Controller for the PDF Lite Application.
@@ -245,6 +271,16 @@ public class MainController {
             @Override
             public void onZoomChanged(double newZoom) {
                 if (currentDocument != null && pagesContainer != null && scrollPane != null) {
+                    // Switch layout mode based on threshold (70% => 0.7)
+                    try {
+                        if (renderingManager != null) {
+                            boolean shouldTwoPage = newZoom < 0.7;
+                            renderingManager.setTwoPageMode(shouldTwoPage);
+                        }
+                    } catch (Exception e) {
+                        logger.error("Error switching page layout mode", e);
+                    }
+
                     renderingManager.preserveScrollPositionAndApplyZoom(newZoom);
                     Platform.runLater(() -> searchManager.updateHighlightsAfterZoom(newZoom));
                 }
@@ -1295,20 +1331,10 @@ private void handleDeletePage() {
 
     private void updateAnnotationMode(AnnotationLayer.AnnotationMode mode) {
         if (pagesContainer == null) return;
-        pagesContainer.getChildren().forEach(node -> {
-            if (node instanceof javafx.scene.layout.VBox pageBox) {
-                if (!pageBox.getChildren().isEmpty() && pageBox.getChildren().getFirst() instanceof javafx.scene.layout.StackPane stack) {
-                    stack.getChildren().stream()
-                            .filter(child -> child instanceof AnnotationLayer)
-                            .map(child -> (AnnotationLayer) child)
-                            .forEach(layer -> {
-                                layer.setAnnotationMode(mode);
-                                // Nếu vẽ hình thì chọn màu Đỏ, Highlight thì màu Vàng
-                                if (mode != AnnotationLayer.AnnotationMode.NONE && mode != AnnotationLayer.AnnotationMode.HIGHLIGHT) {
-                                    layer.setDrawingColor(javafx.scene.paint.Color.RED);
-                                }
-                            });
-                }
+        processAllAnnotationLayers(layer -> {
+            layer.setAnnotationMode(mode);
+            if (mode != AnnotationLayer.AnnotationMode.NONE && mode != AnnotationLayer.AnnotationMode.HIGHLIGHT) {
+                layer.setDrawingColor(javafx.scene.paint.Color.RED);
             }
         });
         uiStateManager.updateStatus("Tool: " + mode);
@@ -1354,11 +1380,46 @@ private void handleDeletePage() {
     }
     private void updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode mode) {
         if (pagesContainer == null) return;
-
         processAllAnnotationLayers(layer -> layer.setAnnotationMode(mode));
-
         uiStateManager.updateStatus("Tool: " + mode);
     }
+    private void processAllAnnotationLayers(java.util.function.Consumer<AnnotationLayer> action) {
+        for (VBox pageBox : collectPageBoxes()) {
+            if (pageBox == null || pageBox.getChildren().isEmpty()) continue;
+            if (pageBox.getChildren().getFirst() instanceof StackPane stack) {
+                stack.getChildren().stream()
+                        .filter(child -> child instanceof AnnotationLayer)
+                        .map(child -> (AnnotationLayer) child)
+                        .forEach(action);
+            }
+        }
+    }
+
+    private java.util.List<VBox> collectPageBoxes() {
+        java.util.List<VBox> list = new java.util.ArrayList<>();
+        if (pagesContainer == null) return list;
+
+        Object twoMode = pagesContainer.getProperties().get("twoPageMode");
+        boolean twoPage = twoMode instanceof Boolean && (Boolean) twoMode;
+
+        if (!twoPage) {
+            for (javafx.scene.Node node : pagesContainer.getChildren()) {
+                if (node instanceof VBox vb) list.add(vb);
+            }
+            return list;
+        }
+
+        for (javafx.scene.Node rowNode : pagesContainer.getChildren()) {
+            if (rowNode instanceof javafx.scene.layout.HBox row) {
+                for (javafx.scene.Node child : row.getChildren()) {
+                    if (child instanceof VBox vb) list.add(vb);
+                }
+            }
+        }
+
+        return list;
+    }
+
     private void updateDrawingStyleForAllPages() {
         if (pagesContainer == null || colorPicker == null || strokeWidthSlider == null) return;
 
@@ -1368,18 +1429,9 @@ private void handleDeletePage() {
         processAllAnnotationLayers(layer -> {
             layer.setDrawingColor(color);
             layer.setLineWidth(width);
+            layer.redraw();
         });
-    }
-    private void processAllAnnotationLayers(java.util.function.Consumer<AnnotationLayer> action) {
-        pagesContainer.getChildren().forEach(node -> {
-            if (node instanceof VBox pageBox && !pageBox.getChildren().isEmpty()) {
-                if (pageBox.getChildren().getFirst() instanceof StackPane stack) {
-                    stack.getChildren().stream()
-                            .filter(child -> child instanceof AnnotationLayer)
-                            .map(child -> (AnnotationLayer) child)
-                            .forEach(action);
-                }
-            }
-        });
+
+        uiStateManager.updateStatus("Drawing style updated");
     }
 }

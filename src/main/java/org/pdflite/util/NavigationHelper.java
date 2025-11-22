@@ -1,19 +1,11 @@
 package org.pdflite.util;
 
-import javafx.animation.Interpolator;
-import javafx.animation.KeyFrame;
-import javafx.animation.KeyValue;
-import javafx.animation.Timeline;
-import javafx.application.Platform;
-import javafx.scene.Node;
-import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
-import javafx.geometry.Pos;
-import javafx.util.Duration;
+import java.io.IOException;
+import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.ExecutorService;
+
 import org.pdflite.controller.MainController;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
@@ -21,11 +13,20 @@ import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.ExecutorService;
+import javafx.animation.Interpolator;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
+import javafx.application.Platform;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 
 /**
  * Utility class for page navigation and loading operations.
@@ -152,31 +153,30 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
 
         Platform.runLater(() -> {
             try {
-                if (pageIndex < 0 || pageIndex >= pagesContainer.getChildren().size()) {
+                if (pageIndex < 0 || pageIndex >= mainController.getTotalPages()) {
                     logger.warn("Invalid page index for scrolling: {}", pageIndex);
                     return;
                 }
 
                 pagesContainer.layout();
 
-                VBox targetPageBox = (VBox) pagesContainer.getChildren().get(pageIndex);
-                double targetY = targetPageBox.getBoundsInParent().getMinY();
+                double currentY = ScrollCalculator.calculatePageYPosition(pagesContainer, pageIndex);
 
                 double contentHeight = pagesContainer.getHeight();
                 double viewportHeight = scrollPane.getViewportBounds().getHeight();
 
                 if (contentHeight > viewportHeight) {
-                    double pageHeight = targetPageBox.getHeight();
+                    double pageHeight = ScrollCalculator.calculatePageBounds(pagesContainer, pageIndex).height();
                     double centerOffset = Math.max(0, (viewportHeight - pageHeight) / 2);
-                    double adjustedY = Math.max(0, targetY - centerOffset);
+                    double adjustedY = Math.max(0, currentY - centerOffset);
 
                     double maxScroll = contentHeight - viewportHeight;
                     double scrollPosition = adjustedY / maxScroll;
 
                     smoothScrollTo(scrollPane, scrollPosition, Duration.millis(350));
 
-                    logger.debug("Scrolled to page {} at position {} (targetY={}, adjustedY={})",
-                            pageIndex + 1, scrollPosition, targetY, adjustedY);
+                    logger.debug("Scrolled to page {} at position {} (currentY={}, adjustedY={})",
+                            pageIndex + 1, scrollPosition, currentY, adjustedY);
                 }
 
             } catch (Exception e) {
@@ -190,12 +190,12 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
      */
     public void ensurePageLoadedAndReady(int pageIndex, Runnable callback) {
         VBox pagesContainer = mainController.getPagesContainer();
-        if (pagesContainer == null || pageIndex < 0 || pageIndex >= pagesContainer.getChildren().size()) {
+        if (pagesContainer == null || pageIndex < 0 || pageIndex >= mainController.getTotalPages()) {
             logger.warn("Invalid page index or container: {}", pageIndex);
             return;
         }
 
-        VBox pageBox = (VBox) pagesContainer.getChildren().get(pageIndex);
+        VBox pageBox = findPageBox(pagesContainer, pageIndex);
 
         if (isPageRendered(pageBox)) {
             logger.debug("Page {} already rendered", pageIndex + 1);
@@ -315,5 +315,34 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
         }
 
         return false;
+    }
+
+    private static VBox findPageBox(VBox pagesContainer, int pageIndex) {
+        if (pagesContainer == null) return null;
+        Object twoMode = pagesContainer.getProperties().get("twoPageMode");
+        boolean twoPage = twoMode instanceof Boolean && (Boolean) twoMode;
+
+        if (!twoPage) {
+            if (pageIndex < pagesContainer.getChildren().size()) {
+                javafx.scene.Node node = pagesContainer.getChildren().get(pageIndex);
+                if (node instanceof VBox vb) return vb;
+            }
+            return null;
+        }
+
+        int rowIndex = pageIndex / 2;
+        int innerIndex = pageIndex % 2;
+
+        if (rowIndex < 0 || rowIndex >= pagesContainer.getChildren().size()) return null;
+
+        javafx.scene.Node rowNode = pagesContainer.getChildren().get(rowIndex);
+        if (rowNode instanceof javafx.scene.layout.HBox row) {
+            if (innerIndex < row.getChildren().size()) {
+                javafx.scene.Node child = row.getChildren().get(innerIndex);
+                if (child instanceof VBox vb) return vb;
+            }
+        }
+
+        return null;
     }
 }

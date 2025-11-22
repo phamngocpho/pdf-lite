@@ -32,9 +32,31 @@ public class ScrollCalculator {
     public static double calculatePageYPosition(VBox pagesContainer, int targetPageIndex) {
         double currentY = 0;
 
-        for (int i = 0; i < targetPageIndex && i < pagesContainer.getChildren().size(); i++) {
-            VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
-            currentY += pageBox.getPrefHeight() + PAGE_SPACING;
+        Object twoMode = pagesContainer.getProperties().get("twoPageMode");
+        boolean twoPage = twoMode instanceof Boolean && (Boolean) twoMode;
+
+        if (!twoPage) {
+            for (int i = 0; i < targetPageIndex && i < pagesContainer.getChildren().size(); i++) {
+                VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
+                currentY += pageBox.getPrefHeight() + PAGE_SPACING;
+            }
+            return currentY;
+        }
+
+        // Two-page mode: pagesContainer children are rows (HBox), each containing up to 2 page VBoxes
+        int targetRow = targetPageIndex / 2;
+        int rows = pagesContainer.getChildren().size();
+        for (int r = 0; r < targetRow && r < rows; r++) {
+            javafx.scene.Node rowNode = pagesContainer.getChildren().get(r);
+            double rowHeight = 0;
+            if (rowNode instanceof javafx.scene.layout.HBox row) {
+                for (javafx.scene.Node child : row.getChildren()) {
+                    if (child instanceof VBox pageBox) {
+                        rowHeight = Math.max(rowHeight, pageBox.getPrefHeight());
+                    }
+                }
+            }
+            currentY += rowHeight + PAGE_SPACING;
         }
 
         return currentY;
@@ -49,7 +71,29 @@ public class ScrollCalculator {
      * @return the total content height in pixels
      */
     public static double calculateContentHeight(VBox pagesContainer, int totalPages) {
-        double calculatedHeight = calculatePageYPosition(pagesContainer, totalPages);
+        Object twoMode = pagesContainer.getProperties().get("twoPageMode");
+        boolean twoPage = twoMode instanceof Boolean && (Boolean) twoMode;
+
+        double calculatedHeight = 0;
+
+        if (!twoPage) {
+            calculatedHeight = calculatePageYPosition(pagesContainer, totalPages);
+        } else {
+            // total rows = ceil(totalPages / 2)
+            int rows = pagesContainer.getChildren().size();
+            for (int r = 0; r < rows; r++) {
+                javafx.scene.Node rowNode = pagesContainer.getChildren().get(r);
+                double rowHeight = 0;
+                if (rowNode instanceof javafx.scene.layout.HBox row) {
+                    for (javafx.scene.Node child : row.getChildren()) {
+                        if (child instanceof VBox pageBox) {
+                            rowHeight = Math.max(rowHeight, pageBox.getPrefHeight());
+                        }
+                    }
+                }
+                calculatedHeight += rowHeight + PAGE_SPACING;
+            }
+        }
 
         // Use the larger of calculated height or actual container height
         return Math.max(calculatedHeight, pagesContainer.getHeight());
@@ -63,16 +107,44 @@ public class ScrollCalculator {
      * @return PageBounds object containing start, end, and height information
      */
     public static PageBounds calculatePageBounds(VBox pagesContainer, int pageIndex) {
+        Object twoMode = pagesContainer.getProperties().get("twoPageMode");
+        boolean twoPage = twoMode instanceof Boolean && (Boolean) twoMode;
+
         double currentY = calculatePageYPosition(pagesContainer, pageIndex);
 
-        if (pageIndex >= pagesContainer.getChildren().size()) {
+        if (!twoPage) {
+            if (pageIndex >= pagesContainer.getChildren().size()) {
+                return new PageBounds(currentY, currentY, 0);
+            }
+
+            VBox pageBox = (VBox) pagesContainer.getChildren().get(pageIndex);
+            double pageHeight = pageBox.getPrefHeight();
+            double pageEnd = currentY + pageHeight;
+
+            return new PageBounds(currentY, pageEnd, pageHeight);
+        }
+
+        // Two-page: find page VBox inside its row
+        int rowIndex = pageIndex / 2;
+        if (rowIndex >= pagesContainer.getChildren().size()) {
             return new PageBounds(currentY, currentY, 0);
         }
 
-        VBox pageBox = (VBox) pagesContainer.getChildren().get(pageIndex);
-        double pageHeight = pageBox.getPrefHeight();
-        double pageEnd = currentY + pageHeight;
+        javafx.scene.Node rowNode = pagesContainer.getChildren().get(rowIndex);
+        double pageHeight = 0;
+        if (rowNode instanceof javafx.scene.layout.HBox row) {
+            int innerIndex = pageIndex % 2;
+            if (innerIndex < row.getChildren().size() && row.getChildren().get(innerIndex) instanceof VBox pageBox) {
+                pageHeight = pageBox.getPrefHeight();
+            } else {
+                // If missing, take max child height
+                for (javafx.scene.Node child : row.getChildren()) {
+                    if (child instanceof VBox pb) pageHeight = Math.max(pageHeight, pb.getPrefHeight());
+                }
+            }
+        }
 
+        double pageEnd = currentY + pageHeight;
         return new PageBounds(currentY, pageEnd, pageHeight);
     }
 
