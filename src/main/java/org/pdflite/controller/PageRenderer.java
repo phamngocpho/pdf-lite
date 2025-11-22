@@ -19,7 +19,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import org.pdflite.view.ContextMenuPane;
 
@@ -37,9 +36,7 @@ public class PageRenderer {
 
     private PDFDocument currentDocument;
     private double currentZoom;
-    private boolean highlightModeActive;
-
-    private ContextMenuHandler contextMenuHandler;
+    private final ContextMenuHandler contextMenuHandler;
 
     /**
      * Creates a new PageRenderer with the specified service and executor.
@@ -91,9 +88,7 @@ public class PageRenderer {
     /**
      * Sets whether highlight mode is active.
      */
-    public void setHighlightModeActive(boolean active) {
-        this.highlightModeActive = active;
-    }
+    public void setHighlightModeActive(boolean active) {}
 
     /**
      * Clears all cached images and resets state.
@@ -275,9 +270,7 @@ public class PageRenderer {
 
         annotationLayer.setOnContextMenuRequested(null);
         annotationLayer.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
-            if (event.getButton() == MouseButton.SECONDARY) {
-                // Do nothing - let context menu handle it
-            }
+            // Do nothing - let context menu handle it
         });
 
         // Create context menu pane
@@ -294,6 +287,10 @@ public class PageRenderer {
         StackPane imageStack = new StackPane(imageView, annotationLayer, contextPane);
         imageStack.setAlignment(Pos.CENTER);
         imageStack.setPickOnBounds(false);
+        // Set exact size to match placeholder and prevent layout shift
+        imageStack.setPrefSize(image.getWidth(), image.getHeight());
+        imageStack.setMinSize(image.getWidth(), image.getHeight());
+        imageStack.setMaxSize(image.getWidth(), image.getHeight());
 
         // Replace placeholder with rendered image
         if (!pageBox.getChildren().isEmpty()) {
@@ -307,35 +304,28 @@ public class PageRenderer {
 
     /**
      * Creates a placeholder VBox for a PDF page before it's loaded.
+     * The placeholder has the exact same dimensions as the rendered page,
+     * but displays only a gray background to prevent layout shifts during loading.
      */
     public VBox createPagePlaceholder(int pageIndex, double width, double height) {
-        VBox pageBox = new VBox(5);
-        pageBox.setAlignment(Pos.TOP_CENTER);
+        VBox pageBox = new VBox();
+        pageBox.setAlignment(Pos.CENTER);
         pageBox.setId("page-" + pageIndex);
-        pageBox.setPrefSize(width, height + 20);
-        pageBox.setStyle("-fx-background-color: #606060; -fx-border-color: #404040;");
+        // Set exact size to match rendered page (no extra spacing)
+        pageBox.setPrefSize(width, height);
+        pageBox.setMinSize(width, height);
+        pageBox.setMaxSize(width, height);
+        pageBox.setStyle("-fx-background-color: #606060; -fx-padding: 0;");
 
-        Label pageNumberLabel = new Label("Page " + (pageIndex + 1));
-        pageNumberLabel.setStyle("-fx-text-fill: white; -fx-font-size: 10px; -fx-padding: 5;");
-
-        StackPane placeholder = createLoadingPlaceholder(width, height);
-
-        pageBox.getChildren().addAll(placeholder, pageNumberLabel);
-        return pageBox;
-    }
-
-    /**
-     * Creates a loading placeholder stack pane with "Loading..." text.
-     */
-    private StackPane createLoadingPlaceholder(double width, double height) {
-        Label loadingLabel = new Label("Loading...");
-        loadingLabel.setStyle("-fx-text-fill: #cccccc; -fx-font-size: 14px;");
-
-        StackPane placeholder = new StackPane(loadingLabel);
+        // Create a simple gray placeholder with exact dimensions
+        StackPane placeholder = new StackPane();
         placeholder.setPrefSize(width, height);
-        placeholder.setStyle("-fx-background-color: #505050;");
+        placeholder.setMinSize(width, height);
+        placeholder.setMaxSize(width, height);
+        placeholder.setStyle("-fx-background-color: #606060; -fx-padding: 0;");
 
-        return placeholder;
+        pageBox.getChildren().add(placeholder);
+        return pageBox;
     }
 
     public void setSelectionModeActive(VBox pagesContainer, boolean active) {

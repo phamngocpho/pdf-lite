@@ -73,9 +73,8 @@
                              promptText="e.g., 1-5, 10, 25-30"
                              prefRowCount="3"
                              wrapText="true"/>
-                    <Label fx:id="rangeValidationLabel" 
-                           text="" 
-                           style="-fx-text-fill: #666; -fx-font-size: 10px;" 
+                    <Label fx:id="rangeValidationLabel"
+                           style="-fx-text-fill: #666; -fx-font-size: 10px;"
                            wrapText="true"/>
                 </VBox>
                 

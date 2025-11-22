@@ -2,12 +2,16 @@ package org.pdflite.service;
 
 import org.apache.pdfbox.io.MemoryUsageSetting;
 import org.apache.pdfbox.multipdf.PDFMergerUtility;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.pdflite.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+
+import static org.apache.pdfbox.Loader.loadPDF;
 
 /**
  * Service for merging multiple PDF files into a single PDF document.
@@ -57,7 +61,7 @@ public class PDFMergeService {
 
         // Add all source files
         for (File file : inputFiles) {
-            logger.debug("Adding file to merge: {} ({})", file.getName(), formatFileSize(file.length()));
+            logger.debug("Adding file to merge: {} ({})", file.getName(), FileUtils.formatFileSize(file.length()));
             merger.addSource(file);
         }
 
@@ -72,7 +76,7 @@ public class PDFMergeService {
             logger.info("Successfully merged {} files into: {} ({})",
                     inputFiles.size(),
                     outputFile.getName(),
-                    formatFileSize(outputFile.length()));
+                    FileUtils.formatFileSize(outputFile.length()));
         } catch (IOException e) {
             logger.error("Error merging PDF files", e);
             // Clean up partial output file if merge failed
@@ -105,7 +109,7 @@ public class PDFMergeService {
 
         // Try to open with PDFBox to verify it's a valid PDF
         try (org.apache.pdfbox.pdmodel.PDDocument doc =
-                     org.apache.pdfbox.Loader.loadPDF(file)) {
+                     loadPDF(file)) {
             return doc.getNumberOfPages() > 0;
         } catch (IOException e) {
             logger.warn("File {} is not a valid PDF: {}", file.getName(), e.getMessage());
@@ -124,8 +128,8 @@ public class PDFMergeService {
             return -1;
         }
 
-        try (org.apache.pdfbox.pdmodel.PDDocument doc =
-                     org.apache.pdfbox.Loader.loadPDF(file)) {
+        try (PDDocument doc =
+                     loadPDF(file)) {
             return doc.getNumberOfPages();
         } catch (IOException e) {
             logger.error("Error reading page count from: {}", file.getName(), e);
@@ -133,17 +137,5 @@ public class PDFMergeService {
         }
     }
 
-    /**
-     * Formats file size in human-readable format.
-     *
-     * @param bytes File size in bytes
-     * @return Formatted string (e.g., "1.5 MB")
-     */
-    private String formatFileSize(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        int exp = (int) (Math.log(bytes) / Math.log(1024));
-        String pre = "KMGTPE".charAt(exp - 1) + "";
-        return String.format("%.1f %sB", bytes / Math.pow(1024, exp), pre);
-    }
 }
 

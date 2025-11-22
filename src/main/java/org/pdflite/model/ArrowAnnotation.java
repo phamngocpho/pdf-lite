@@ -1,4 +1,3 @@
-// File: src/main/java/org/pdflite/model/ArrowAnnotation.java
 package org.pdflite.model;
 
 import javafx.scene.canvas.GraphicsContext;

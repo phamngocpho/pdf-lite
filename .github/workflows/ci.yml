@@ -1,0 +1,56 @@
+name: CI Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+    
+    - name: Make mvnw executable (Unix)
+      if: runner.os != 'Windows'
+      run: chmod +x ./mvnw
+    
+    - name: Build (Windows)
+      if: runner.os == 'Windows'
+      run: ./mvnw.cmd clean package -DskipTests -T 1C
+    
+    - name: Build (Unix)
+      if: runner.os != 'Windows'
+      run: ./mvnw clean package -DskipTests -T 1C
+    
+    - name: Rename JAR (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        move target\pdf-lite-1.0-SNAPSHOT.jar target\pdf-lite.jar
+    
+    - name: Rename JAR (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        mv target/pdf-lite-1.0-SNAPSHOT.jar target/pdf-lite.jar
+    
+    - name: Upload JAR
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: pdf-lite-${{ matrix.os }}-${{ github.run_number }}
+        path: target/pdf-lite.jar
+        retention-days: 30

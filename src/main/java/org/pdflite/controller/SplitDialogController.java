@@ -9,6 +9,7 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+import org.apache.pdfbox.pdmodel.PDDocument;
 import org.pdflite.service.PDFService;
 import org.pdflite.service.PDFSplitService;
 import org.pdflite.util.ThumbnailLoader;
@@ -56,6 +57,7 @@ public class SplitDialogController {
     @FXML private ProgressBar progressBar;
 
     private File sourceFile;
+    private PDDocument sourceDocument;
     private int totalPages;
     private final PDFSplitService splitService = new PDFSplitService();
     private final PDFService pdfService = new PDFService();
@@ -129,6 +131,36 @@ public class SplitDialogController {
             logger.error("Error loading PDF", e);
             showError("Error", "Failed to load PDF: " + e.getMessage());
         }
+    }
+
+    /**
+     * Sets the source PDF document (for encrypted PDFs already opened).
+     */
+    public void setSourceDocument(PDDocument document, File file) {
+        this.sourceDocument = document;
+        this.sourceFile = file;
+
+        if (document == null) {
+            return;
+        }
+
+        totalPages = document.getNumberOfPages();
+        fileNameLabel.setText(file != null ? file.getName() : "Document");
+        totalPagesLabel.setText(String.format("Total Pages: %d", totalPages));
+
+        // Load thumbnails from document
+        loadThumbnailsFromDocument();
+
+        updateStatus("Ready to split");
+        logger.info("Loaded PDF document ({} pages)", totalPages);
+    }
+
+    /**
+     * Loads thumbnail previews from PDDocument.
+     */
+    private void loadThumbnailsFromDocument() {
+        ThumbnailLoader.loadThumbnailsFromDocument(sourceDocument, totalPages, previewPane,
+                pdfService, executorService, this::updateStatus);
     }
 
     /**
@@ -313,9 +345,18 @@ public class SplitDialogController {
                 progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
                 updateStatus("Splitting PDF into individual pages...");
 
-                List<File> outputFiles = splitService.splitIntoIndividualPages(
-                        sourceFile, outputDir, baseName
-                );
+                List<File> outputFiles;
+                if (sourceDocument != null) {
+                    // Use already-opened document (supports encrypted PDFs)
+                    outputFiles = splitService.splitIntoIndividualPages(
+                            sourceDocument, outputDir, baseName
+                    );
+                } else {
+                    // Use file directly
+                    outputFiles = splitService.splitIntoIndividualPages(
+                            sourceFile, outputDir, baseName
+                    );
+                }
 
                 handleSplitSuccess(outputFiles, outputDir);
 
@@ -337,7 +378,14 @@ public class SplitDialogController {
                 progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
                 updateStatus("Splitting PDF...");
 
-                List<File> outputFiles = splitService.splitPDF(sourceFile, outputDir, ranges);
+                List<File> outputFiles;
+                if (sourceDocument != null) {
+                    // Use already-opened document (supports encrypted PDFs)
+                    outputFiles = splitService.splitPDF(sourceDocument, outputDir, ranges);
+                } else {
+                    // Use file directly
+                    outputFiles = splitService.splitPDF(sourceFile, outputDir, ranges);
+                }
 
                 handleSplitSuccess(outputFiles, outputDir);
 
@@ -379,7 +427,7 @@ public class SplitDialogController {
 
                 Platform.runLater(() -> {
                     updateStatus("ZIP archive created!");
-                    showInfo("Split Complete",
+                    showInfo(
                             String.format("Successfully split PDF into %d files.\nZIP archive created: %s",
                                     outputFiles.size(), zipFile.getName()));
                     handleCancel();
@@ -400,7 +448,7 @@ public class SplitDialogController {
      * Shows split complete dialog.
      */
     private void showSplitCompleteDialog(List<File> outputFiles, File outputDir) {
-        showInfo("Split Complete",
+        showInfo(
                 String.format("Successfully split PDF into %d files.\nOutput directory: %s",
                         outputFiles.size(), outputDir.getAbsolutePath()));
         handleCancel();
@@ -489,10 +537,10 @@ public class SplitDialogController {
     /**
      * Shows an information dialog.
      */
-    private void showInfo(String title, String message) {
+    private void showInfo(String message) {
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle(title);
+            alert.setTitle("Split Complete");
             alert.setHeaderText(null);
             alert.setContentText(message);
             alert.showAndWait();

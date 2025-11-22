@@ -25,6 +25,8 @@
                     </Menu>
                     <MenuItem text="Clear Recent Files" onAction="#handleClearRecentFiles"/>
                     <SeparatorMenuItem/>
+                    <MenuItem text="Print..." onAction="#handlePrint" accelerator="Ctrl+P"/>
+                    <SeparatorMenuItem/>
                     <MenuItem text="Save" onAction="#handleSave"/>
                     <MenuItem text="Save As..." onAction="#handleSaveAs"/>
                     <SeparatorMenuItem/>
@@ -53,6 +55,10 @@
                     <MenuItem text="Split PDF..." onAction="#handleSplitPDF"/>
                     <MenuItem text="Extract Pages..." onAction="#handleExtractPages"/>
                     <SeparatorMenuItem/>
+                    <MenuItem text="Encrypt PDF..." onAction="#handleEncryptPDF"/>
+                    <MenuItem text="Remove Password..." onAction="#handleDecryptPDF"/>
+                    <MenuItem text="Show Permissions..." onAction="#handleShowPDFPermissions"/>
+                    <SeparatorMenuItem/>
                     <MenuItem text="Delete Page" onAction="#handleDeletePage"/>
                 </Menu>
 
@@ -76,6 +82,10 @@
                 <Button text="Save" onAction="#handleSave" 
                         style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-background-color: transparent; -fx-text-fill: #424242;">
                     <tooltip><Tooltip text="Save (Ctrl+S)"/></tooltip>
+                </Button>
+                <Button text="Print" onAction="#handlePrint" 
+                        style="-fx-font-size: 11px; -fx-padding: 4 10; -fx-background-color: transparent; -fx-text-fill: #424242;">
+                    <tooltip><Tooltip text="Print (Ctrl+P)"/></tooltip>
                 </Button>
                 
                 <Separator orientation="VERTICAL" style="-fx-padding: 0 3;"/>

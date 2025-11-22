@@ -10,6 +10,7 @@ import javafx.scene.input.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.pdflite.service.PDFMergeService;
+import org.pdflite.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -142,7 +143,7 @@ public class MergeDialogController {
                     file,
                     file.getName(),
                     pageCount,
-                    formatFileSize(file.length())
+                    FileUtils.formatFileSize(file.length())
             );
             fileItems.add(item);
             addedCount++;
@@ -265,7 +266,7 @@ public class MergeDialogController {
                 Platform.runLater(() -> {
                     progressBar.setProgress(1.0);
                     updateStatus("Merge completed successfully!");
-                    showInfo("Merge Complete",
+                    showInfo(
                             String.format("Successfully merged %d files into:\n%s",
                                     inputFiles.size(), outputFile.getName()));
 
@@ -415,29 +416,19 @@ public class MergeDialogController {
     /**
      * Shows an information dialog.
      */
-    private void showInfo(String title, String message) {
+    private void showInfo(String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
+        alert.setTitle("Merge Complete");
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
     }
 
     /**
-     * Formats file size in human-readable format.
-     */
-    private String formatFileSize(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        int exp = (int) (Math.log(bytes) / Math.log(1024));
-        String pre = "KMGTPE".charAt(exp - 1) + "";
-        return String.format("%.1f %sB", bytes / Math.pow(1024, exp), pre);
-    }
-
-    /**
-     * Cleanup resources.
+     * Represents a PDF file item in the merge list.
      */
     public void shutdown() {
-        if (executorService != null && !executorService.isShutdown()) {
+        if (!executorService.isShutdown()) {
             executorService.shutdownNow();
         }
     }
