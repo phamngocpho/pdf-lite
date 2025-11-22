@@ -711,4 +711,44 @@ public class PDFService {
         cs.lineTo(x4, y4);
         cs.stroke();
     }
+
+    /**
+     * Chèn trang trắng vào tài liệu PDF.
+     */
+    public void insertBlankPage(PDFDocument pdfDoc, int index, float width, float height, int count) {
+        if (pdfDoc == null || pdfDoc.getDocument() == null || count <= 0) return;
+
+        PDDocument doc = pdfDoc.getDocument();
+
+        try {
+            int totalPages = doc.getNumberOfPages();
+            // Kiểm tra vị trí hợp lệ
+            if (index < 0) index = 0;
+            if (index > totalPages) index = totalPages;
+
+            for (int i = 0; i < count; i++) {
+                // Tạo trang mới với kích thước tùy chọn
+                PDPage newPage = new PDPage(new PDRectangle(width, height));
+
+                if (index >= doc.getNumberOfPages()) {
+                    // Chèn vào cuối cùng
+                    doc.addPage(newPage);
+                } else {
+                    // Chèn vào giữa (Trước trang tại vị trí index)
+                    PDPage targetPage = doc.getPage(index);
+                    doc.getPages().insertBefore(newPage, targetPage);
+                }
+                // Tăng index để trang tiếp theo nằm sau trang vừa tạo
+                index++;
+            }
+
+            // QUAN TRỌNG: Xóa cache để UI biết đường vẽ lại ảnh mới
+            pdfDoc.clearCache();
+
+            logger.info("Inserted {} blank page(s) at index {}", count, index);
+
+        } catch (Exception e) {
+            logger.error("Error inserting blank pages", e);
+        }
+    }
 }

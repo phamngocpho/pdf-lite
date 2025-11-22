@@ -7,6 +7,9 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.stage.Modality;
 import org.pdflite.manager.AnnotationManager;
 import org.pdflite.manager.DialogManager;
 import org.pdflite.manager.DocumentLifecycleManager;
@@ -911,4 +914,84 @@ public class MainController {
     @FXML
     private Button redoButton;
 
+    // ==================== INSERT PAGE FUNCTION ====================
+
+    @FXML
+    private void handleInsertPage() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            return;
+        }
+
+        try {
+            // 1. Load Dialog
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/pdflite/insert-dialog.fxml"));
+            Parent root = loader.load();
+            InsertDialogController controller = loader.getController();
+
+            // 2. Hiện cửa sổ
+            Stage stage = new Stage();
+            stage.setTitle("Insert Blank Page");
+            stage.initModality(Modality.WINDOW_MODAL);
+            stage.initOwner(rootPane.getScene().getWindow());
+            stage.setScene(new Scene(root));
+
+            // Áp dụng Theme nếu có
+            if (themeManager != null) themeManager.applyThemeToScene(stage.getScene());
+
+            stage.showAndWait();
+
+            // 3. Xử lý khi bấm Insert
+            if (controller.isInsertClicked()) {
+                float w = controller.getWidth();
+                float h = controller.getHeight();
+                int count = controller.getInsertCount();
+                int index = controller.getIndex(currentDocument.getCurrentPage(), currentDocument.getTotalPages());
+
+                // A. Chèn trang (Backend)
+                pdfService.insertBlankPage(currentDocument, index, w, h, count);
+
+                // B. Cập nhật trang hiện tại nếu bị đẩy
+                if (index <= currentDocument.getCurrentPage()) {
+                    currentDocument.setCurrentPage(currentDocument.getCurrentPage() + count);
+                }
+
+                // --- [FIX LỖI MÀN HÌNH XÁM] ---
+
+                // Xóa sạch UI cũ
+                if (pagesContainer != null) pagesContainer.getChildren().clear();
+                loadingPages.clear();
+                pageRenderer.clearCache();
+                pageRenderer.cancelAllPendingRenders();
+
+                // Vẽ lại khung
+                renderingManager.renderAllPages();
+
+                // Cập nhật ScrollHandler với danh sách trang mới
+                scrollHandler.setDocument(currentDocument, pagesContainer);
+
+                pageInfoManager.updatePageInfo(currentDocument);
+
+                // Kỹ thuật "Mạnh tay": Lồng 2 RunLater + Nhích thanh cuộn để ép load ảnh
+                Platform.runLater(() -> {
+                    scrollPane.applyCss();
+                    scrollPane.layout();
+
+                    Platform.runLater(() -> {
+                        double currentV = scrollPane.getVvalue();
+                        scrollPane.setVvalue(currentV + 0.00001); // Nhích xíu
+                        scrollPane.setVvalue(currentV);           // Trả lại
+                        scrollHandler.handleScroll();             // Load ảnh ngay
+                    });
+                });
+                // ------------------------------------------------
+
+                uiStateManager.updateStatus("Inserted " + count + " blank page(s).");
+            }
+
+        } catch (Exception e) {
+            logger.error("Error inserting page", e);
+            uiStateManager.showError("Insert Error", e.getMessage());
+        }
+    }
 }

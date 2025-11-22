@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="org.pdflite.controller.InsertDialogController"
+            prefWidth="400.0">
+
+    <top>
+        <VBox style="-fx-padding: 15; -fx-background-color: #f4f4f4; -fx-border-color: #cccccc; -fx-border-width: 0 0 1 0;">
+            <Label text="Insert Blank Page" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+            <Label text="Configure page size and position." style="-fx-text-fill: #666666;"/>
+        </VBox>
+    </top>
+
+    <center>
+        <GridPane hgap="10" vgap="10" style="-fx-padding: 20;">
+            <Label text="Page Size:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+            <ComboBox fx:id="pageSizeCombo" prefWidth="200" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+            <Label text="Dimensions (pt):" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+            <HBox spacing="5" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="1">
+                <TextField fx:id="widthField" disable="true" prefWidth="80" promptText="W"/>
+                <Label text="x"/>
+                <TextField fx:id="heightField" disable="true" prefWidth="80" promptText="H"/>
+            </HBox>
+
+            <Label text="Orientation:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+            <HBox spacing="15" GridPane.rowIndex="2" GridPane.columnIndex="1">
+                <RadioButton fx:id="rbPortrait" text="Portrait" selected="true"/>
+                <RadioButton fx:id="rbLandscape" text="Landscape"/>
+            </HBox>
+
+            <Label text="Position:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+            <VBox spacing="8" GridPane.rowIndex="3" GridPane.columnIndex="1">
+                <RadioButton fx:id="rbAfter" text="After Current Page" selected="true"/>
+                <RadioButton fx:id="rbBefore" text="Before Current Page"/>
+                <RadioButton fx:id="rbLast" text="At End of Document"/>
+            </VBox>
+
+            <Label text="Quantity:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+            <Spinner fx:id="countSpinner" min="1" max="50" initialValue="1" editable="true" prefWidth="80" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+        </GridPane>
+    </center>
+
+    <bottom>
+        <HBox spacing="10" alignment="CENTER_RIGHT" style="-fx-padding: 15; -fx-background-color: #f4f4f4; -fx-border-color: #cccccc; -fx-border-width: 1 0 0 0;">
+            <Button fx:id="btnCancel" text="Cancel" onAction="#handleCancel" prefWidth="80"/>
+            <Button fx:id="btnInsert" text="Insert" onAction="#handleInsert" prefWidth="80" style="-fx-base: #2196F3; -fx-text-fill: white;"/>
+        </HBox>
+    </bottom>
+
+</BorderPane>
