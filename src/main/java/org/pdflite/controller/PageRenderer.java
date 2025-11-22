@@ -89,7 +89,7 @@ public class PageRenderer {
     /**
      * Sets whether highlight mode is active.
      */
-    public void setHighlightModeActive(boolean active) {}
+    public void setHighlightModeActive() {}
 
     /**
      * Clears all cached images and resets state.
@@ -252,13 +252,7 @@ public class PageRenderer {
         annotationLayer.setPageIndex(pageIndex);
 
         if (currentDocument != null) {
-            java.util.List<org.pdflite.model.Annotation> pageAnns = new java.util.ArrayList<>();
-            for (org.pdflite.model.Annotation a : currentDocument.getAnnotations()) {
-                if (a.getPageNumber() == pageIndex) {
-                    pageAnns.add(a);
-                }
-            }
-            annotationLayer.setAnnotations(pageAnns);
+            annotationLayer.setAnnotations(currentDocument.getAnnotationsForPage(pageIndex));
         }
 
         annotationLayer.setOnAnnotationAdded(newAnn -> {
@@ -336,7 +330,7 @@ public class PageRenderer {
         pagesContainer.getChildren().forEach(node -> {
             if (node instanceof VBox pageBox && !pageBox.getChildren().isEmpty()) {
                 // Lấy StackPane (chứa Ảnh, Annotation, ContextMenu)
-                if (pageBox.getChildren().get(0) instanceof StackPane stack) {
+                if (pageBox.getChildren().getFirst() instanceof StackPane stack) {
                     stack.getChildren().forEach(layer -> {
 
                         // Xử lý lớp chọn Text (ContextMenuPane)

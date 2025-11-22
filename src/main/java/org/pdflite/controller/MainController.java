@@ -25,6 +25,7 @@ import org.pdflite.service.PDFPrintService;
 import org.pdflite.service.PDFService;
 import org.pdflite.util.Constants;
 import org.pdflite.util.NavigationHelper;
+import org.pdflite.util.PageContainerUtils;
 import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -797,12 +798,12 @@ public class MainController {
             }
 
             uiStateManager.updateStatus("Highlight mode: Active - Click and drag to highlight");
-            pageRenderer.setHighlightModeActive(true);
+            pageRenderer.setHighlightModeActive();
             updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.HIGHLIGHT);
         } else {
             // Tắt Highlight
             uiStateManager.updateStatus("Highlight mode: Disabled");
-            pageRenderer.setHighlightModeActive(false);
+            pageRenderer.setHighlightModeActive();
             updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
         }
     }
@@ -1369,28 +1370,7 @@ public class MainController {
     }
 
     private java.util.List<VBox> collectPageBoxes() {
-        java.util.List<VBox> list = new java.util.ArrayList<>();
-        if (pagesContainer == null) return list;
-
-        Object twoMode = pagesContainer.getProperties().get("twoPageMode");
-        boolean twoPage = twoMode instanceof Boolean && (Boolean) twoMode;
-
-        if (!twoPage) {
-            for (javafx.scene.Node node : pagesContainer.getChildren()) {
-                if (node instanceof VBox vb) list.add(vb);
-            }
-            return list;
-        }
-
-        for (javafx.scene.Node rowNode : pagesContainer.getChildren()) {
-            if (rowNode instanceof javafx.scene.layout.HBox row) {
-                for (javafx.scene.Node child : row.getChildren()) {
-                    if (child instanceof VBox vb) list.add(vb);
-                }
-            }
-        }
-
-        return list;
+        return PageContainerUtils.collectPageBoxes(pagesContainer);
     }
 
     private void updateDrawingStyleForAllPages() {
@@ -1449,15 +1429,7 @@ public class MainController {
                             .filter(node -> node instanceof AnnotationLayer)
                             .map(node -> (AnnotationLayer) node)
                             .findFirst()
-                            .ifPresent(layer -> {
-                                java.util.List<org.pdflite.model.Annotation> pageAnns = new java.util.ArrayList<>();
-                                for (org.pdflite.model.Annotation a : currentDocument.getAnnotations()) {
-                                    if (a.getPageNumber() == pageIndex) {
-                                        pageAnns.add(a);
-                                    }
-                                }
-                                layer.setAnnotations(pageAnns);
-                            });
+                            .ifPresent(layer -> layer.setAnnotations(currentDocument.getAnnotationsForPage(pageIndex)));
                 }
             }
         }

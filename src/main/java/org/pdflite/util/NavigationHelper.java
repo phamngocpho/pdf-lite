@@ -9,6 +9,7 @@ import java.util.concurrent.ExecutorService;
 import org.pdflite.controller.MainController;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
+import org.pdflite.util.PageContainerUtils;
 import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -318,31 +319,6 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
     }
 
     private static VBox findPageBox(VBox pagesContainer, int pageIndex) {
-        if (pagesContainer == null) return null;
-        Object twoMode = pagesContainer.getProperties().get("twoPageMode");
-        boolean twoPage = twoMode instanceof Boolean && (Boolean) twoMode;
-
-        if (!twoPage) {
-            if (pageIndex < pagesContainer.getChildren().size()) {
-                javafx.scene.Node node = pagesContainer.getChildren().get(pageIndex);
-                if (node instanceof VBox vb) return vb;
-            }
-            return null;
-        }
-
-        int rowIndex = pageIndex / 2;
-        int innerIndex = pageIndex % 2;
-
-        if (rowIndex < 0 || rowIndex >= pagesContainer.getChildren().size()) return null;
-
-        javafx.scene.Node rowNode = pagesContainer.getChildren().get(rowIndex);
-        if (rowNode instanceof javafx.scene.layout.HBox row) {
-            if (innerIndex < row.getChildren().size()) {
-                javafx.scene.Node child = row.getChildren().get(innerIndex);
-                if (child instanceof VBox vb) return vb;
-            }
-        }
-
-        return null;
+        return PageContainerUtils.findPageBox(pagesContainer, pageIndex);
     }
 }

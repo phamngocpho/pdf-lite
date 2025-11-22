@@ -206,6 +206,26 @@ public class PDFDocument {
     }
 
     /**
+     * Gets all annotations for a specific page.
+     * <p>
+     * This method filters the document's annotations and returns only those
+     * that belong to the specified page index.
+     * </p>
+     *
+     * @param pageIndex the zero-based page index
+     * @return a new list containing annotations for the specified page, never null
+     */
+    public List<Annotation> getAnnotationsForPage(int pageIndex) {
+        List<Annotation> pageAnns = new ArrayList<>();
+        for (Annotation a : annotations) {
+            if (a.getPageNumber() == pageIndex) {
+                pageAnns.add(a);
+            }
+        }
+        return pageAnns;
+    }
+
+    /**
      * Gets the filename of the PDF document.
      *
      * @return the filename, or "Untitled" if the file is null

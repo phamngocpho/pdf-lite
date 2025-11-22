@@ -9,6 +9,7 @@ import org.pdflite.controller.MainController;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
 import org.pdflite.util.NavigationHelper;
+import org.pdflite.util.PageContainerUtils;
 import org.pdflite.view.AnnotationLayer;
 import org.pdflite.view.SearchPanel;
 import org.slf4j.Logger;
@@ -20,7 +21,6 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
-import javafx.scene.paint.Color;
 
 /**
  * Manages all search-related functionality including:
@@ -32,12 +32,6 @@ import javafx.scene.paint.Color;
 public class SearchManager {
 
     private static final Logger logger = LoggerFactory.getLogger(SearchManager.class);
-
-    // Highlight styling constants
-    private static final Color SEARCH_HIGHLIGHT_COLOR = Color.YELLOW;
-    private static final Color ACTIVE_HIGHLIGHT_COLOR = Color.ORANGE;
-    private static final double SEARCH_HIGHLIGHT_OPACITY = 0.4;
-    private static final double ACTIVE_HIGHLIGHT_OPACITY = 0.6;
 
     // Dependencies
     private final MainController mainController;
@@ -372,55 +366,11 @@ public class SearchManager {
     }
 
     private java.util.List<VBox> collectPageBoxes(VBox pagesContainer) {
-        java.util.List<VBox> list = new ArrayList<>();
-        if (pagesContainer == null) return list;
-
-        Object twoMode = pagesContainer.getProperties().get("twoPageMode");
-        boolean twoPage = twoMode instanceof Boolean && (Boolean) twoMode;
-
-        if (!twoPage) {
-            for (javafx.scene.Node node : pagesContainer.getChildren()) {
-                if (node instanceof VBox vb) list.add(vb);
-            }
-            return list;
-        }
-
-        for (javafx.scene.Node node : pagesContainer.getChildren()) {
-            if (node instanceof javafx.scene.layout.HBox row) {
-                for (javafx.scene.Node child : row.getChildren()) {
-                    if (child instanceof VBox vb) list.add(vb);
-                }
-            }
-        }
-
-        return list;
+        return PageContainerUtils.collectPageBoxes(pagesContainer);
     }
 
     private VBox findPageBox(VBox pagesContainer, int pageIndex) {
-        if (pagesContainer == null) return null;
-        Object twoMode = pagesContainer.getProperties().get("twoPageMode");
-        boolean twoPage = twoMode instanceof Boolean && (Boolean) twoMode;
-
-        if (!twoPage) {
-            if (pageIndex < pagesContainer.getChildren().size()) {
-                javafx.scene.Node node = pagesContainer.getChildren().get(pageIndex);
-                if (node instanceof VBox vb) return vb;
-            }
-            return null;
-        }
-
-        int rowIndex = pageIndex / 2;
-        int innerIndex = pageIndex % 2;
-
-        if (rowIndex < 0 || rowIndex >= pagesContainer.getChildren().size()) return null;
-        javafx.scene.Node rowNode = pagesContainer.getChildren().get(rowIndex);
-        if (rowNode instanceof javafx.scene.layout.HBox row) {
-            if (innerIndex < row.getChildren().size()) {
-                javafx.scene.Node child = row.getChildren().get(innerIndex);
-                if (child instanceof VBox vb) return vb;
-            }
-        }
-        return null;
+        return PageContainerUtils.findPageBox(pagesContainer, pageIndex);
     }
 
     // ==================== GETTERS ====================
