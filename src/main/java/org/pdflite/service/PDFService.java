@@ -12,6 +12,8 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import org.pdflite.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.pdfbox.util.Matrix;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
@@ -238,7 +240,7 @@ public class PDFService {
      * </p>
      * <p>
      * Example usage:
-     * 
+     *
      * <pre>
      * List&lt;Integer&gt; pages = pdfService.searchTextInPages(document, "important");
      * // pages contains [0, 5, 12] if the term appears on pages 1, 6, and 13
@@ -329,6 +331,8 @@ public class PDFService {
             } else {
                 logger.info("Temp file renamed to original name");
             }
+            PDDocument newDoc = Loader.loadPDF(originalFile);
+            pdfDoc.updateDocument(newDoc);
 
             logger.info("Saved PDF to {}", originalFile.getAbsolutePath());
 
@@ -397,11 +401,14 @@ public class PDFService {
 
         logger.info("Deleted {} page(s). New total pages: {}", toDelete, newTotal);
     }
+
     private void flattenAnnotationsToPDF(PDFDocument pdfDoc) throws IOException {
         PDDocument doc = pdfDoc.getDocument();
         List<Annotation> annotations = pdfDoc.getAnnotations();
 
         if (annotations.isEmpty()) return;
+
+        final float scaleFactor = 72f / DEFAULT_DPI;
 
         for (Annotation ann : annotations) {
             if (ann instanceof ShapeAnnotation) {
@@ -409,9 +416,12 @@ public class PDFService {
                 if (shape.getPageNumber() >= doc.getNumberOfPages()) continue;
 
                 PDPage page = doc.getPage(shape.getPageNumber());
+                PDRectangle pageSize = page.getCropBox();
+                float pageHeight = pageSize.getHeight();
 
                 try (PDPageContentStream contentStream = new PDPageContentStream(doc, page, PDPageContentStream.AppendMode.APPEND, true, true)) {
 
+                    contentStream.transform(new Matrix(scaleFactor, 0, 0, -scaleFactor, 0, pageHeight));
                     Color awtColor = new Color(
                             (float) shape.getColor().getRed(),
                             (float) shape.getColor().getGreen(),
@@ -421,11 +431,10 @@ public class PDFService {
                     contentStream.setStrokingColor(awtColor);
                     contentStream.setLineWidth((float) shape.getLineWidth());
 
-                    float pageHeight = page.getMediaBox().getHeight();
                     float x1 = (float) shape.getX();
-                    float y1 = pageHeight - (float) shape.getY();
+                    float y1 = (float) shape.getY();
                     float x2 = (float) shape.getEndX();
-                    float y2 = pageHeight - (float) shape.getEndY();
+                    float y2 = (float) shape.getEndY();
 
                     if (shape instanceof RectangleAnnotation) {
                         float w = Math.abs(x2 - x1);
@@ -434,13 +443,9 @@ public class PDFService {
                         float rectY = Math.min(y1, y2);
                         contentStream.addRect(rectX, rectY, w, h);
                         contentStream.stroke();
-                    }
-                    else if (shape instanceof ArrowAnnotation) {
-                        contentStream.moveTo(x1, y1);
-                        contentStream.lineTo(x2, y2);
-                        contentStream.stroke();
-                    }
-                    else if (shape instanceof CircleAnnotation) {
+                    } else if (shape instanceof ArrowAnnotation) {
+                        csDrawArrow(contentStream, x1, y1, x2, y2);
+                    } else if (shape instanceof CircleAnnotation) {
                         float w = Math.abs(x2 - x1);
                         float h = Math.abs(y1 - y2);
                         float rectX = Math.min(x1, x2);
@@ -467,4 +472,21 @@ public class PDFService {
         pdfDoc.getAnnotations().clear();
     }
 
+    private void csDrawArrow(PDPageContentStream cs, float x1, float y1, float x2, float y2) throws IOException {
+        cs.moveTo(x1, y1);
+        cs.lineTo(x2, y2);
+
+        double angle = Math.atan2(y2 - y1, x2 - x1);
+        double arrowSize = 15.0;
+
+        float x3 = (float) (x2 - arrowSize * Math.cos(angle - Math.PI / 6));
+        float y3 = (float) (y2 - arrowSize * Math.sin(angle - Math.PI / 6));
+        float x4 = (float) (x2 - arrowSize * Math.cos(angle + Math.PI / 6));
+        float y4 = (float) (y2 - arrowSize * Math.sin(angle + Math.PI / 6));
+
+        cs.lineTo(x3, y3);
+        cs.moveTo(x2, y2);
+        cs.lineTo(x4, y4);
+        cs.stroke();
+    }
 }

@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import javafx.scene.input.MouseEvent;
 
 /**
  * Main Controller for the PDF Lite Application.
@@ -82,6 +83,8 @@ public class MainController {
     private ToggleButton btnDrawCircle;
     @FXML
     private ToggleButton btnDrawArrow;
+    @FXML
+    private ToggleButton btnSelectText;
 
 
     // ==================== Services and Managers ====================
@@ -171,33 +174,54 @@ public class MainController {
             });
         }
         if (drawingToolsGroup != null) {
-            // Listener lắng nghe sự thay đổi trạng thái của ToggleGroup
             drawingToolsGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
-                // Nếu không có nút nào được chọn (newVal == null), chuyển về View Mode
+
                 if (newVal == null) {
                     updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
+                    if (pageRenderer != null) pageRenderer.setSelectionModeActive(pagesContainer, false);
                     return;
                 }
 
-                // Nếu một nút được chọn, ánh xạ nó sang chế độ vẽ tương ứng
                 ToggleButton selectedBtn = (ToggleButton) newVal;
 
+                if (selectedBtn == btnSelectText) {
+                    // Tắt vẽ
+                    updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
+                    // Bật chọn Text
+                    if (pageRenderer != null) pageRenderer.setSelectionModeActive(pagesContainer, true);
 
-                // Ánh xạ công cụ
-                if (selectedBtn == btnDrawRect) {
-                    updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.RECTANGLE);
-                } else if (selectedBtn == btnDrawCircle) {
-                    updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.CIRCLE);
-                } else if (selectedBtn == btnDrawArrow) {
-                    updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.ARROW);
+                    uiStateManager.updateStatus("Tool: Text Selection");
+                } else {
+                    if (pageRenderer != null) pageRenderer.setSelectionModeActive(pagesContainer, false);
+
+
+                    // Ánh xạ công cụ
+                    if (selectedBtn == btnDrawRect) {
+                        updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.RECTANGLE);
+                    } else if (selectedBtn == btnDrawCircle) {
+                        updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.CIRCLE);
+                    } else if (selectedBtn == btnDrawArrow) {
+                        updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.ARROW);
+                    }
+                    updateDrawingStyleForAllPages();
                 }
             });
         }
+            if (btnSelectText != null) makeToggleButtonDeselectable(btnSelectText);
+            if (btnDrawRect != null) makeToggleButtonDeselectable(btnDrawRect);
+            if (btnDrawCircle != null) makeToggleButtonDeselectable(btnDrawCircle);
+            if (btnDrawArrow != null) makeToggleButtonDeselectable(btnDrawArrow);
 
         if (colorPicker != null) {
             colorPicker.setValue(javafx.scene.paint.Color.BLACK);
         }
-        // Listener của Slider và ColorPicker (Giữ nguyên)
+
+        if (colorPicker != null) {
+            colorPicker.setValue(javafx.scene.paint.Color.BLACK);
+
+            colorPicker.setOnAction(e -> updateDrawingStyleForAllPages());
+        }
+
         if (strokeWidthSlider != null) {
             strokeWidthSlider.valueProperty().addListener((obs, oldVal, newVal) -> updateDrawingStyleForAllPages());
         }
@@ -906,9 +930,11 @@ private void handleDeletePage() {
                             .map(child -> (AnnotationLayer) child)
                             .forEach(layer -> {
                                 layer.setAnnotationMode(mode);
-                                // Nếu vẽ hình thì chọn màu Đỏ, Highlight thì màu Vàng
-                                if (mode != AnnotationLayer.AnnotationMode.NONE && mode != AnnotationLayer.AnnotationMode.HIGHLIGHT) {
-                                    layer.setDrawingColor(javafx.scene.paint.Color.RED);
+                                if (colorPicker != null) {
+                                    layer.setDrawingColor(colorPicker.getValue());
+                                }
+                                if (strokeWidthSlider != null) {
+                                    layer.setLineWidth(strokeWidthSlider.getValue());
                                 }
                             });
                 }
@@ -985,4 +1011,60 @@ private void handleDeletePage() {
             }
         });
     }
+
+    private void makeToggleButtonDeselectable(ToggleButton btn) {
+        btn.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
+            if (btn.isSelected()) {
+                drawingToolsGroup.selectToggle(null);
+                event.consume();
+            }
+        });
+    }
+
+    @FXML
+    private void handleUndo() {
+        if (currentDocument == null) return;
+
+        java.util.List<org.pdflite.model.Annotation> anns = currentDocument.getAnnotations();
+
+        if (anns.isEmpty()) {
+            uiStateManager.updateStatus("Nothing to undo");
+            return;
+        }
+
+        int lastIndex = anns.size() - 1;
+        org.pdflite.model.Annotation lastAnn = anns.get(lastIndex);
+        int pageIndexOfLastAnn = lastAnn.getPageNumber();
+        anns.remove(lastIndex);
+
+        refreshPageAnnotations(pageIndexOfLastAnn);
+
+        uiStateManager.updateStatus("Undid last action");
+    }
+
+    private void refreshPageAnnotations(int pageIndex) {
+        if (pagesContainer == null) return;
+
+        if (pageIndex >= 0 && pageIndex < pagesContainer.getChildren().size()) {
+            javafx.scene.Node pageNode = pagesContainer.getChildren().get(pageIndex);
+            if (pageNode instanceof VBox pageBox && !pageBox.getChildren().isEmpty()) {
+                if (pageBox.getChildren().get(0) instanceof StackPane stack) {
+                    stack.getChildren().stream()
+                            .filter(node -> node instanceof AnnotationLayer)
+                            .map(node -> (AnnotationLayer) node)
+                            .findFirst()
+                            .ifPresent(layer -> {
+                                java.util.List<org.pdflite.model.Annotation> pageAnns = new java.util.ArrayList<>();
+                                for (org.pdflite.model.Annotation a : currentDocument.getAnnotations()) {
+                                    if (a.getPageNumber() == pageIndex) {
+                                        pageAnns.add(a);
+                                    }
+                                }
+                                layer.setAnnotations(pageAnns);
+                            });
+                }
+            }
+        }
+    }
 }
+
