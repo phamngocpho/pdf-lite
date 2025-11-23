@@ -539,7 +539,7 @@ public class AnnotationLayer extends Canvas {
         }
 
         if (activeCount > 1) {
-            logger.warn("⚠️ Multiple active highlights detected! Count: {}", activeCount);
+            logger.warn("Multiple active highlights detected! Count: {}", activeCount);
         }
 
         logger.trace("Drew {} normal + {} active highlights", normalCount, activeCount);
