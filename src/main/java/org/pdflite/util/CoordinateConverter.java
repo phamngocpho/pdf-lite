@@ -28,7 +28,7 @@ import static org.pdflite.util.Constants.LOW_RENDER_SCALE;
  * <pre>
  * Section III - Coordinate Conversion:
  * Y_pdf_java_points = (H_pdf - (Y_canvas / scale))
- * where scale = zoom * LOW_RENDER_SCALE (zoom * 150/72)
+ * where scales = zoom * LOW_RENDER_SCALE (zoom * 150/72)
  * </pre>
  *
  * @see <a href="../../../docs/knowledge.md">Knowledge Base - Section III</a>
@@ -78,7 +78,7 @@ public class CoordinateConverter {
     }
 
     /**
-     * Converts single canvas point to PDF Java/AWT point (Y=top).
+     * Converts a single canvas point to PDF Java/AWT point (Y=top).
      *
      * @param canvasX    X coordinate on canvas (pixels)
      * @param canvasY    Y coordinate on canvas (pixels)
@@ -137,7 +137,7 @@ public class CoordinateConverter {
 
         // Convert coordinates
         float canvasX = (float) (pdfX * finalScale);
-        // Y-axis inversion for TOP-LEFT corner of image
+        // Y-axis inversion for the TOP-LEFT corner of the image
         float canvasY = (float) ((pageHeight - pdfY - pdfHeight) * finalScale);
         float canvasWidth = (float) (pdfWidth * finalScale);
         float canvasHeight = (float) (pdfHeight * finalScale);

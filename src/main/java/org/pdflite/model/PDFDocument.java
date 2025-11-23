@@ -65,7 +65,7 @@ public class PDFDocument {
      *
      * @param document the Apache PDFBox document to wrap
      * @param file     the source file of the PDF document
-     * @throws NullPointerException if document or file is null
+     * @throws NullPointerException if a document or file is null
      */
     public PDFDocument(PDDocument document, File file) {
         this.document = document;

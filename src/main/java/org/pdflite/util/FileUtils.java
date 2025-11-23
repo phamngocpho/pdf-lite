@@ -39,7 +39,7 @@ public class FileUtils {
     }
 
     /**
-     * Gets a safe file name for logging (returns "null" if file is null).
+     * Gets a safe file name for logging (returns "null" if the file is null).
      *
      * @param file The file
      * @return The file name or "null"

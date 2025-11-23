@@ -49,7 +49,7 @@ public class PrintDialogController {
      */
     @FXML
     public void initialize() {
-        // Create toggle group for radio buttons
+        // Create a toggle group for radio buttons
         ToggleGroup pageRangeGroup = new ToggleGroup();
         rbAllPages.setToggleGroup(pageRangeGroup);
         rbCurrentPage.setToggleGroup(pageRangeGroup);
@@ -247,7 +247,7 @@ public class PrintDialogController {
     }
 
     /**
-     * Check if print was clicked.
+     * Check if the print was clicked.
      *
      * @return true if print was clicked
      */

@@ -5,6 +5,7 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.pdfbox.text.TextPosition;
 import org.pdflite.model.SearchResult;
+import org.pdflite.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +17,7 @@ import java.util.List;
 public class SearchService {
 
     private static final Logger logger = LoggerFactory.getLogger(SearchService.class);
-    private static final int CONTEXT_LENGTH = 50;
+    private static final int CONTEXT_LENGTH = Constants.SEARCH_CONTEXT_LENGTH;
 
     private volatile boolean cancelled = false;
 
@@ -58,7 +59,7 @@ public class SearchService {
      *
      * @param document      the PDF document
      * @param pageIndex     the zero-based page index
-     * @param page          the PDPage object (unused in current implementation)
+     * @param page          the PDPage object (unused in the current implementation)
      * @param keyword       the keyword to search for
      * @param caseSensitive whether the search should be case-sensitive
      * @param wholeWord     whether to match whole words only

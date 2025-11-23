@@ -85,7 +85,7 @@ public class Constants {
     public static final String PDF_EXTENSION = "*.pdf";
 
     /**
-     * Human-readable description for PDF file type.
+     * Human-readable description for PDF file types.
      * <p>
      * Displayed in file chooser dialogs.
      * </p>
@@ -95,7 +95,7 @@ public class Constants {
     // Search constants
     public static final int SEARCH_CONTEXT_LENGTH = 50;
     public static final String SEARCH_HIGHLIGHT_COLOR = "#FFFF00";
-    public static final double SEARCH_HIGHLIGHT_OPACITY = 0.5;
+    public static final double SEARCH_HIGHLIGHT_OPACITY = 0.4;
     public static final double LOW_RENDER_SCALE = 150.0 / 72.0; //LOW DPI RENDERING SCALE
     public static final double HIGH_RENDER_SCALE = 300.0 / 72.0; //HIGH DPI RENDERING SCALE
 

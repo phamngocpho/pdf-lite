@@ -23,7 +23,7 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 /**
- * Manages all search-related functionality including:
+ * Manages all search-related functionality including
  * - Search panel lifecycle (float/left/right)
  * - Search results highlighting
  * - Active result navigation
@@ -66,7 +66,7 @@ public class SearchManager {
     // ==================== PUBLIC API ====================
 
     /**
-     * Toggle search panel visibility with specified position
+     * Toggle search panel visibility with a specified position
      */
     public void togglePanel(SearchPanelPosition position) {
         this.searchPanelPosition = position;

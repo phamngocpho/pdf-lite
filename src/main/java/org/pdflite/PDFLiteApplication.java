@@ -86,7 +86,7 @@ public class PDFLiteApplication extends Application {
             logger.warn("Could not load application icon");
         }
 
-        // Get controller and set up window close handler
+        // Get controller and set up a window close handler
         MainController controller = fxmlLoader.getController();
         stage.setOnCloseRequest(event -> {
             controller.performExit();
@@ -96,7 +96,7 @@ public class PDFLiteApplication extends Application {
         stage.show();
         logger.info("Application started successfully");
 
-        // Open last file after UI is shown
+        // Open the last file after UI is shown
         Platform.runLater(controller::openLastFile);
     }
 

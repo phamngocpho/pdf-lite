@@ -52,7 +52,7 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
     public void rotateDocument(PDFDocument currentDocument, int angle) {
         if (currentDocument == null) return;
 
-        // Calculate new rotation angle
+        // Calculate a new rotation angle
         int currentRot = currentDocument.getRotation();
         currentDocument.setRotation(currentRot + angle);
 
@@ -74,7 +74,7 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
      * @param loadingPages    the set of pages currently loading
      * @param contentPane     the content pane
      * @param scrollPane      the scroll pane
-     * @param pagesContainer  the pages container (will be updated)
+     * @param pagesContainer  the page container (will be updated)
      * @param pageRenderer    the page renderer (will be recreated)
      * @param scrollHandler   the scroll handler (will be recreated)
      * @return the new PDFDocument after deletion, or null if deletion failed
@@ -159,12 +159,12 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
                     result[0].setCurrentPage(newCurrentPage);
                     result[0].setZoomLevel(oldZoom);
 
-                    // 10. Update renderer with new document
+                    // 10. Update renderer with a new document
                     newPageRenderer.setDocument(result[0], oldZoom);
                     zoomManager.setDocument(result[0]);
                     zoomManager.setCurrentZoom(oldZoom);
 
-                    // 11. Recreate RenderingManager (note: renderingManager reference will be updated by caller)
+                    // 11. Recreate RenderingManager (note: caller will update renderingManager reference)
                     RenderingManager newRenderingManager = new RenderingManager(
                             pdfService, newPageRenderer, newScrollHandler, zoomManager);
                     newRenderingManager.setDocument(result[0]);
@@ -177,13 +177,13 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
                     newRenderingManager.renderAllPages();
                     pagesContainer.set(newRenderingManager.getPagesContainer());
 
-                    // 13. Set document for ScrollHandler with valid pagesContainer
+                    // 13. Set the document for ScrollHandler with valid pagesContainer
                     newScrollHandler.setDocument(result[0], pagesContainer.get());
 
                     // 14. Update UI
                     pageInfoManager.updatePageInfo(result[0]);
 
-                    // 15. Scroll to top and trigger render
+                    // 15. Scroll to the top and trigger render
                     Platform.runLater(() -> {
                         // Reset scroll position
                         scrollPane.setVvalue(0);

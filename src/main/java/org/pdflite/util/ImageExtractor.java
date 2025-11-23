@@ -23,7 +23,7 @@ import java.util.List;
 
 /**
  * <p><b>Critical Fix:</b> Registers ALL graphics state operators
- * to ensure CTM is tracked correctly before 'Do' operator.</p>
+ * to ensure CTM is tracked correctly before the 'Do' operator.</p>
  *
  * @see <a href="../../../docs/knowledge_3.md">Knowledge Base - Matrix Tracking</a>
  */

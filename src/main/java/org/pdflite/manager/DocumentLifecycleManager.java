@@ -51,19 +51,19 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
      * @param currentDocument the current document (will be closed if not null)
      * @param pageRenderer    the page renderer
      * @param scrollPane      the scroll pane
-     * @param pagesContainer  reference to pages container (will be updated)
+     * @param pagesContainer  reference to page container (will be updated)
      * @return the opened PDFDocument, or null if opening failed
      */
     public PDFDocument openPDFFile(File file, PDFDocument currentDocument,
                                    PageRenderer pageRenderer, ScrollPane scrollPane,
                                    AtomicReference<VBox> pagesContainer) {
         try {
-            // Close current document if open
+            // Close the current document if open
             if (currentDocument != null) {
                 fileManager.close(currentDocument);
             }
 
-            // Open new document
+            // Open a new document
             PDFDocument newDocument = fileManager.openFile(file);
             if (newDocument == null) {
                 return null;
@@ -78,7 +78,7 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
             zoomManager.setCurrentZoom(initialZoom);
             newDocument.setZoomLevel(initialZoom);
 
-            // Update renderer and scroll handler with new document
+            // Update renderer and scroll handler with a new document
             pageRenderer.setDocument(newDocument, initialZoom);
             zoomManager.setDocument(newDocument);
             renderingManager.setDocument(newDocument);
@@ -89,7 +89,7 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
             pagesContainer.set(renderingManager.getPagesContainer());
             pageInfoManager.updatePageInfo(newDocument);
 
-            // Scroll to top (page 1) to ensure we're viewing the first page
+            // Scroll to the top (page 1) to ensure we're viewing the first page
             Platform.runLater(() -> {
                 if (scrollPane != null && pagesContainer.get() != null) {
                     scrollPane.setVvalue(0.0);
@@ -122,7 +122,7 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
             return;
         }
 
-        // Check if document is encrypted
+        // Check if the document is encrypted
         if (currentDocument.getDocument().isEncrypted()) {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle("Lưu file đã mã hóa");
@@ -164,7 +164,7 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
                         success[0] = false;
                     }
                 } else {
-                    // User wants to keep password - suggest Save As
+                    // User wants to keep the password - suggest Save As
                     Alert infoAlert = new Alert(Alert.AlertType.INFORMATION);
                     infoAlert.setTitle("Thông tin");
                     infoAlert.setHeaderText("Sử dụng Save As");

@@ -106,7 +106,7 @@ public class EncryptionDialog extends Dialog<EncryptionDialog.EncryptionResult> 
                 allowAnnotationsCheck
         );
 
-        // Add all sections to main vbox
+        // Add all sections to the main vbox
         vbox.getChildren().addAll(
                 ownerLabel, ownerDesc, ownerGrid,
                 new Separator(),

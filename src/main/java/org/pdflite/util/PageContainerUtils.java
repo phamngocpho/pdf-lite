@@ -24,14 +24,14 @@ import javafx.scene.layout.VBox;
 public class PageContainerUtils {
 
     /**
-     * Collects all VBox page boxes from a pages container.
+     * Collects all VBox page boxes from a page container.
      * <p>
      * This method handles both single-page and two-page layout modes.
      * In single-page mode, pages are direct children of the container.
      * In two-page mode, pages are nested within HBox rows.
      * </p>
      *
-     * @param pagesContainer the container holding the page boxes, may be null
+     * @param pagesContainer the container holding the page boxes may be null
      * @return a list of VBox page boxes, never null (empty list if container is null)
      */
     public static List<VBox> collectPageBoxes(VBox pagesContainer) {
@@ -73,7 +73,7 @@ public class PageContainerUtils {
      * In two-page mode, pages are nested within HBox rows (2 pages per row).
      * </p>
      *
-     * @param pagesContainer the container holding the page boxes, may be null
+     * @param pagesContainer the container holding the page boxes may be null
      * @param pageIndex      the zero-based index of the page to find
      * @return the VBox page box at the given index, or null if not found or container is null
      */

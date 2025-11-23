@@ -93,7 +93,7 @@ public class PageRenderer {
     }
 
     /**
-     * Clears all cached images and resets state.
+     * Clears all cached images and resets the state.
      * CRITICAL: This clears PageRenderer's cache completely.
      */
     public void clearCache() {
@@ -132,7 +132,7 @@ public class PageRenderer {
 
     /**
      * Checks if a page can be loaded (not currently loading).
-     * FIXED: Returns true if page is NOT being loaded.
+     * FIXED: Returns true if the page is NOT being loaded.
      */
     public boolean isPageLoading(int pageIndex) {
         return !loadingPages.contains(pageIndex);
@@ -170,7 +170,7 @@ public class PageRenderer {
             return;
         }
 
-        // Render in background thread
+        // Render in a background thread
         Future<?> future = renderExecutor.submit(() -> {
             try {
                 if (Thread.currentThread().isInterrupted()) {
@@ -226,15 +226,15 @@ public class PageRenderer {
 
     /**
      * Generates a CONSISTENT cache key for a page image.
-     * CRITICAL: Must match format used everywhere.
+     * CRITICAL: Must-match format used everywhere.
      */
     private String getCacheKey(int pageIndex, double zoom) {
-        // Use simple format that's easy to debug
+        // Use a simple format that's easy to debug
         return pageIndex + "_" + String.format("%.2f", zoom);
     }
 
     /**
-     * Displays an image in the page box with annotation layer.
+     * Displays an image in the page box with an annotation layer.
      */
     private void displayImage(Image image, VBox pageBox, int pageIndex) {
         ImageView imageView = new ImageView(image);
@@ -245,7 +245,7 @@ public class PageRenderer {
         imageView.setPickOnBounds(false);
         imageView.setMouseTransparent(false);
 
-        // Create annotation layer
+        // Create an annotation layer
         AnnotationLayer annotationLayer = new AnnotationLayer(image.getWidth(), image.getHeight());
         annotationLayer.setPickOnBounds(false);
 
@@ -266,7 +266,7 @@ public class PageRenderer {
 
         annotationLayer.setOnContextMenuRequested(null);
         annotationLayer.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
-            // Do nothing - let context menu handle it
+            // Do nothing - let the context menu handle it
         });
 
         // Create context menu pane
@@ -288,7 +288,7 @@ public class PageRenderer {
         imageStack.setMinSize(image.getWidth(), image.getHeight());
         imageStack.setMaxSize(image.getWidth(), image.getHeight());
 
-        // Replace placeholder with rendered image
+        // Replace placeholder with a rendered image
         if (!pageBox.getChildren().isEmpty()) {
             pageBox.getChildren().set(0, imageStack);
         } else {
@@ -300,7 +300,7 @@ public class PageRenderer {
 
     /**
      * Creates a placeholder VBox for a PDF page before it's loaded.
-     * The placeholder has the exact same dimensions as the rendered page,
+     * The placeholder has the exact same dimensions as the rendered page
      * but displays only a gray background to prevent layout shifts during loading.
      */
     public VBox createPagePlaceholder(int pageIndex, double width, double height) {
