@@ -805,7 +805,7 @@ public class MainController {
         }
     }
 
-    // ==================== INSERT PAGE (ĐÃ FIX HIỂN THỊ) ====================
+    // ==================== INSERT PAGE ====================
     @FXML
     private void handleInsertPage() {
         if (currentDocument == null) {
@@ -831,18 +831,15 @@ public class MainController {
             if (controller.isInsertClicked()) {
                 float w = controller.getWidth();
                 float h = controller.getHeight();
-                int count = controller.getCount(); // Khớp tên hàm getCount()
+                int count = controller.getCount();
                 int index = controller.getInsertIndex(currentDocument.getCurrentPage(), currentDocument.getTotalPages()); // Khớp tên getInsertIndex()
 
-                // 1. Chèn trang (Backend)
                 pdfService.insertBlankPage(currentDocument, index, w, h, count);
 
-                // 2. Cập nhật trang hiện tại
                 if (index <= currentDocument.getCurrentPage()) {
                     currentDocument.setCurrentPage(currentDocument.getCurrentPage() + count);
                 }
 
-                // 3. [QUAN TRỌNG] Fix lỗi màn hình xám bằng cách ép vẽ lại
                 if (pagesContainer != null) pagesContainer.getChildren().clear();
                 loadingPages.clear();
                 pageRenderer.clearCache();
@@ -852,7 +849,6 @@ public class MainController {
                 scrollHandler.setDocument(currentDocument, pagesContainer);
                 pageInfoManager.updatePageInfo(currentDocument);
 
-                // Kỹ thuật "Mạnh tay": Ép JavaFX tính toán Layout rồi mới load ảnh
                 Platform.runLater(() -> {
                     scrollPane.applyCss();
                     scrollPane.layout();

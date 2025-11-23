@@ -605,7 +605,16 @@ public class PDFService {
                 .filter(i -> i >= 0 && i < total)
                 .distinct()
                 .sorted(Comparator.reverseOrder())
-                .forEach(doc::removePage);
+                .forEach(pageIndex -> {
+                    doc.removePage(pageIndex);
+                    pdfDoc.getAnnotations().removeIf(a -> a.getPageNumber() == pageIndex);
+
+                    for (Annotation a : pdfDoc.getAnnotations()) {
+                        if (a.getPageNumber() > pageIndex) {
+                            a.setPageNumber(a.getPageNumber() - 1);
+                        }
+                    }
+                });
 
         // Clear render cache since page indices/images changed
         pdfDoc.clearCache();
