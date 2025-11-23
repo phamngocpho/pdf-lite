@@ -7,6 +7,10 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.stage.Modality;
 import org.pdflite.manager.AnnotationManager;
 import org.pdflite.manager.DialogManager;
 import org.pdflite.manager.DocumentLifecycleManager;
@@ -798,6 +802,74 @@ public class MainController {
     private void handleUndo() {
         if (annotationManager != null) {
             annotationManager.handleUndo();
+        }
+    }
+
+    // ==================== INSERT PAGE (ĐÃ FIX HIỂN THỊ) ====================
+    @FXML
+    private void handleInsertPage() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            return;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/pdflite/insert-dialog.fxml"));
+            Parent root = loader.load();
+            InsertDialogController controller = loader.getController();
+
+            Stage stage = new Stage();
+            stage.setTitle("Insert Blank Page");
+            stage.initModality(Modality.WINDOW_MODAL);
+            stage.initOwner(rootPane.getScene().getWindow());
+            stage.setScene(new Scene(root));
+
+            if (themeManager != null) themeManager.applyThemeToScene(stage.getScene());
+
+            stage.showAndWait();
+
+            if (controller.isInsertClicked()) {
+                float w = controller.getWidth();
+                float h = controller.getHeight();
+                int count = controller.getCount(); // Khớp tên hàm getCount()
+                int index = controller.getInsertIndex(currentDocument.getCurrentPage(), currentDocument.getTotalPages()); // Khớp tên getInsertIndex()
+
+                // 1. Chèn trang (Backend)
+                pdfService.insertBlankPage(currentDocument, index, w, h, count);
+
+                // 2. Cập nhật trang hiện tại
+                if (index <= currentDocument.getCurrentPage()) {
+                    currentDocument.setCurrentPage(currentDocument.getCurrentPage() + count);
+                }
+
+                // 3. [QUAN TRỌNG] Fix lỗi màn hình xám bằng cách ép vẽ lại
+                if (pagesContainer != null) pagesContainer.getChildren().clear();
+                loadingPages.clear();
+                pageRenderer.clearCache();
+                pageRenderer.cancelAllPendingRenders();
+
+                renderingManager.renderAllPages();
+                scrollHandler.setDocument(currentDocument, pagesContainer);
+                pageInfoManager.updatePageInfo(currentDocument);
+
+                // Kỹ thuật "Mạnh tay": Ép JavaFX tính toán Layout rồi mới load ảnh
+                Platform.runLater(() -> {
+                    scrollPane.applyCss();
+                    scrollPane.layout();
+                    Platform.runLater(() -> {
+                        double currentV = scrollPane.getVvalue();
+                        scrollPane.setVvalue(currentV + 0.00001);
+                        scrollPane.setVvalue(currentV);
+                        scrollHandler.handleScroll();
+                    });
+                });
+
+                uiStateManager.updateStatus("Inserted " + count + " blank page(s).");
+            }
+
+        } catch (Exception e) {
+            logger.error("Error inserting page", e);
+            uiStateManager.showError("Insert Error", e.getMessage());
         }
     }
 }
