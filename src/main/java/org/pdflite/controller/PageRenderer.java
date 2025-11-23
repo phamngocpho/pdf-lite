@@ -76,14 +76,40 @@ public class PageRenderer {
         }
         this.currentDocument = document;
         this.currentZoom = zoom;
+        adjustCacheSizeForZoom(zoom);
         logger.info("PageRenderer: Document set with zoom {}", zoom);
     }
 
     /**
      * Sets the zoom level.
+     * Adjusts cache size based on zoom to prevent memory issues at high zoom.
      */
     public void setZoom(double zoom) {
         this.currentZoom = zoom;
+        adjustCacheSizeForZoom(zoom);
+    }
+
+    /**
+     * Adjusts cache size based on the zoom level.
+     * At high zoom levels, reduce cache size to prevent memory issues.
+     */
+    private void adjustCacheSizeForZoom(double zoom) {
+        int maxCacheSize;
+        if (zoom >= 1.5) {
+            maxCacheSize = 20; // Very high zoom: small cache
+        } else if (zoom >= 1.2) {
+            maxCacheSize = 30; // High zoom: medium cache
+        } else {
+            maxCacheSize = 50; // Normal zoom: full cache
+        }
+
+        // Trim cache if it exceeds the new limit
+        // Removing from cache allows JavaFX to garbage collect the Image
+        while (imageCache.size() > maxCacheSize) {
+            String oldestKey = imageCache.keySet().iterator().next();
+            imageCache.remove(oldestKey);
+            logger.debug("Removed image from cache to maintain size limit: {}", oldestKey);
+        }
     }
 
     /**
@@ -322,6 +348,47 @@ public class PageRenderer {
 
         pageBox.getChildren().add(placeholder);
         return pageBox;
+    }
+
+    /**
+     * Unloads a page by replacing it with a placeholder.
+     * This helps free memory when pages are far from the viewport at high zoom levels.
+     *
+     * @param pageIndex the index of the page to unload
+     * @param pageBox   the page box containing the rendered page
+     */
+    public void unloadPage(int pageIndex, VBox pageBox) {
+        if (pageBox == null || pageBox.getChildren().isEmpty()) {
+            return;
+        }
+
+        // Only unload if it's actually rendered (has ImageView)
+        Object firstChild = pageBox.getChildren().getFirst();
+        if (!(firstChild instanceof StackPane stackPane)) {
+            return;
+        }
+
+        boolean hasImageView = stackPane.getChildren().stream()
+                .anyMatch(child -> child instanceof ImageView);
+        if (!hasImageView) {
+            return; // Already a placeholder
+        }
+
+        // Get page dimensions before unloading
+        double width = pageBox.getPrefWidth();
+        double height = pageBox.getPrefHeight();
+
+        // Replace with placeholder
+        StackPane placeholder = new StackPane();
+        placeholder.setPrefSize(width, height);
+        placeholder.setMinSize(width, height);
+        placeholder.setMaxSize(width, height);
+        placeholder.setStyle("-fx-background-color: #606060; -fx-padding: 0;");
+
+        Platform.runLater(() -> {
+            pageBox.getChildren().set(0, placeholder);
+            logger.debug("Unloaded page {} to free memory", pageIndex + 1);
+        });
     }
 
     public void setSelectionModeActive(VBox pagesContainer, boolean active) {

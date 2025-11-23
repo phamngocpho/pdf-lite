@@ -97,14 +97,29 @@ public class AnnotationLayer extends Canvas {
      * The dimensions should match the rendered PDF page image dimensions
      * to ensure proper alignment of annotations.
      * </p>
+     * <p>
+     * Canvas dimensions are clamped to MAX_CANVAS_SIZE to prevent GPU texture overflow
+     * which causes NullPointerException when creating GraphicsContext.
+     * </p>
      *
      * @param width  the width of the layer in pixels
      * @param height the height of the layer in pixels
      */
     public AnnotationLayer(double width, double height) {
-        super(width, height);
+        // Clamp dimensions to prevent GPU texture overflow
+        // Must call super() first for Java 21 compatibility
+        super(Math.min(width, Constants.MAX_CANVAS_SIZE), Math.min(height, Constants.MAX_CANVAS_SIZE));
+        
+        // Check if clamping occurred and log warning
+        double clampedWidth = Math.min(width, Constants.MAX_CANVAS_SIZE);
+        double clampedHeight = Math.min(height, Constants.MAX_CANVAS_SIZE);
+        if (width != clampedWidth || height != clampedHeight) {
+            logger.warn("AnnotationLayer dimensions {}x{} clamped to {}x{} to prevent GPU texture overflow",
+                    width, height, clampedWidth, clampedHeight);
+        }
+        
         setupMouseHandlers();
-        logger.debug("AnnotationLayer created: {}x{}", width, height);
+        logger.debug("AnnotationLayer created: {}x{}", clampedWidth, clampedHeight);
     }
 
     public void setPageIndex(int index) {
@@ -179,13 +194,21 @@ public class AnnotationLayer extends Canvas {
 
             if (currentMode == AnnotationMode.HIGHLIGHT) {
                 redraw();
-                GraphicsContext gc = getGraphicsContext2D();
-                gc.setFill(getColorWithAlpha(currentColor, 0.4));
-                double x = Math.min(startX, event.getX());
-                double y = Math.min(startY, event.getY());
-                double w = Math.abs(event.getX() - startX);
-                double h = Math.abs(event.getY() - startY);
-                gc.fillRect(x, y, w, h);
+                try {
+                    GraphicsContext gc = getGraphicsContext2D();
+                    if (gc == null) {
+                        logger.warn("Cannot draw highlight - GraphicsContext is null (canvas too large)");
+                        return;
+                    }
+                    gc.setFill(getColorWithAlpha(currentColor, 0.4));
+                    double x = Math.min(startX, event.getX());
+                    double y = Math.min(startY, event.getY());
+                    double w = Math.abs(event.getX() - startX);
+                    double h = Math.abs(event.getY() - startY);
+                    gc.fillRect(x, y, w, h);
+                } catch (NullPointerException e) {
+                    logger.warn("Cannot draw highlight - canvas too large", e);
+                }
             } else {
                 switch (currentMode) {
                     case RECTANGLE:
@@ -235,8 +258,8 @@ public class AnnotationLayer extends Canvas {
      * Adds a highlight annotation to the layer.
      * <p>
      * This method creates a {@link HighlightAnnotation} from the given coordinates
-     * and adds it to the annotations list. The coordinates are normalized so that
-     * (x, y) represents the top-left corner. Highlights with dimensions smaller
+     * and adds it to the annotation list. The coordinates are normalized so that
+     * (x, y) represent the top-left corner. Highlights with dimensions smaller
      * than 5x5 pixels are ignored to prevent accidental tiny highlights.
      * </p>
      *
@@ -265,25 +288,43 @@ public class AnnotationLayer extends Canvas {
      * It should be called whenever the annotation list changes or when the
      * layer needs to be refreshed.
      * </p>
+     * <p>
+     * Handles GPU texture overflow gracefully by catching NullPointerException
+     * when GraphicsContext cannot be created (canvas too large).
+     * </p>
      */
     public void redraw() {
-        GraphicsContext gc = getGraphicsContext2D();
-        gc.clearRect(0, 0, getWidth(), getHeight());
-        drawSearchHighlights(gc);
-        for (Annotation annotation : annotations) {
-            if (annotation instanceof HighlightAnnotation highlight) {
-                gc.setFill(getColorWithAlpha(highlight.getColor(), 0.4));
-                gc.fillRect(highlight.getX(), highlight.getY(),
-                        highlight.getWidth(), highlight.getHeight());
-            } else if (annotation instanceof ShapeAnnotation shape) {
-                shape.draw(gc, scale);
+        try {
+            GraphicsContext gc = getGraphicsContext2D();
+            if (gc == null) {
+                logger.error("Failed to get GraphicsContext2D - canvas may be too large ({}x{})",
+                        getWidth(), getHeight());
+                return;
             }
-        }
+            
+            gc.clearRect(0, 0, getWidth(), getHeight());
+            drawSearchHighlights(gc);
+            for (Annotation annotation : annotations) {
+                if (annotation instanceof HighlightAnnotation highlight) {
+                    gc.setFill(getColorWithAlpha(highlight.getColor(), 0.4));
+                    gc.fillRect(highlight.getX(), highlight.getY(),
+                            highlight.getWidth(), highlight.getHeight());
+                } else if (annotation instanceof ShapeAnnotation shape) {
+                    shape.draw(gc, scale);
+                }
+            }
 
-        if (tempAnnotation instanceof ShapeAnnotation shapeTemp) {
-            gc.setLineDashes(5); // Nét đứt
-            shapeTemp.draw(gc, scale);
-            gc.setLineDashes(0); // Reset về nét liền
+            if (tempAnnotation instanceof ShapeAnnotation shapeTemp) {
+                gc.setLineDashes(5); // Nét đứt
+                shapeTemp.draw(gc, scale);
+                gc.setLineDashes(0); // Reset về nét liền
+            }
+        } catch (NullPointerException e) {
+            logger.error("NullPointerException in redraw() - canvas too large ({}x{}). " +
+                    "This usually happens when canvas exceeds GPU texture limit.",
+                    getWidth(), getHeight(), e);
+        } catch (Exception e) {
+            logger.error("Error redrawing annotations", e);
         }
     }
 
@@ -437,61 +478,65 @@ public class AnnotationLayer extends Canvas {
     }
 
     private void drawSearchHighlights(GraphicsContext gc) {
-        if (searchHighlights.isEmpty()) {
+        if (searchHighlights.isEmpty() || gc == null) {
             return;
         }
-
-        gc.save();
-
-        double canvasWidth = getWidth();
-        double canvasHeight = getHeight();
-
-        logger.trace("Drawing {} highlights on canvas {}x{} with scale={}",
-                searchHighlights.size(), canvasWidth, canvasHeight, scale);
 
         int normalCount = 0;
         int activeCount = 0;
 
-        for (SearchResult result : searchHighlights) {
-            if (result.width() <= 0 || result.height() <= 0) {
-                logger.warn("Invalid coordinates for search result: {}", result);
-                continue;
+        try {
+            gc.save();
+
+            double canvasWidth = getWidth();
+            double canvasHeight = getHeight();
+
+            logger.trace("Drawing {} highlights on canvas {}x{} with scale={}",
+                    searchHighlights.size(), canvasWidth, canvasHeight, scale);
+
+            for (SearchResult result : searchHighlights) {
+                if (result.width() <= 0 || result.height() <= 0) {
+                    logger.warn("Invalid coordinates for search result: {}", result);
+                    continue;
+                }
+
+                boolean isActive = (result.equals(activeSearchResult));
+
+                Color highlightColor = isActive ? ACTIVE_SEARCH_HIGHLIGHT_COLOR : SEARCH_HIGHLIGHT_COLOR;
+                double opacity = isActive ? ACTIVE_SEARCH_HIGHLIGHT_OPACITY : SEARCH_HIGHLIGHT_OPACITY;
+
+                gc.setFill(Color.color(
+                        highlightColor.getRed(),
+                        highlightColor.getGreen(),
+                        highlightColor.getBlue(),
+                        opacity
+                ));
+
+                double finalScale = this.scale * LOW_RENDER_SCALE;
+                double x = result.x() * finalScale;
+                double y = result.y() * finalScale;
+                double width = result.width() * finalScale;
+                double height = result.height() * finalScale;
+
+                gc.fillRect(x, y, width, height);
+
+                if (isActive) {
+                    gc.setStroke(Color.DARKORANGE);
+                    gc.setLineWidth(2);
+                    gc.strokeRect(x, y, width, height);
+                    activeCount++;
+
+                    logger.trace("Drew ACTIVE highlight at ({}, {}) size {}x{} - page={}, start={}",
+                            x, y, width, height, result.pageNumber(), result.startIndex());
+                } else {
+                    normalCount++;
+                }
             }
 
-            boolean isActive = (result.equals(activeSearchResult));
-
-            Color highlightColor = isActive ? ACTIVE_SEARCH_HIGHLIGHT_COLOR : SEARCH_HIGHLIGHT_COLOR;
-            double opacity = isActive ? ACTIVE_SEARCH_HIGHLIGHT_OPACITY : SEARCH_HIGHLIGHT_OPACITY;
-
-            gc.setFill(Color.color(
-                    highlightColor.getRed(),
-                    highlightColor.getGreen(),
-                    highlightColor.getBlue(),
-                    opacity
-            ));
-
-            double finalScale = this.scale * LOW_RENDER_SCALE;
-            double x = result.x() * finalScale;
-            double y = result.y() * finalScale;
-            double width = result.width() * finalScale;
-            double height = result.height() * finalScale;
-
-            gc.fillRect(x, y, width, height);
-
-            if (isActive) {
-                gc.setStroke(Color.DARKORANGE);
-                gc.setLineWidth(2);
-                gc.strokeRect(x, y, width, height);
-                activeCount++;
-
-                logger.trace("Drew ACTIVE highlight at ({}, {}) size {}x{} - page={}, start={}",
-                        x, y, width, height, result.pageNumber(), result.startIndex());
-            } else {
-                normalCount++;
-            }
+            gc.restore();
+        } catch (Exception e) {
+            logger.error("Error drawing search highlights", e);
         }
-
-        gc.restore();
 
         if (activeCount > 1) {
             logger.warn("⚠️ Multiple active highlights detected! Count: {}", activeCount);
