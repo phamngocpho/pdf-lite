@@ -166,7 +166,7 @@ public class SearchHandler {
     /**
      * Executes a search operation with full flow management.
      * <p>
-     * This method handles the complete search flow including validation,
+     * This method handles the complete search flow, including validation,
      * UI state updates, and search execution. It should be called from
      * the UI component's search handler method.
      * </p>
@@ -192,7 +192,7 @@ public class SearchHandler {
         callbacks.onSearchStart();
         callbacks.updateStatus("Searching...");
 
-        // Submit search task
+        // Submit the search task
         searchExecutor.submit(() -> performSearch(pdfDocument, callbacks));
     }
 
@@ -224,7 +224,7 @@ public class SearchHandler {
                     callbacks.getSearchResults().addAll(results);
                     callbacks.updateStatus(String.format("Found %d result(s)", results.size()));
 
-                    // Apply highlights to main viewer
+                    // Apply highlights to the main viewer
                     MainController mainController = callbacks.getMainController();
                     if (mainController != null && !results.isEmpty()) {
                         mainController.highlightSearchResults(results);

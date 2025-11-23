@@ -28,7 +28,7 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
     /**
      * Creates a new EncryptionManager.
      *
-     * @param rootPane       the root pane for dialog owner
+     * @param rootPane       the root pane for the dialog owner
      * @param pdfService     the PDF service for encryption operations
      * @param themeManager   the theme manager for applying themes to dialogs
      * @param uiStateManager the UI state manager for status updates and errors

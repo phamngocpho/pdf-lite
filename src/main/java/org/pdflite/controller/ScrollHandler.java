@@ -73,7 +73,7 @@ public class ScrollHandler {
     /**
      * Sets the page change listener.
      *
-     * @param listener the listener to notify when page changes
+     * @param listener the listener to notify when the page changes
      */
     public void setPageChangeListener(PageChangeListener listener) {
         this.pageChangeListener = listener;
@@ -93,7 +93,7 @@ public class ScrollHandler {
             scrollTimer.cancel();
         }
 
-        // Start new timer to load pages after scroll stops
+        // Start a new timer to load pages after scroll stops
         scrollTimer = new Timer();
         scrollTimer.schedule(new TimerTask() {
             @Override
@@ -147,7 +147,7 @@ public class ScrollHandler {
                 double visibleStart = scrollValue * (contentHeight - bufferSize);
                 double visibleEnd = visibleStart + bufferSize;
 
-                // Add buffer zone (1 viewport above and below for smooth scrolling)
+                // Add a buffer zone (1 viewport above and below for smooth scrolling)
                 double loadStart = Math.max(0, visibleStart - bufferSize);
                 double loadEnd = Math.min(contentHeight, visibleEnd + bufferSize);
 
@@ -157,10 +157,10 @@ public class ScrollHandler {
                 Set<Integer> pagesInRange = new HashSet<>();
 
                 for (int i = 0; i < totalPages; i++) {
-                    // Safety check: ensure page box exists
+                    // Safety check: ensure the page box exists
                     ScrollCalculator.PageBounds bounds = ScrollCalculator.calculatePageBounds(pagesContainer, i);
 
-                    // Check if page is in load range
+                    // Check if the page is in load range
                     if (bounds.overlaps(loadStart, loadEnd)) {
                         pagesInRange.add(i);
 
@@ -268,7 +268,7 @@ public class ScrollHandler {
             double contentHeight = getContentHeight(totalPages);
 
             if (contentHeight <= viewportHeight) {
-                // All content visible, set to first page
+                // All content visible, set to the first page
                 if (currentDocument.getCurrentPage() != 0) {
                     currentDocument.setCurrentPage(0);
                     // Notify listener about page change

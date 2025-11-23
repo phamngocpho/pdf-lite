@@ -30,7 +30,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
     /**
      * Creates a new DialogManager.
      *
-     * @param rootPane       the root pane for dialog owner
+     * @param rootPane       the root pane for the dialog owner
      * @param themeManager   the theme manager for applying themes to dialogs
      * @param uiStateManager the UI state manager for error messages
      */
@@ -207,7 +207,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
 
             dialogStage.showAndWait();
 
-            // Check if user clicked print
+            // Check if the user clicked print
             if (controller.isPrintClicked()) {
                 uiStateManager.updateStatus("Print job sent successfully");
                 logger.info("Print job completed");

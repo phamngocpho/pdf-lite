@@ -176,7 +176,7 @@ public class MainController {
             }
         });
 
-        // Initialize recent files manager (needed by RecentFilesMenuManager)
+        // Initialize a recent files manager (needed by RecentFilesMenuManager)
         recentFilesManager = new RecentFilesManager();
 
         // Initialize managers
@@ -306,7 +306,7 @@ public class MainController {
         documentOperationManager = new DocumentOperationManager(pdfService, renderingManager, zoomManager,
                 pageInfoManager, uiStateManager, themeManager, fileManager);
 
-        // Annotation Manager (will be initialized when document is opened)
+        // Annotation Manager (will be initialized when the document is opened)
         annotationManager = null;
     }
 
@@ -318,7 +318,7 @@ public class MainController {
             @Override
             public void onZoomChanged(double newZoom) {
                 if (currentDocument != null && pagesContainer != null && scrollPane != null) {
-                    // Switch layout mode based on threshold (70% => 0.7)
+                    // Switch layout mode based on the threshold (70% => 0.7)
                     try {
                         if (renderingManager != null) {
                             boolean shouldTwoPage = newZoom < 0.7;
@@ -412,7 +412,7 @@ public class MainController {
                 scrollPane, pagesContainerRef);
         pagesContainer = pagesContainerRef.get();
 
-        // Initialize annotation manager when document is opened
+        // Initialize the annotation manager when the document is opened
         if (currentDocument != null && pagesContainer != null) {
             annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
         }
@@ -428,7 +428,7 @@ public class MainController {
         if (currentDocument == null)
             return;
 
-        // Warn user if document is encrypted
+        // Warn the user if the document is encrypted
         if (currentDocument.getDocument().isEncrypted()) {
             Alert alert = new Alert(Alert.AlertType.WARNING);
             alert.setTitle("Cảnh báo");
@@ -478,7 +478,7 @@ public class MainController {
             fileManager.close(currentDocument);
         }
 
-        // Shutdown executor service to prevent app from running in background
+        // Shutdown executor service to prevent the app from running in the background
         if (!renderExecutor.isShutdown()) {
             renderExecutor.shutdownNow();
         }
@@ -514,12 +514,12 @@ public class MainController {
             scrollHandler = scrollHandlerRef.get();
             renderingManager = renderingManagerRef.get();
 
-            // Recreate annotation manager with new document
+            // Recreate annotation manager with a new document
             if (pagesContainer != null) {
                 annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
             }
         } else {
-            // Recovery: try to reopen original file
+            // Recovery: try to reopen an original file
             try {
                 if (currentDocument != null && currentDocument.getFile() != null) {
                     openPDFFile(currentDocument.getFile());

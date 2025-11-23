@@ -56,7 +56,7 @@ public class PasswordDialog extends Dialog<String> {
     /**
      * Shows the dialog and waits for user input.
      *
-     * @return the password entered by user, or null if cancelled
+     * @return the password entered by user, or null if canceled
      */
     public String showAndGetPassword() {
         return showAndWait().orElse(null);

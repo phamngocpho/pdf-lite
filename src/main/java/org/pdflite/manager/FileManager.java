@@ -107,7 +107,7 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
         } catch (IOException e) {
             // Check if the file is encrypted
             if (pdfService.isPDFEncrypted(file)) {
-                // Show password dialog
+                // Show the password dialog
                 PasswordDialog passwordDialog = new PasswordDialog();
                 String password = passwordDialog.showAndGetPassword();
 
@@ -116,7 +116,7 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
                     return null;
                 }
 
-                // Try to open with password
+                // Try to open with a password
                 try {
                     document = pdfService.openPDF(file, password);
                 } catch (IOException passwordError) {
@@ -160,7 +160,7 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
     }
 
     /**
-     * Shows save as dialog and saves the document.
+     * Shows save as a dialog and saves the document.
      *
      * @param document the document to save
      * @param stage    the parent stage

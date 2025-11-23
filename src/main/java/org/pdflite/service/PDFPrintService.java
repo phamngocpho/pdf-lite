@@ -34,7 +34,7 @@ public record PDFPrintService(PDFService pdfService) {
      * Print the entire PDF document.
      *
      * @param document the PDF document to print
-     * @return true if printing was successful or initiated, false if cancelled
+     * @return true if printing was successful or initiated, false if canceled
      */
     public boolean printDocument(PDFDocument document) {
         if (document == null) {
@@ -50,7 +50,7 @@ public record PDFPrintService(PDFService pdfService) {
      *
      * @param document   the PDF document
      * @param pageNumber the page number to print (0-based)
-     * @return true if printing was successful or initiated, false if cancelled
+     * @return true if printing was successful or initiated, false if canceled
      */
     public boolean printPage(PDFDocument document, int pageNumber) {
         if (document == null) {
@@ -72,7 +72,7 @@ public record PDFPrintService(PDFService pdfService) {
      * @param document  the PDF document
      * @param startPage the starting page (0-based, inclusive)
      * @param endPage   the ending page (0-based, inclusive)
-     * @return true if printing was successful or initiated, false if cancelled
+     * @return true if printing was successful or initiated, false if canceled
      */
     public boolean printPages(PDFDocument document, int startPage, int endPage) {
         if (document == null) {
@@ -88,7 +88,7 @@ public record PDFPrintService(PDFService pdfService) {
 
         logger.info("Starting print job for pages {} to {}", startPage + 1, endPage + 1);
 
-        // Create printer job
+        // Create a printer job
         PrinterJob printerJob = PrinterJob.createPrinterJob();
         if (printerJob == null) {
             logger.error("Failed to create printer job");
@@ -96,7 +96,7 @@ public record PDFPrintService(PDFService pdfService) {
         }
 
         try {
-            // Show print dialog
+            // Show a print dialog
             boolean proceed = printerJob.showPrintDialog(null);
             if (!proceed) {
                 logger.info("Print job cancelled by user");
@@ -144,7 +144,7 @@ public record PDFPrintService(PDFService pdfService) {
      * @param document   the PDF document
      * @param pageNum    the page number (0-based)
      * @param pageLayout the page layout settings
-     * @return true if page was printed successfully
+     * @return true if the page was printed successfully
      */
     private boolean printSinglePage(PrinterJob printerJob, PDFDocument document,
                                     int pageNum, PageLayout pageLayout) {
@@ -160,7 +160,7 @@ public record PDFPrintService(PDFService pdfService) {
                 return false;
             }
 
-            // Create ImageView for printing
+            // Create an ImageView for printing
             ImageView imageView = getImageView(pageLayout, pageImage);
 
             // Print the page
@@ -184,7 +184,7 @@ public record PDFPrintService(PDFService pdfService) {
         ImageView imageView = new ImageView(pageImage);
         imageView.setPreserveRatio(true);
 
-        // Calculate scale to fit page layout
+        // Calculate scale to fit the page layout
         double printableWidth = pageLayout.getPrintableWidth();
         double printableHeight = pageLayout.getPrintableHeight();
 
@@ -199,7 +199,7 @@ public record PDFPrintService(PDFService pdfService) {
     }
 
     /**
-     * Get list of available printers.
+     * Get a list of available printers.
      *
      * @return list of available printers
      */

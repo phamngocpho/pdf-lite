@@ -107,7 +107,7 @@ public class PDFMergeService {
             return false;
         }
 
-        // Try to open with PDFBox to verify it's a valid PDF
+        // Try to open with a PDFBox to verify it's a valid PDF
         try (org.apache.pdfbox.pdmodel.PDDocument doc =
                      loadPDF(file)) {
             return doc.getNumberOfPages() > 0;

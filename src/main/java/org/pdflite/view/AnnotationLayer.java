@@ -6,6 +6,7 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.paint.Color;
 import org.pdflite.model.Annotation;
 import org.pdflite.model.HighlightAnnotation;
+import org.pdflite.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.pdflite.model.ShapeAnnotation;
@@ -85,7 +86,7 @@ public class AnnotationLayer extends Canvas {
     private SearchResult activeSearchResult = null;
     private static final Color SEARCH_HIGHLIGHT_COLOR = Color.YELLOW;
     private static final Color ACTIVE_SEARCH_HIGHLIGHT_COLOR = Color.ORANGE;
-    private static final double SEARCH_HIGHLIGHT_OPACITY = 0.4;
+    private static final double SEARCH_HIGHLIGHT_OPACITY = Constants.SEARCH_HIGHLIGHT_OPACITY;
     private static final double ACTIVE_SEARCH_HIGHLIGHT_OPACITY = 0.6;
     private double scale = 1.0;
     private int pageNumber;

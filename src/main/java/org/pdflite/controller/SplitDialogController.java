@@ -91,7 +91,7 @@ public class SplitDialogController {
     public void initialize() {
         logger.info("Initializing SplitDialogController");
 
-        // Setup toggle group for split modes
+        // Set up the toggle group for split modes
         ToggleGroup splitModeGroup = new ToggleGroup();
         splitByRangeRadio.setToggleGroup(splitModeGroup);
         splitByPagesRadio.setToggleGroup(splitModeGroup);
@@ -111,7 +111,7 @@ public class SplitDialogController {
         rangesListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) ->
                 updateButtonStates());
 
-        // Hide progress bar initially
+        // Hide the progress bar initially
         progressBar.setVisible(false);
         progressBar.setManaged(false);
 
@@ -167,7 +167,7 @@ public class SplitDialogController {
         fileNameLabel.setText(file != null ? file.getName() : "Document");
         totalPagesLabel.setText(String.format("Total Pages: %d", totalPages));
 
-        // Load thumbnails from document
+        // Load thumbnails from documents
         loadThumbnailsFromDocument();
 
         updateStatus("Ready to split");
@@ -191,7 +191,7 @@ public class SplitDialogController {
     }
 
     /**
-     * Updates input visibility based on selected split mode.
+     * Updates input visibility based on the selected split mode.
      */
     private void updateInputVisibility() {
         rangeInputBox.setVisible(splitByRangeRadio.isSelected());
@@ -261,7 +261,7 @@ public class SplitDialogController {
             return;
         }
 
-        // Choose output directory
+        // Choose an output directory
         DirectoryChooser dirChooser = new DirectoryChooser();
         dirChooser.setTitle("Select Output Directory");
         File outputDir = dirChooser.showDialog(dialogStage);
@@ -270,7 +270,7 @@ public class SplitDialogController {
             return; // User cancelled
         }
 
-        // Perform split based on selected mode
+        // Perform split based on the selected mode
         if (splitByRangeRadio.isSelected()) {
             performSplitByRanges(outputDir);
         } else if (splitByPagesRadio.isSelected()) {
@@ -371,7 +371,7 @@ public class SplitDialogController {
                             sourceDocument, outputDir, baseName
                     );
                 } else {
-                    // Use file directly
+                    // Use a file directly
                     outputFiles = splitService.splitIntoIndividualPages(
                             sourceFile, outputDir, baseName
                     );
@@ -402,7 +402,7 @@ public class SplitDialogController {
                     // Use already-opened document (supports encrypted PDFs)
                     outputFiles = splitService.splitPDF(sourceDocument, outputDir, ranges);
                 } else {
-                    // Use file directly
+                    // Use a file directly
                     outputFiles = splitService.splitPDF(sourceFile, outputDir, ranges);
                 }
 
@@ -464,7 +464,7 @@ public class SplitDialogController {
     }
 
     /**
-     * Shows split complete dialog.
+     * Shows a split complete dialog.
      */
     private void showSplitCompleteDialog(List<File> outputFiles, File outputDir) {
         showInfo(
@@ -498,7 +498,7 @@ public class SplitDialogController {
     }
 
     /**
-     * Updates button enabled states.
+     * Update button enabled states.
      */
     private void updateButtonStates() {
         boolean hasSelection = rangesListView.getSelectionModel().getSelectedItem() != null;

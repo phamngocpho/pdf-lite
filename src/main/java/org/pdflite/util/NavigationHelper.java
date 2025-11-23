@@ -52,7 +52,7 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
     // ==================== PUBLIC API ====================
 
     /**
-     * Jump to specific page number (1-based)
+     * Jump to a specific page number (1-based)
      */
     public void jumpToPage(int pageNumber) {
         PDFDocument currentDocument = mainController.getCurrentDocument();
@@ -77,7 +77,7 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
     }
 
     /**
-     * Navigate to page by index (0-based)
+     * Navigate to the page by index (0-based)
      */
     public void navigateToPage(int pageIndex) {
         PDFDocument currentDocument = mainController.getCurrentDocument();
@@ -91,7 +91,7 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
     }
 
     /**
-     * Scroll to current page in document with smooth animation
+     * Scroll to the current page in documents with smooth animation
      */
     public void scrollToCurrentPage() {
         PDFDocument currentDocument = mainController.getCurrentDocument();
@@ -121,7 +121,7 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
     }
 
     /**
-     * Smooth scroll to target position with animation
+     * Smooth scroll to the target position with animation
      */
     private void smoothScrollTo(ScrollPane scrollPane, double targetVValue, Duration duration) {
         if (scrollPane == null) return;
@@ -140,14 +140,14 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
     }
 
     /**
-     * Scroll to specific page index with centering and smooth animation
+     * Scroll to a specific page index with centering and smooth animation
      */
     public void scrollToPage(int pageIndex) {
         VBox pagesContainer = mainController.getPagesContainer();
         ScrollPane scrollPane = mainController.getScrollPane();
 
         if (pagesContainer == null || scrollPane == null) {
-            logger.warn("Cannot scroll - container or scrollpane is null");
+            logger.warn("Cannot scroll - container or scroll pane is null");
             return;
         }
 
@@ -186,7 +186,7 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
     }
 
     /**
-     * Ensure page is fully loaded and layout is ready
+     * Ensure the page is fully loaded and the layout is ready
      */
     public void ensurePageLoadedAndReady(int pageIndex, Runnable callback) {
         VBox pagesContainer = mainController.getPagesContainer();
@@ -224,7 +224,7 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
     }
 
     /**
-     * Load page and wait for render completion
+     * Load the page and wait for render completion
      */
     public void loadPageAndWait(int pageIndex, VBox pageBox, Runnable callback) {
         loadingPages.add(pageIndex);
@@ -298,7 +298,7 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
     }
 
     /**
-     * Check if page is already rendered (has ImageView)
+     * Check if the page is already rendered (has ImageView)
      */
     public boolean isPageRendered(VBox pageBox) {
         if (pageBox == null || pageBox.getChildren().isEmpty()) {

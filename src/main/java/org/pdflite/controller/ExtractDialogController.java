@@ -79,7 +79,7 @@ public class ExtractDialogController {
     public void initialize() {
         logger.info("Initializing ExtractDialogController");
 
-        // Hide progress bar initially
+        // Hide the progress bar initially
         progressBar.setVisible(false);
         progressBar.setManaged(false);
 
@@ -135,7 +135,7 @@ public class ExtractDialogController {
      *
      * @param file         The PDF file
      * @param pageCount    Total number of pages
-     * @param loadFromFile Whether to load thumbnails from file (true) or from document (false)
+     * @param loadFromFile Whether to load thumbnails from a file (true) or from a document (false)
      */
     private void initializeUI(File file, int pageCount, boolean loadFromFile) {
         fileNameLabel.setText(file != null ? file.getName() : "Document");
@@ -284,7 +284,7 @@ public class ExtractDialogController {
                 return;
             }
 
-            // Choose output directory
+            // Choose an output directory
             DirectoryChooser dirChooser = new DirectoryChooser();
             dirChooser.setTitle("Select Output Directory");
             File outputDir = dirChooser.showDialog(dialogStage);
@@ -360,7 +360,7 @@ public class ExtractDialogController {
                         tempFiles = splitService.splitPDF(sourceFile, tempDir, ranges);
                     }
 
-                    // Merge all temp files into output file
+                    // Merge all temp files into an output file
                     mergeService.mergePDFs(tempFiles, outputFile);
 
                     // Clean up temp files

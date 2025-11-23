@@ -12,6 +12,7 @@ import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.pdflite.model.*;
+import org.pdflite.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.pdfbox.util.Matrix;
@@ -62,7 +63,7 @@ public class PDFService {
      * This value is used as the base DPI before applying any scaling factor.
      * </p>
      */
-    private static final float DEFAULT_DPI = 150f;
+    private static final float DEFAULT_DPI = Constants.DEFAULT_DPI;
 
     /**
      * Cache of PDFRenderer instances for each document to improve performance

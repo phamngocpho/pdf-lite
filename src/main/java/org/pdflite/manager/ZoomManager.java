@@ -200,7 +200,7 @@ public class ZoomManager {
     }
 
     /**
-     * Calculates initial zoom to fit page when opening document.
+     * Calculates initial zoom to fit page when opening documents.
      *
      * @param firstPageImage the first page image
      * @return the calculated zoom level

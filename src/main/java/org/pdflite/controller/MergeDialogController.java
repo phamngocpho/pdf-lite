@@ -84,7 +84,7 @@ public class MergeDialogController {
         // Enable row selection
         filesTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
-        // Setup drag-and-drop for reordering
+        // Set up drag-and-drop for reordering
         setupDragAndDrop();
 
         // Setup button states
@@ -92,7 +92,7 @@ public class MergeDialogController {
         filesTable.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) ->
                 updateButtonStates());
 
-        // Hide progress bar initially
+        // Hide the progress bar initially
         progressBar.setVisible(false);
         progressBar.setManaged(false);
     }
@@ -129,7 +129,7 @@ public class MergeDialogController {
         int skippedCount = 0;
 
         for (File file : files) {
-            // Check if file is already in the list
+            // Check if the file is already in the list
             boolean alreadyAdded = fileItems.stream()
                     .anyMatch(item -> item.getFile().getAbsolutePath().equals(file.getAbsolutePath()));
 
@@ -240,7 +240,7 @@ public class MergeDialogController {
             return;
         }
 
-        // Choose output file
+        // Choose the output file
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Save Merged PDF");
         fileChooser.setInitialFileName("merged.pdf");
@@ -253,7 +253,7 @@ public class MergeDialogController {
             return; // User cancelled
         }
 
-        // Perform merge in background
+        // Perform merge in the background
         performMerge(outputFile);
     }
 
@@ -384,7 +384,7 @@ public class MergeDialogController {
     }
 
     /**
-     * Updates button enabled states.
+     * Update button enabled states.
      */
     private void updateButtonStates() {
         boolean hasSelection = !filesTable.getSelectionModel().isEmpty();

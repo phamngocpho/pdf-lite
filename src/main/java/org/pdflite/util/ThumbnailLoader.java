@@ -123,7 +123,7 @@ public class ThumbnailLoader {
     }
 
     /**
-     * Creates a thumbnail box with page number.
+     * Creates a thumbnail box with a page number.
      *
      * @param thumbnail  the thumbnail image
      * @param pageNumber the page number (1-based)

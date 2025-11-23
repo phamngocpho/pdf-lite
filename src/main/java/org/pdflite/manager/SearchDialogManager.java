@@ -32,7 +32,7 @@ public class SearchDialogManager {
     /**
      * Creates a new SearchDialogManager.
      *
-     * @param rootPane         the root pane for dialog owner
+     * @param rootPane         the root pane for the dialog owner
      * @param pageRenderer     the page renderer
      * @param zoomManager      the zoom manager
      * @param renderingManager the rendering manager

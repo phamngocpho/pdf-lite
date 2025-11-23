@@ -115,7 +115,7 @@ public class RenderingManager {
                 scrollHandler.setDocument(currentDocument, pagesContainer);
             }
 
-            // Load first few visible pages immediately
+            // Load the first few visible pages immediately
             Platform.runLater(() -> {
                 if (scrollHandler != null) {
                     scrollHandler.handleScroll();
@@ -216,7 +216,7 @@ public class RenderingManager {
         if (pagesContainer == null || currentDocument == null) return;
         if (this.twoPageMode == enable) return;
 
-        // Remember current page and scroll position
+        // Remember the current page and scroll position
         int currentPage = (scrollHandler != null) ? scrollHandler.getCurrentPageFromScroll() : currentDocument.getCurrentPage();
 
         // Collect existing page boxes (whether currently single or arranged in rows)
@@ -251,7 +251,7 @@ public class RenderingManager {
         pagesContainer.getProperties().put("twoPageMode", enable);
         this.twoPageMode = enable;
 
-        // Layout and restore view to current page
+        // Layout and restore view to the current page
         Platform.runLater(() -> {
             pagesContainer.applyCss();
             pagesContainer.layout();
@@ -263,9 +263,9 @@ public class RenderingManager {
     }
 
     /**
-     * Gets the pages container.
+     * Gets the page container.
      *
-     * @return the pages container
+     * @return the page container
      */
     public VBox getPagesContainer() {
         return pagesContainer;

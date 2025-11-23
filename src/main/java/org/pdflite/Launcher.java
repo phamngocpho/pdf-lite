@@ -7,7 +7,7 @@ import javafx.application.Application;
  * <p>
  * This class serves as the entry point for the application. It launches the JavaFX application
  * by delegating to {@link PDFLiteApplication}. This separate launcher class is necessary to
- * avoid issues with module system when running JavaFX applications.
+ * avoid issues with the module system when running JavaFX applications.
  * </p>
  *
  * @author PDF Lite Team

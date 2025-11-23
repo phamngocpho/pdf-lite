@@ -53,23 +53,23 @@ public class ContextMenuHandler {
     }
 
     /**
-     * Analyzes rectangular selection area on PDF page.
+     * Analyzes rectangular selection area on the PDF page.
      *
      * <p>
      * <b>Coordinate Conversion Pipeline:</b></p>
      * <ol>
      * <li>Input: Canvas coordinates (pixels, Y=top)</li>
      * <li>Normalize: Create bounding box (x, y, width, height)</li>
-     * <li>Convert: Apply scale factor (zoom * 150/72)</li>
+     * <li>Convert: Apply the scale factor (zoom * 150/72)</li>
      * <li>Extract: Pass to PDFTextStripperByArea (expects Y=top)</li>
      * </ol>
      *
      * @param document  The PDF document
      * @param pageIndex Zero-based page index
-     * @param canvasX1  Canvas X coordinate of first corner (pixels)
-     * @param canvasY1  Canvas Y coordinate of first corner (pixels)
+     * @param canvasX1  Canvas X coordinate of the first corner (pixels)
+     * @param canvasY1  Canvas Y coordinate of the first corner (pixels)
      * @param canvasX2  Canvas X coordinate of opposite corner (pixels)
-     * @param canvasY2  Canvas Y coordinate of opposite corner (pixels)
+     * @param canvasY2  Canvas Y coordinate of the opposite corner (pixels)
      * @param zoom      Current zoom level (e.g., 1.0 = 100%)
      */
     public void analyzeSelection(PDFDocument document, int pageIndex,
@@ -159,7 +159,7 @@ public class ContextMenuHandler {
     }
 
     /**
-     * Copies extracted text to system clipboard.
+     * Copies extracted text to the system clipboard.
      */
     public void handleCopyText() {
         if (currentSelection != null && currentSelection.hasText()) {
@@ -175,7 +175,7 @@ public class ContextMenuHandler {
     }
 
     /**
-     * Checks if text is available at last analyzed position.
+     * Checks if text is available at the last analyzed position.
      *
      */
     public boolean hasTextAtPosition() {
@@ -227,14 +227,14 @@ public class ContextMenuHandler {
     }
 
     /**
-     * Analyzes if cursor is over an image (for context menu).
+     * Analyzes if the cursor is over an image (for the context menu).
      *
      * <p>
      * <b>Algorithm:</b></p>
      * <ol>
-     * <li>Extract all images from current page</li>
+     * <li>Extract all images from the current page</li>
      * <li>Convert image bounds from PDF (Y=bottom) to Canvas (Y=top)</li>
-     * <li>Check if cursor point intersects with any image bounds</li>
+     * <li>Check if the cursor point intersects with any image bounds</li>
      * </ol>
      */
     public void analyzeCursorForImage(PDFDocument document, int pageIndex,
@@ -315,7 +315,7 @@ public class ContextMenuHandler {
     }
 
     /**
-     * Checks if cursor is currently over an image.
+     * Checks if the cursor is currently over an image.
      */
     public boolean hasImageAtPosition() {
         return currentImageUnderCursor != null;

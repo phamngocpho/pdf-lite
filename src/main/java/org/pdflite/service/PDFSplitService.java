@@ -82,7 +82,7 @@ public class PDFSplitService {
     }
 
     /**
-     * Internal method to split PDF document into multiple files.
+     * Internal method to split a PDF document into multiple files.
      */
     private List<File> splitPDFInternal(PDDocument sourceDoc, File outputDirectory, List<PageRange> pageRanges)
             throws IOException {
@@ -232,18 +232,18 @@ public class PDFSplitService {
                     org.apache.pdfbox.pdmodel.PDPage importedPage = tempDoc.importPage(sourcePage);
                     importedPage.setRotation(sourcePage.getRotation());
 
-                    // Save to temporary file
+                    // Save to a temporary file
                     tempFile = File.createTempFile("pdf_extract_page_", ".pdf");
                     tempFile.deleteOnExit();
 
-                    // Save and ensure file is flushed
+                    // Save and ensure the file is flushed
                     tempDoc.save(tempFile);
 
-                    // CRITICAL: Close document BEFORE adding to list to ensure file is fully written
+                    // CRITICAL: Close document BEFORE adding to the list to ensure the file is fully written
                     tempDoc.close();
                     tempDoc = null;
 
-                    // Force file system sync to ensure file is completely written
+                    // Force file system sync to ensure the file is completely written
                     try (java.io.FileOutputStream fos = new java.io.FileOutputStream(tempFile, true)) {
                         fos.getFD().sync();
                     }
@@ -256,7 +256,7 @@ public class PDFSplitService {
                         throw new IOException("Failed to create valid temporary file for page " + (i + 1));
                     }
                 } finally {
-                    // Ensure document is closed
+                    // Ensure the document is closed
                     if (tempDoc != null) {
                         try {
                             tempDoc.close();
@@ -304,7 +304,7 @@ public class PDFSplitService {
                 }
             }
 
-            // Verify final output file
+            // Verify the final output file
             if (!outputFile.exists() || outputFile.length() == 0) {
                 throw new IOException("Failed to create output file: " + outputFile.getName());
             }
@@ -406,7 +406,7 @@ public class PDFSplitService {
     }
 
     /**
-     * Validates page ranges list.
+     * Validates a page ranges list.
      */
     private void validatePageRanges(List<PageRange> pageRanges) {
         if (pageRanges == null || pageRanges.isEmpty()) {
@@ -415,7 +415,7 @@ public class PDFSplitService {
     }
 
     /**
-     * Validates a single page range.
+     * Validates a single-page range.
      */
     private void validatePageRange(PageRange range, int totalPages) {
         if (range.startPage() < 1 || range.endPage() > totalPages || range.startPage() > range.endPage()) {
