@@ -100,6 +100,16 @@ public class Constants {
     public static final double HIGH_RENDER_SCALE = 300.0 / 72.0; //HIGH DPI RENDERING SCALE
 
     /**
+     * Maximum canvas size to prevent GPU texture overflow.
+     * <p>
+     * JavaFX Canvas uses GPU textures which have size limits (typically 4096x4096 or 8192x8192).
+     * When canvas exceeds this limit, RTTexture.createGraphics() returns null causing NullPointerException.
+     * This constant limits canvas dimensions to prevent such errors.
+     * </p>
+     */
+    public static final double MAX_CANVAS_SIZE = 4096.0;
+
+    /**
      * Private constructor to prevent instantiation.
      * <p>
      * This is a utility class containing only static constants and should
