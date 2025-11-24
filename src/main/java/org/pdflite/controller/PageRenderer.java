@@ -38,6 +38,7 @@ public class PageRenderer {
     private PDFDocument currentDocument;
     private double currentZoom;
     private final ContextMenuHandler contextMenuHandler;
+    private boolean isTextSelectionActive = true; // Default to true (like browsers)
 
     /**
      * Creates a new PageRenderer with the specified service and executor.
@@ -301,7 +302,8 @@ public class PageRenderer {
         contextPane.setPrefSize(image.getWidth(), image.getHeight());
         contextPane.setMaxSize(image.getWidth(), image.getHeight());
 
-        contextPane.setMouseTransparent(true);
+        // Set mouse transparency based on current text selection mode
+        contextPane.setMouseTransparent(!isTextSelectionActive);
 
         contextPane.toFront();
 
@@ -392,6 +394,8 @@ public class PageRenderer {
     }
 
     public void setSelectionModeActive(VBox pagesContainer, boolean active) {
+        isTextSelectionActive = active; // Store the state for new pages
+        
         if (pagesContainer == null) return;
 
         // Duyệt qua tất cả các trang đang hiển thị

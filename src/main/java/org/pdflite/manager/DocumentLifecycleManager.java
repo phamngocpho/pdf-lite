@@ -89,9 +89,15 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
             pageInfoManager.updatePageInfo(newDocument);
 
             // Scroll to the top (page 1) to ensure we're viewing the first page
+            // Also enable text selection by default after pages are rendered
             Platform.runLater(() -> {
                 if (scrollPane != null && pagesContainer.get() != null) {
                     scrollPane.setVvalue(0.0);
+                }
+                // Enable text selection by default (like browsers) after pages are rendered
+                // Text selection is already enabled by default in PageRenderer, but ensure it's applied
+                if (pageRenderer != null && pagesContainer.get() != null) {
+                    pageRenderer.setSelectionModeActive(pagesContainer.get(), true);
                 }
             });
 

@@ -66,13 +66,13 @@ public class PDFLiteApplication extends Application {
     public void start(Stage stage) throws IOException {
         logger.info("Starting PDF Lite Application");
 
-        // Set maximized FIRST, before creating scene, to avoid window flash
+        // Set maximized first, before creating the scene, to avoid window flash
         stage.setMaximized(true);
         stage.setMinWidth(MIN_WIDTH);
         stage.setMinHeight(MIN_HEIGHT);
 
         FXMLLoader fxmlLoader = new FXMLLoader(PDFLiteApplication.class.getResource("main-view.fxml"));
-        // Don't set explicit size - let maximize handle it to avoid window flash
+        // Don’t set an explicit size; let maximizing handle it to avoid window flashing
         Scene scene = new Scene(fxmlLoader.load());
 
         // Add CSS stylesheet
@@ -97,7 +97,7 @@ public class PDFLiteApplication extends Application {
             event.consume();
         });
 
-        // Hide window initially to avoid flash, then show maximized
+        // Hide the window initially to avoid flash, then show maximized
         stage.setOpacity(0);
         stage.show();
         
