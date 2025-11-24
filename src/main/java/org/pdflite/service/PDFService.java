@@ -24,12 +24,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * Service class for handling PDF operations and document management.
@@ -44,7 +41,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * </ul>
  * </p>
  * <p>
- * This class uses Apache PDFBox library for PDF processing and JavaFX
+ * This class uses the Apache PDFBox library for PDF processing and JavaFX
  * for image rendering in the UI.
  * </p>
  *
@@ -105,7 +102,7 @@ public class PDFService {
      * @param file     the PDF file to open
      * @param password the password to decrypt the PDF
      * @return a PDFDocument object representing the opened PDF
-     * @throws IOException if the file cannot be read, password is incorrect,
+     * @throws IOException if the file cannot be read, the password is incorrect,
      *                     or the file is not a valid PDF
      */
     public PDFDocument openPDF(File file, String password) throws IOException {
@@ -130,7 +127,7 @@ public class PDFService {
         try (PDDocument document = Loader.loadPDF(file)) {
             return document.isEncrypted();
         } catch (IOException e) {
-            // If we can't load without password, it's encrypted
+            // If we can't load without a password, it's encrypted
             return true;
         }
     }
@@ -168,7 +165,7 @@ public class PDFService {
         logger.info("Encrypting PDF: {}", inputFile.getName());
 
         try (PDDocument document = Loader.loadPDF(inputFile)) {
-            // Create protection policy with 256-bit AES encryption
+            // Create a protection policy with 256-bit AES encryption
             StandardProtectionPolicy protectionPolicy = new StandardProtectionPolicy(
                     ownerPassword,
                     userPassword,
@@ -214,7 +211,7 @@ public class PDFService {
      * @param inputFile  the encrypted PDF file
      * @param outputFile the destination for decrypted PDF
      * @param password   the owner password
-     * @throws IOException if decryption fails or password is incorrect
+     * @throws IOException if decryption fails or the password is incorrect
      */
     public void decryptPDF(File inputFile, File outputFile, String password) throws IOException {
         logger.info("Decrypting PDF: {}", inputFile.getName());
@@ -243,7 +240,7 @@ public class PDFService {
     /**
      * Renders a specific page of the PDF as a JavaFX Image with optimized settings.
      * <p>
-     * This method renders the specified page at the given scale with RGB image type
+     * This method renders the specified page at the given scale with RGB image types
      * for better performance. It first checks the document's cache for a previously
      * rendered version of the page at the same scale. If a cached version exists,
      * it is
@@ -287,11 +284,11 @@ public class PDFService {
 
         logger.debug("Rendering page {} with DPI {}", pageIndex, dpi);
 
-        // Synchronize on document to ensure thread-safe rendering
+        // Synchronize on documents to ensure thread-safe rendering
         // This prevents concurrent modification of page rotation and font resources
         BufferedImage bufferedImage;
         synchronized (pdfDoc.getDocument()) {
-            // Render with RGB image type for better performance (no alpha channel overhead)
+            // Render with RGB image types for better performance (no alpha channel overhead)
             PDPage page = pdfDoc.getDocument().getPage(pageIndex);
 
             // 1. Lấy góc xoay gốc của file PDF
@@ -450,7 +447,7 @@ public class PDFService {
      *
      * <pre>
      * List&lt;Integer&gt; pages = pdfService.searchTextInPages(document, "important");
-     * // pages contains [0, 5, 12] if the term appears on pages 1, 6, and 13
+     * // pages contain [0, 5, 12] if the term appears on pages 1, 6, and 13
      * </pre>
      * </p>
      *
@@ -492,7 +489,7 @@ public class PDFService {
         PDDocument pdDoc = pdfDoc.getDocument();
         File originalFile = pdfDoc.getFile();
 
-        // CRITICAL: Save to temporary file first to avoid corruption
+        // CRITICAL: Save to a temporary file first to avoid corruption
         // when overwriting the file we're reading from
         File tempFile = new File(originalFile.getParent(),
                 originalFile.getName() + ".tmp_" + System.currentTimeMillis());
@@ -500,14 +497,14 @@ public class PDFService {
         try {
             flattenAnnotationsToPDF(pdfDoc);
 
-            // If document was encrypted, remove encryption before saving
-            // (User already has access since they opened the document)
+            // If the document was encrypted, remove encryption before saving
+            // (User has already had access since they opened the document)
             if (pdDoc.isEncrypted()) {
                 pdDoc.setAllSecurityToBeRemoved(true);
                 logger.info("Removing encryption for save operation");
             }
 
-            // Save to temp file
+            // Save to a temp file
             pdDoc.save(tempFile);
             logger.info("Saved to temporary file: {}", tempFile.getName());
 
@@ -515,7 +512,7 @@ public class PDFService {
             pdDoc.close();
             logger.info("Document closed, ready to replace original file");
 
-            // Delete original file
+            // Delete the original file
             if (originalFile.exists()) {
                 boolean deleted = originalFile.delete();
                 if (!deleted) {
@@ -568,8 +565,8 @@ public class PDFService {
             Files.createDirectories(parent);
         }
 
-        // If document was encrypted, remove encryption before saving
-        // (User already has access since they opened the document)
+        // If the document was encrypted, remove encryption before saving
+        // (User has already had access since they opened the document)
         if (pdDoc.isEncrypted()) {
             pdDoc.setAllSecurityToBeRemoved(true);
             logger.info("Removing encryption for saveAs operation");
@@ -591,42 +588,75 @@ public class PDFService {
         PDDocument doc = pdfDoc.getDocument();
         int total = doc.getNumberOfPages();
 
-        // Prevent deleting all pages
-        long toDelete = pageIndices.stream()
-                .filter(i -> i >= 0 && i < total)
-                .distinct()
-                .count();
-        if (toDelete >= total) {
-            throw new IllegalArgumentException("Cannot delete all pages of a PDF document.");
-        }
-
-        // Delete in descending order
-        pageIndices.stream()
+        // Collect valid indices at once
+        List<Integer> validIndices = pageIndices.stream()
                 .filter(i -> i >= 0 && i < total)
                 .distinct()
                 .sorted(Comparator.reverseOrder())
-                .forEach(pageIndex -> {
-                    doc.removePage(pageIndex);
-                    pdfDoc.getAnnotations().removeIf(a -> a.getPageNumber() == pageIndex);
+                .collect(Collectors.toList());
 
-                    for (Annotation a : pdfDoc.getAnnotations()) {
-                        if (a.getPageNumber() > pageIndex) {
-                            a.setPageNumber(a.getPageNumber() - 1);
-                        }
-                    }
-                });
-
-        // Clear render cache since page indices/images changed
-        pdfDoc.clearCache();
-
-        // Clamp current page to valid range
-        int newTotal = doc.getNumberOfPages();
-        int current = pdfDoc.getCurrentPage();
-        if (current >= newTotal) {
-            pdfDoc.setCurrentPage(Math.max(0, newTotal - 1));
+        if (validIndices.isEmpty()) {
+            logger.warn("No valid page indices to delete");
+            return;
         }
 
-        logger.info("Deleted {} page(s). New total pages: {}", toDelete, newTotal);
+        if (validIndices.size() >= total) {
+            throw new IllegalArgumentException(
+                    "Cannot delete all pages. Attempting to delete " +
+                            validIndices.size() + " out of " + total + " pages.");
+        }
+
+        try {
+            // Delete pages
+            for (Integer pageIndex : validIndices) {
+                doc.removePage(pageIndex);
+            }
+
+            // Update annotations efficiently
+            updateAnnotations(pdfDoc, validIndices, total);
+
+            // Clear render cache
+            pdfDoc.clearCache();
+
+            // Clamp current page
+            int newTotal = doc.getNumberOfPages();
+            int current = pdfDoc.getCurrentPage();
+            if (current >= newTotal) {
+                pdfDoc.setCurrentPage(Math.max(0, newTotal - 1));
+            }
+
+            logger.info("Successfully deleted {} page(s). Pages: {}. New total: {}",
+                    validIndices.size(), validIndices, newTotal);
+
+        } catch (Exception e) {
+            logger.error("Failed to delete pages", e);
+            throw new RuntimeException("Error deleting pages from PDF", e);
+        }
+    }
+
+    /**
+     * Updates the annotations within a PDF document by removing annotations belonging
+     * to deleted pages and adjusting the page numbers of the remaining annotations
+     * to account for the removal of the deleted pages.
+     *
+     * @param pdfDoc the PDF document whose annotations are to be updated
+     * @param deletedPages a list of page numbers that have been deleted
+     * @param originalTotal the original total number of pages in the PDF document
+     */
+    private void updateAnnotations(PDFDocument pdfDoc, List<Integer> deletedPages,
+                                   int originalTotal) {
+        Set<Integer> deletedSet = new HashSet<>(deletedPages);
+
+        pdfDoc.getAnnotations().removeIf(a -> deletedSet.contains(a.getPageNumber()));
+
+        // Calculate offset for each remaining page
+        pdfDoc.getAnnotations().forEach(a -> {
+            int originalPage = a.getPageNumber();
+            long offset = deletedPages.stream()
+                    .filter(p -> p < originalPage)
+                    .count();
+            a.setPageNumber(originalPage - (int) offset);
+        });
     }
 
     private void flattenAnnotationsToPDF(PDFDocument pdfDoc) {
@@ -752,7 +782,7 @@ public class PDFService {
                 index++;
             }
 
-            // QUAN TRỌNG: Xóa cache để UI biết đường vẽ lại ảnh mới
+            // Xóa cache để UI biết đường vẽ lại ảnh mới
             pdfDoc.clearCache();
 
             logger.info("Inserted {} blank page(s) at index {}", count, index);
