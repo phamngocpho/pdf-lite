@@ -200,7 +200,7 @@ public class ZoomManager {
     }
 
     /**
-     * Calculates initial zoom to fit page when opening documents.
+     * Calculates initial zoom to fit the page when opening documents.
      *
      * @param firstPageImage the first page image
      * @return the calculated zoom level
@@ -209,6 +209,23 @@ public class ZoomManager {
         if (scrollPane != null && scrollPane.getViewportBounds().getWidth() > 0
                 && scrollPane.getViewportBounds().getHeight() > 0) {
             return calculateFitToPageZoom(firstPageImage.getWidth(), firstPageImage.getHeight());
+        } else {
+            return 0.7;
+        }
+    }
+
+    /**
+     * Calculates initial zoom to fit the page when opening documents from page dimensions.
+     * This avoids rendering the first page with scale 1.0f, ensuring consistent sizing.
+     *
+     * @param pageWidth  the page width at scale 1.0
+     * @param pageHeight the page height at scale 1.0
+     * @return the calculated zoom level
+     */
+    public double calculateInitialZoomFromDimensions(double pageWidth, double pageHeight) {
+        if (scrollPane != null && scrollPane.getViewportBounds().getWidth() > 0
+                && scrollPane.getViewportBounds().getHeight() > 0) {
+            return calculateFitToPageZoom(pageWidth, pageHeight);
         } else {
             return 0.7;
         }
