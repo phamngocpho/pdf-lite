@@ -82,11 +82,18 @@ public class ZoomManager {
 
     /**
      * Sets the zoom level.
+     * Updates the zoom combo box display if document is loaded.
      *
      * @param zoom the new zoom level
      */
     public void setCurrentZoom(double zoom) {
         this.currentZoom = zoom;
+        
+        // Update the zoom combo box display immediately for better visibility
+        if (currentDocument != null && zoomComboBox != null) {
+            String zoomValue = String.format("%.0f%%", zoom * 100);
+            zoomComboBox.setValue(zoomValue);
+        }
     }
 
     /**
@@ -184,10 +191,13 @@ public class ZoomManager {
         if (currentDocument != null) {
             currentDocument.setZoomLevel(currentZoom);
 
+            // Update zoom combo box with clear percentage display
             if (zoomComboBox != null) {
-                zoomComboBox.setValue(String.format("%.0f%%", currentZoom * 100));
+                String zoomValue = String.format("%.0f%%", currentZoom * 100);
+                zoomComboBox.setValue(zoomValue);
             }
 
+            // Display zoom level clearly in status messages
             String statusMessage = prefix != null
                     ? String.format("%s - Zoom: %.0f%%", prefix, currentZoom * 100)
                     : String.format("Zoom: %.0f%%", currentZoom * 100);

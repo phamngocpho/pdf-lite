@@ -530,7 +530,10 @@ public class PDFService {
                         originalFile.toPath(),
                         java.nio.file.StandardCopyOption.REPLACE_EXISTING
                 );
-                tempFile.delete();
+                boolean deleted = tempFile.delete();
+                if (!deleted) {
+                    logger.warn("Could not delete temporary file: {}", tempFile.getName());
+                }
                 logger.info("Temp file copied to original location");
             } else {
                 logger.info("Temp file renamed to original name");
@@ -543,7 +546,10 @@ public class PDFService {
         } catch (Exception e) {
             // Cleanup temp file if something goes wrong
             if (tempFile.exists()) {
-                tempFile.delete();
+                boolean deleted = tempFile.delete();
+                if (!deleted) {
+                    logger.warn("Could not delete temporary file during cleanup: {}", tempFile.getName());
+                }
             }
             throw new IOException("Failed to save document: " + e.getMessage(), e);
         }

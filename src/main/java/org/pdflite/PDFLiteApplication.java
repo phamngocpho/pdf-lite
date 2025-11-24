@@ -86,6 +86,9 @@ public class PDFLiteApplication extends Application {
             logger.warn("Could not load application icon");
         }
 
+        // Set the window to maximize (OS-level fullscreen) when the app starts
+        stage.setMaximized(true);
+
         // Get controller and set up a window close handler
         MainController controller = fxmlLoader.getController();
         stage.setOnCloseRequest(event -> {
