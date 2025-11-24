@@ -103,5 +103,4 @@ public abstract class Annotation {
     public String getType() {
         return type;
     }
-    
 }

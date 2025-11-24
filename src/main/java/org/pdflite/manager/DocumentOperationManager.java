@@ -1,15 +1,11 @@
 package org.pdflite.manager;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.pdflite.command.CommandManager;
-import org.pdflite.command.DeletePageCommand;
-import org.pdflite.controller.MainController;
 import org.pdflite.controller.PageRenderer;
 import org.pdflite.controller.ScrollHandler;
 import org.pdflite.model.PDFDocument;
@@ -217,79 +213,6 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
         });
 
         return result[0];
-    }
-
-    /**
-     * Handles delete page operation with confirmation dialog and command pattern support.
-     * <p>
-     * This method:
-     * - Shows a confirmation dialog
-     * - Creates and executes a DeletePageCommand through CommandManager
-     * - Supports undo/redo functionality
-     * </p>
-     *
-     * @param currentDocument the current PDF document
-     * @param commandManager  the command manager for undo/redo support
-     * @param controller      the main controller (needed by DeletePageCommand)
-     * @param reloadCallback  callback to reload document after deletion
-     */
-    public void handleDeletePage(PDFDocument currentDocument, 
-                                 CommandManager commandManager,
-                                 MainController controller,
-                                 ReloadCallback reloadCallback) {
-        if (currentDocument == null) {
-            return;
-        }
-
-        int total = currentDocument.getTotalPages();
-        if (total <= 1) {
-            uiStateManager.showError("Delete Page", "Cannot delete the last remaining page.");
-            return;
-        }
-
-        int current = currentDocument.getCurrentPage();
-
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Delete Page");
-        confirm.setHeaderText("Delete current page?");
-        confirm.setContentText("This will remove page " + (current + 1) + " from the document.\n" +
-                              "You can undo this action with Ctrl+Z.");
-        confirm.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
-
-        // Apply theme to dialog
-        if (themeManager != null) {
-            themeManager.applyThemeToScene(confirm.getDialogPane().getScene());
-        }
-
-        confirm.showAndWait().ifPresent(result -> {
-            if (result == ButtonType.OK) {
-                try {
-                    // Create and execute delete command through CommandManager
-                    DeletePageCommand command = new DeletePageCommand(controller, pdfService, current);
-                    commandManager.executeCommand(command, () -> {
-                        if (reloadCallback != null) {
-                            reloadCallback.reload();
-                        }
-                    });
-                    
-                    logger.info("Delete page command executed successfully");
-                    uiStateManager.updateStatus("Deleted page " + (current + 1));
-                    
-                } catch (Exception e) {
-                    logger.error("Error deleting page {}", current + 1, e);
-                    uiStateManager.showError("Delete Page Error", 
-                        "Could not delete the page: " + e.getMessage());
-                }
-            }
-        });
-    }
-
-    /**
-     * Callback interface for reloading the document.
-     */
-    @FunctionalInterface
-    public interface ReloadCallback {
-        void reload() throws IOException;
     }
 }
 
