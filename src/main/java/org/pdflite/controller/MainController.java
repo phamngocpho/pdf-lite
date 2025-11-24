@@ -26,7 +26,6 @@ import org.pdflite.manager.SearchDialogManager;
 import org.pdflite.manager.SearchManager;
 import org.pdflite.manager.ThemeManager;
 import org.pdflite.manager.UIStateManager;
-import org.pdflite.manager.UndoRedoManager;
 import org.pdflite.manager.ZoomManager;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
@@ -37,7 +36,6 @@ import org.pdflite.util.NavigationHelper;
 import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.pdflite.command.CommandManager;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
@@ -60,7 +58,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import javafx.scene.control.Tooltip;
+
 /**
  * Main Controller for the PDF Lite Application.
  * <p>
@@ -138,7 +136,7 @@ public class MainController {
     private SearchDialogManager searchDialogManager;
     private ThemeManager themeManager;
     private RecentFilesManager recentFilesManager;
-    private CommandManager commandManager;
+
     // New managers
     private DialogManager dialogManager;
     private EncryptionManager encryptionManager;
@@ -146,7 +144,6 @@ public class MainController {
     private DocumentOperationManager documentOperationManager;
     private DocumentLifecycleManager documentLifecycleManager;
     private RecentFilesMenuManager recentFilesMenuManager;
-    private UndoRedoManager undoRedoManager;
 
     // ==================== Document State ====================
 
@@ -184,33 +181,7 @@ public class MainController {
 
         // Initialize managers
         initializeManagers();
-        commandManager = new CommandManager();
-        
-        // Initialize UndoRedoManager early (annotationManager will be null initially)
-        initializeUndoRedoManager();
-        
-        commandManager.addListener((canUndo, canRedo, undoDesc, redoDesc) -> {
-            Platform.runLater(() -> {
-                // Update button states
-                if (undoButton != null) {
-                    undoButton.setDisable(!canUndo);
-                    if (canUndo && undoDesc != null) {
-                        undoButton.setTooltip(new Tooltip("Undo: " + undoDesc));
-                    }
-                }
-                if (redoButton != null) {
-                    redoButton.setDisable(!canRedo);
-                    if (canRedo && redoDesc != null) {
-                        redoButton.setTooltip(new Tooltip("Redo: " + redoDesc));
-                    }
-                }
-            });
-        });
-        rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
-            if (newScene != null && undoRedoManager != null) {
-                undoRedoManager.setupKeyboardShortcuts(newScene);
-            }
-        });
+
         // Set page change listener to update UI when page changes during scroll
         // Must be after initializeManagers() so pageInfoManager is initialized
         scrollHandler.setPageChangeListener(newPageIndex -> Platform.runLater(() -> {
@@ -290,18 +261,6 @@ public class MainController {
         }
 
         uiStateManager.updateUIState(false);
-    }
-
-    /**
-     * Initializes the UndoRedoManager.
-     */
-    private void initializeUndoRedoManager() {
-        undoRedoManager = new UndoRedoManager(
-                commandManager,
-                uiStateManager,
-                annotationManager,
-                this::reloadCurrentDocument
-        );
     }
 
     /**
@@ -458,8 +417,6 @@ public class MainController {
         // Initialize the annotation manager when the document is opened
         if (currentDocument != null && pagesContainer != null) {
             annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
-            // Re-initialize UndoRedoManager with the new annotationManager
-            initializeUndoRedoManager();
             
             // Enable text selection by default (like browsers) when the document is opened
             // Use Platform.runLater to ensure pages are fully rendered first
@@ -488,7 +445,7 @@ public class MainController {
             alert.setHeaderText("File có mật khẩu bảo vệ");
             alert.setContentText("""
                     Lưu ý: File mới sẽ KHÔNG CÓ MẬT KHẨU.
-
+                    
                     Nếu muốn giữ mật khẩu hoặc đặt mật khẩu mới,
                     vui lòng sử dụng chức năng 'Encrypt PDF' sau khi lưu.""");
 
@@ -542,13 +499,44 @@ public class MainController {
 
     @FXML
     private void handleDeletePage() {
-        if (documentOperationManager != null) {
-            documentOperationManager.handleDeletePage(
-                currentDocument,
-                commandManager,
-                this,
-                this::reloadCurrentDocument
-            );
+        if (currentDocument == null) {
+            return;
+        }
+
+        int current = currentDocument.getCurrentPage();
+        java.util.concurrent.atomic.AtomicReference<VBox> pagesContainerRef =
+                new java.util.concurrent.atomic.AtomicReference<>(pagesContainer);
+        java.util.concurrent.atomic.AtomicReference<PageRenderer> pageRendererRef =
+                new java.util.concurrent.atomic.AtomicReference<>(pageRenderer);
+        java.util.concurrent.atomic.AtomicReference<ScrollHandler> scrollHandlerRef =
+                new java.util.concurrent.atomic.AtomicReference<>(scrollHandler);
+        java.util.concurrent.atomic.AtomicReference<RenderingManager> renderingManagerRef =
+                new java.util.concurrent.atomic.AtomicReference<>(renderingManager);
+
+        PDFDocument newDocument = documentOperationManager.deletePage(currentDocument, current,
+                renderExecutor, loadingPages, contentPane, scrollPane, pagesContainerRef,
+                pageRendererRef, scrollHandlerRef, renderingManagerRef);
+
+        if (newDocument != null) {
+            currentDocument = newDocument;
+            pagesContainer = pagesContainerRef.get();
+            pageRenderer = pageRendererRef.get();
+            scrollHandler = scrollHandlerRef.get();
+            renderingManager = renderingManagerRef.get();
+
+            // Recreate annotation manager with a new document
+            if (pagesContainer != null) {
+                annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
+            }
+        } else {
+            // Recovery: try to reopen an original file
+            try {
+                if (currentDocument != null && currentDocument.getFile() != null) {
+                    openPDFFile(currentDocument.getFile());
+                }
+            } catch (Exception recovery) {
+                logger.error("Failed to recover after delete error", recovery);
+            }
         }
     }
     // ==================== Zoom Operations ====================
@@ -706,9 +694,9 @@ public class MainController {
         alert.setHeaderText("PDF Lite - PDF Viewer & Editor");
         alert.setContentText("""
                 Version 1.0
-
+                
                 A lightweight PDF viewer with annotation features.
-
+                
                 Built with JavaFX and Apache PDFBox""");
 
         DialogPane dialogPane = alert.getDialogPane();
@@ -747,10 +735,7 @@ public class MainController {
     private void handleExtractPages() {
         dialogManager.openExtractDialog(currentDocument);
     }
-    @FXML
-    private Button undoButton;
-    @FXML
-    private Button redoButton;
+
 
     public BorderPane getRootPane() {
         return rootPane;
@@ -822,49 +807,14 @@ public class MainController {
             annotationManager.makeToggleButtonDeselectable(btn, drawingToolsGroup);
         }
     }
-    @FXML
-    private void handleRedo() {
-        if (undoRedoManager != null) {
-            undoRedoManager.handleRedo();
-        }
-    }
+
     @FXML
     private void handleUndo() {
-        if (undoRedoManager != null) {
-            undoRedoManager.handleUndo();
+        if (annotationManager != null) {
+            annotationManager.handleUndo();
         }
     }
-    /**
-     * Reloads the current document, delegating to DocumentLifecycleManager.
-     * 
-     * @throws IOException if reloading fails
-     */
-    public void reloadCurrentDocument() throws IOException {
-        DocumentLifecycleManager.ReloadResult result = documentLifecycleManager.reloadCurrentDocument(
-            currentDocument, pagesContainer, scrollPane, contentPane, loadingPages, renderExecutor
-        );
-        
-        // Update controller state with reloaded components
-        currentDocument = result.document();
-        pagesContainer = result.pagesContainer();
-        pageRenderer = result.pageRenderer();
-        scrollHandler = result.scrollHandler();
-        renderingManager = result.renderingManager();
-        
-        // Re-initialize annotation manager with new pages container
-        if (currentDocument != null && pagesContainer != null) {
-            annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
-            initializeUndoRedoManager();
-        }
-    }
-    /**
-     * Gets the command manager.
-     *
-     * @return the command manager
-     */
-    public CommandManager getCommandManager() {
-        return commandManager;
-    }
+
     // ==================== INSERT PAGE ====================
     @FXML
     private void handleInsertPage() {
