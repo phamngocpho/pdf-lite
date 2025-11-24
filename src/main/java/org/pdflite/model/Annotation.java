@@ -66,6 +66,17 @@ public abstract class Annotation {
         return pageNumber;
     }
 
+    public void setPageNumber(int pageNumber) {
+        this.pageNumber = pageNumber;
+    }
+
+    public void setX(double x) {
+        this.x = x;
+    }
+    public void setY(double y) {
+        this.y = y;
+    }
+
     /**
      * Gets the X coordinate of this annotation.
      *
