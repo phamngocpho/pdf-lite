@@ -214,8 +214,9 @@ public class MainController {
             drawingToolsGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
 
                 if (newVal == null) {
+                    // No tool selected - enable text selection by default (like browsers)
                     updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
-                    if (pageRenderer != null) pageRenderer.setSelectionModeActive(pagesContainer, false);
+                    if (pageRenderer != null) pageRenderer.setSelectionModeActive(pagesContainer, true);
                     return;
                 }
 
@@ -229,6 +230,7 @@ public class MainController {
 
                     uiStateManager.updateStatus("Tool: Text Selection");
                 } else {
+                    // Drawing tool selected - disable text selection
                     if (pageRenderer != null) pageRenderer.setSelectionModeActive(pagesContainer, false);
 
 
@@ -415,6 +417,14 @@ public class MainController {
         // Initialize the annotation manager when the document is opened
         if (currentDocument != null && pagesContainer != null) {
             annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
+            
+            // Enable text selection by default (like browsers) when document is opened
+            // Use Platform.runLater to ensure pages are fully rendered first
+            Platform.runLater(() -> {
+                if (pageRenderer != null && pagesContainer != null) {
+                    pageRenderer.setSelectionModeActive(pagesContainer, true);
+                }
+            });
         }
     }
 

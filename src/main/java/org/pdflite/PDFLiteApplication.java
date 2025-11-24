@@ -66,8 +66,14 @@ public class PDFLiteApplication extends Application {
     public void start(Stage stage) throws IOException {
         logger.info("Starting PDF Lite Application");
 
+        // Set maximized first, before creating the scene, to avoid window flash
+        stage.setMaximized(true);
+        stage.setMinWidth(MIN_WIDTH);
+        stage.setMinHeight(MIN_HEIGHT);
+
         FXMLLoader fxmlLoader = new FXMLLoader(PDFLiteApplication.class.getResource("main-view.fxml"));
-        Scene scene = new Scene(fxmlLoader.load(), 1200, 800);
+        // Don’t set an explicit size; let maximizing handle it to avoid window flashing
+        Scene scene = new Scene(fxmlLoader.load());
 
         // Add CSS stylesheet
         scene.getStylesheets().add(
@@ -76,8 +82,6 @@ public class PDFLiteApplication extends Application {
 
         stage.setTitle("PDF Lite - PDF Viewer & Editor");
         stage.setScene(scene);
-        stage.setMinWidth(MIN_WIDTH);
-        stage.setMinHeight(MIN_HEIGHT);
 
         // Set application icon (if available)
         try {
@@ -86,9 +90,6 @@ public class PDFLiteApplication extends Application {
             logger.warn("Could not load application icon");
         }
 
-        // Set the window to maximize (OS-level fullscreen) when the app starts
-        stage.setMaximized(true);
-
         // Get controller and set up a window close handler
         MainController controller = fxmlLoader.getController();
         stage.setOnCloseRequest(event -> {
@@ -96,7 +97,16 @@ public class PDFLiteApplication extends Application {
             event.consume();
         });
 
+        // Hide the window initially to avoid flash, then show maximized
+        stage.setOpacity(0);
         stage.show();
+        
+        // Force maximize and make visible on JavaFX thread
+        Platform.runLater(() -> {
+            stage.setMaximized(true);
+            stage.setOpacity(1);
+        });
+        
         logger.info("Application started successfully");
 
         // Open the last file after UI is shown
