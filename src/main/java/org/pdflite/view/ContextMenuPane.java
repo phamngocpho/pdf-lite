@@ -79,7 +79,7 @@ public class ContextMenuPane extends StackPane {
             // Check for text selection (has highlight regions)
             boolean hasSelection = !highlightGroup.getChildren().isEmpty() && highlightGroup.isVisible();
 
-            // Show menu if it has text OR image
+            // Show the menu if it has text OR image
             if (hasSelection || handler.hasImageAtPosition()) {
                 updateContextMenuItems();
                 contextMenu.show(this, event.getScreenX(), event.getScreenY());
@@ -109,7 +109,7 @@ public class ContextMenuPane extends StackPane {
             return;
         }
 
-        // RIGHT CLICK: Fallback (if setOnContextMenuRequested doesn't work)
+        // RIGHT-CLICK: Fallback (if setOnContextMenuRequested doesn't work)
         if (event.getButton() == MouseButton.SECONDARY) {
             //logger.debug("RIGHT CLICK detected at ({:.1f}, {:.1f})",event.getX(), event.getY());
             // Let setOnContextMenuRequested handle it
@@ -177,7 +177,7 @@ public class ContextMenuPane extends StackPane {
 
     private void handleClicks(MouseEvent event) {
         if (clickCount == 2) {
-            // Double-click: select word
+            // Double-click: select a word
             String selectedText = handler.selectTextAtPoint(
                     currentDocument,
                     currentPageIndex,
@@ -206,7 +206,7 @@ public class ContextMenuPane extends StackPane {
     }
 
     private void finalizeSelection(double endX, double endY) {
-        // Calculate final bounding box
+        // Calculate the final bounding box
         double x = Math.min(selectionStartX, endX);
         double y = Math.min(selectionStartY, endY);
         double width = Math.abs(endX - selectionStartX);
@@ -223,7 +223,7 @@ public class ContextMenuPane extends StackPane {
 
         //logger.info("Selection FINALIZED: ({:.1f}, {:.1f}) + {:.1f}x{:.1f} px", x, y, width, height);
 
-        // Pass coordinates to handler
+        // Pass coordinates to the handler
         handler.analyzeSelection(
                 currentDocument,
                 currentPageIndex,
@@ -309,7 +309,7 @@ public class ContextMenuPane extends StackPane {
         this.currentPageIndex = pageIndex;
         this.currentZoom = zoom;
 
-        // Clear image and text selector cache when page changes
+        // Clear image and text selector cache when the page changes
         if (pageChanged) {
             handler.clearImageCache();
             handler.clearTextSelector();
