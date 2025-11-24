@@ -82,11 +82,18 @@ public class ZoomManager {
 
     /**
      * Sets the zoom level.
+     * Updates the zoom combo box display if document is loaded.
      *
      * @param zoom the new zoom level
      */
     public void setCurrentZoom(double zoom) {
         this.currentZoom = zoom;
+        
+        // Update the zoom combo box display immediately for better visibility
+        if (currentDocument != null && zoomComboBox != null) {
+            String zoomValue = String.format("%.0f%%", zoom * 100);
+            zoomComboBox.setValue(zoomValue);
+        }
     }
 
     /**
@@ -184,10 +191,13 @@ public class ZoomManager {
         if (currentDocument != null) {
             currentDocument.setZoomLevel(currentZoom);
 
+            // Update zoom combo box with clear percentage display
             if (zoomComboBox != null) {
-                zoomComboBox.setValue(String.format("%.0f%%", currentZoom * 100));
+                String zoomValue = String.format("%.0f%%", currentZoom * 100);
+                zoomComboBox.setValue(zoomValue);
             }
 
+            // Display zoom level clearly in status messages
             String statusMessage = prefix != null
                     ? String.format("%s - Zoom: %.0f%%", prefix, currentZoom * 100)
                     : String.format("Zoom: %.0f%%", currentZoom * 100);
@@ -200,7 +210,7 @@ public class ZoomManager {
     }
 
     /**
-     * Calculates initial zoom to fit page when opening documents.
+     * Calculates initial zoom to fit the page when opening documents.
      *
      * @param firstPageImage the first page image
      * @return the calculated zoom level
@@ -209,6 +219,23 @@ public class ZoomManager {
         if (scrollPane != null && scrollPane.getViewportBounds().getWidth() > 0
                 && scrollPane.getViewportBounds().getHeight() > 0) {
             return calculateFitToPageZoom(firstPageImage.getWidth(), firstPageImage.getHeight());
+        } else {
+            return 0.7;
+        }
+    }
+
+    /**
+     * Calculates initial zoom to fit the page when opening documents from page dimensions.
+     * This avoids rendering the first page with scale 1.0f, ensuring consistent sizing.
+     *
+     * @param pageWidth  the page width at scale 1.0
+     * @param pageHeight the page height at scale 1.0
+     * @return the calculated zoom level
+     */
+    public double calculateInitialZoomFromDimensions(double pageWidth, double pageHeight) {
+        if (scrollPane != null && scrollPane.getViewportBounds().getWidth() > 0
+                && scrollPane.getViewportBounds().getHeight() > 0) {
+            return calculateFitToPageZoom(pageWidth, pageHeight);
         } else {
             return 0.7;
         }

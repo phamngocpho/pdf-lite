@@ -16,7 +16,6 @@ import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
-import javafx.scene.image.Image;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -75,15 +74,15 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
             // CRITICAL: Reset to page 1 (index 0) when opening a new file
             newDocument.setCurrentPage(0);
 
-            // Calculate initial zoom
-            Image firstPage = pdfService.renderPage(newDocument, 0, 1.0f);
-            double initialZoom = zoomManager.calculateInitialZoom(firstPage);
-            zoomManager.setCurrentZoom(initialZoom);
+            // Set initial zoom to 100% (1.0) for consistent display and accurate text copying
+            // Using 100% ensures coordinate calculations for text selection are accurate
+            double initialZoom = 1.0;
             newDocument.setZoomLevel(initialZoom);
-
+            
             // Update renderer and scroll handler with a new document
             pageRenderer.setDocument(newDocument, initialZoom);
             zoomManager.setDocument(newDocument);
+            zoomManager.setCurrentZoom(initialZoom); // This will update the zoom combo box display
             renderingManager.setDocument(newDocument);
 
             // Update UI
@@ -93,9 +92,15 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
             pageInfoManager.updatePageInfo(newDocument);
 
             // Scroll to the top (page 1) to ensure we're viewing the first page
+            // Also enable text selection by default after pages are rendered
             Platform.runLater(() -> {
                 if (scrollPane != null && pagesContainer.get() != null) {
                     scrollPane.setVvalue(0.0);
+                }
+                // Enable text selection by default (like browsers) after pages are rendered
+                // Text selection is already enabled by default in PageRenderer, but ensure it's applied
+                if (pageRenderer != null && pagesContainer.get() != null) {
+                    pageRenderer.setSelectionModeActive(pagesContainer.get(), true);
                 }
             });
 

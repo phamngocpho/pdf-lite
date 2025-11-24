@@ -98,6 +98,7 @@ public class Constants {
     public static final double SEARCH_HIGHLIGHT_OPACITY = 0.4;
     public static final double LOW_RENDER_SCALE = 150.0 / 72.0; //LOW DPI RENDERING SCALE
     public static final double HIGH_RENDER_SCALE = 300.0 / 72.0; //HIGH DPI RENDERING SCALE
+    public static final float TEXT_SELECTION_SPACE_THRESHOLD = 0.2f;
 
     /**
      * Maximum canvas size to prevent GPU texture overflow.
