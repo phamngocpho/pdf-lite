@@ -21,8 +21,9 @@ public class RecentFilesManager {
     private final Path recentFilesPath;
 
     public RecentFilesManager() {
-        String userHome = System.getProperty("user.home");
-        Path appDataDir = Paths.get(userHome, APP_DATA_DIR);
+        // Store in project directory (current working directory) instead of user home
+        String workingDir = System.getProperty("user.dir");
+        Path appDataDir = Paths.get(workingDir, APP_DATA_DIR);
 
         try {
             if (!Files.exists(appDataDir)) {
@@ -96,8 +97,8 @@ public class RecentFilesManager {
     }
 
     private void saveLastOpenedFile(String filePath) {
-        String userHome = System.getProperty("user.home");
-        Path lastFilePath = Paths.get(userHome, APP_DATA_DIR, "last-opened.txt");
+        String workingDir = System.getProperty("user.dir");
+        Path lastFilePath = Paths.get(workingDir, APP_DATA_DIR, "last-opened.txt");
 
         try (BufferedWriter writer = Files.newBufferedWriter(lastFilePath)) {
             writer.write(filePath);
@@ -107,8 +108,8 @@ public class RecentFilesManager {
     }
 
     public String getLastOpenedFile() {
-        String userHome = System.getProperty("user.home");
-        Path lastFilePath = Paths.get(userHome, APP_DATA_DIR, "last-opened.txt");
+        String workingDir = System.getProperty("user.dir");
+        Path lastFilePath = Paths.get(workingDir, APP_DATA_DIR, "last-opened.txt");
 
         if (!Files.exists(lastFilePath)) {
             return null;

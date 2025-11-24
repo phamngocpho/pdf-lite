@@ -53,6 +53,11 @@ nbdist/
 logs/
 
 docs/
+
+# PDF Lite app data
+.pdflite/
+recent-files.txt
+last-opened.txt
 nb-configuration.xml
 
 query.json
