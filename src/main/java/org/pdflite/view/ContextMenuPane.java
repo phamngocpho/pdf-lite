@@ -34,7 +34,7 @@ public class ContextMenuPane extends StackPane {
 
     private static final Color HIGHLIGHT_FILL = Color.color(0.0, 0.47, 0.84, 0.3); // Similar to SmartPDFViewer
     private static final double MIN_SELECTION_SIZE = 5.0;
-    private static final double HIGHLIGHT_HEIGHT_MULTIPLIER = 1.3; // Increase height by 30%
+    private static final double HIGHLIGHT_HEIGHT_MULTIPLIER = 1.3;
 
     public ContextMenuPane(ContextMenuHandler handler) {
         this.handler = handler;
