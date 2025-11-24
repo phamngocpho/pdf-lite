@@ -3,7 +3,6 @@ package org.pdflite.controller;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
 
 public class InsertDialogController {
 
@@ -15,6 +14,21 @@ public class InsertDialogController {
     @FXML private Button btnInsert;
 
     private boolean insertClicked = false;
+    private float defaultWidth = 595; // A4 default
+    private float defaultHeight = 842; // A4 default
+
+    /**
+     * Sets the default page size based on current page dimensions.
+     * This ensures inserted pages match the current page size.
+     */
+    public void setDefaultSize(float width, float height) {
+        this.defaultWidth = width;
+        this.defaultHeight = height;
+        // Update size if "Match Current Page" is selected
+        if ("Match Current Page".equals(pageSizeCombo.getValue())) {
+            updateSize("Match Current Page");
+        }
+    }
 
     @FXML
     public void initialize() {
@@ -27,28 +41,38 @@ public class InsertDialogController {
         rbBefore.setToggleGroup(position);
         rbLast.setToggleGroup(position);
 
-        pageSizeCombo.getItems().addAll("A4", "Letter", "Legal", "Custom");
-        pageSizeCombo.setValue("A4");
-        updateSize("A4");
+        pageSizeCombo.getItems().addAll("Match Current Page", "A4", "Letter", "Legal", "Custom");
+        pageSizeCombo.setValue("Match Current Page");
 
         pageSizeCombo.setOnAction(e -> {
             String val = pageSizeCombo.getValue();
             boolean isCustom = "Custom".equals(val);
             widthField.setDisable(!isCustom);
             heightField.setDisable(!isCustom);
-            if (!isCustom) updateSize(val);
+            if (!isCustom) {
+                updateSize(val);
+            }
         });
+        
+        // Initialize with default size (will be updated by setDefaultSize)
+        updateSize("Match Current Page");
     }
 
     private void updateSize(String size) {
-        float w=0, h=0;
+        float w = 0, h = 0;
         switch (size) {
-            case "A4" -> { w=595; h=842; }
-            case "Letter" -> { w=612; h=792; }
-            case "Legal" -> { w=612; h=1008; }
+            case "Match Current Page" -> {
+                w = defaultWidth;
+                h = defaultHeight;
+            }
+            case "A4" -> { w = 595; h = 842; }
+            case "Letter" -> { w = 612; h = 792; }
+            case "Legal" -> { w = 612; h = 1008; }
         }
-        widthField.setText(String.valueOf(w));
-        heightField.setText(String.valueOf(h));
+        if (w > 0 && h > 0) {
+            widthField.setText(String.valueOf(w));
+            heightField.setText(String.valueOf(h));
+        }
     }
 
     @FXML private void handleInsert() {
@@ -86,5 +110,13 @@ public class InsertDialogController {
         if (rbLast.isSelected()) return total;
         if (rbBefore.isSelected()) return current;
         return current + 1;
+    }
+    
+    /**
+     * Gets the selected page size option.
+     * Used to determine if we should use the reference page size.
+     */
+    public String getSelectedPageSize() {
+        return pageSizeCombo.getValue();
     }
 }

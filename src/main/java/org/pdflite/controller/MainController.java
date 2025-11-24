@@ -418,7 +418,7 @@ public class MainController {
         if (currentDocument != null && pagesContainer != null) {
             annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
             
-            // Enable text selection by default (like browsers) when document is opened
+            // Enable text selection by default (like browsers) when the document is opened
             // Use Platform.runLater to ensure pages are fully rendered first
             Platform.runLater(() -> {
                 if (pageRenderer != null && pagesContainer != null) {
@@ -828,6 +828,12 @@ public class MainController {
             Parent root = loader.load();
             InsertDialogController controller = loader.getController();
 
+            // Get the current page size to use as default in the dialog
+            int currentPageIndex = currentDocument.getCurrentPage();
+            org.apache.pdfbox.pdmodel.PDPage currentPage = currentDocument.getDocument().getPage(currentPageIndex);
+            org.apache.pdfbox.pdmodel.common.PDRectangle currentMediaBox = currentPage.getMediaBox();
+            controller.setDefaultSize(currentMediaBox.getWidth(), currentMediaBox.getHeight());
+
             Stage stage = new Stage();
             stage.setTitle("Insert Blank Page");
             stage.initModality(Modality.WINDOW_MODAL);
@@ -839,10 +845,25 @@ public class MainController {
             stage.showAndWait();
 
             if (controller.isInsertClicked()) {
-                float w = controller.getWidth();
-                float h = controller.getHeight();
                 int count = controller.getCount();
-                int index = controller.getInsertIndex(currentDocument.getCurrentPage(), currentDocument.getTotalPages()); // Khớp tên getInsertIndex()
+                int index = controller.getInsertIndex(currentDocument.getCurrentPage(), currentDocument.getTotalPages());
+                
+                // Get page size from the page at the insert position (or the nearest page)
+                // This ensures inserted pages match the size of pages at the insert location
+                int refPageIndex = getRefPageIndex(index);
+
+                org.apache.pdfbox.pdmodel.PDPage refPage = currentDocument.getDocument().getPage(refPageIndex);
+                org.apache.pdfbox.pdmodel.common.PDRectangle refMediaBox = refPage.getMediaBox();
+                
+                // Use size from the reference page if "Match Current Page" was selected, otherwise use dialog values
+                float w, h;
+                if ("Match Current Page".equals(controller.getSelectedPageSize())) {
+                    w = refMediaBox.getWidth();
+                    h = refMediaBox.getHeight();
+                } else {
+                    w = controller.getWidth();
+                    h = controller.getHeight();
+                }
 
                 pdfService.insertBlankPage(currentDocument, index, w, h, count);
 
@@ -877,6 +898,21 @@ public class MainController {
             logger.error("Error inserting page", e);
             uiStateManager.showError("Insert Error", e.getMessage());
         }
+    }
+
+    private int getRefPageIndex(int index) {
+        int refPageIndex;
+        if (index >= currentDocument.getTotalPages()) {
+            // Inserting at the end-use last page
+            refPageIndex = Math.max(0, currentDocument.getTotalPages() - 1);
+        } else if (index > 0) {
+            // Inserting in the middle-use page at insert position (or previous page)
+            refPageIndex = Math.min(index, currentDocument.getTotalPages() - 1);
+        } else {
+            // Inserting at beginning - use first page
+            refPageIndex = 0;
+        }
+        return refPageIndex;
     }
 }
 
