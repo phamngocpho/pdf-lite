@@ -14,7 +14,6 @@ import javafx.application.Platform;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
-import javafx.scene.image.Image;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.VBox;
 
@@ -72,9 +71,11 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
             // CRITICAL: Reset to page 1 (index 0) when opening a new file
             newDocument.setCurrentPage(0);
 
-            // Calculate initial zoom
-            Image firstPage = pdfService.renderPage(newDocument, 0, 1.0f);
-            double initialZoom = zoomManager.calculateInitialZoom(firstPage);
+            // Calculate initial zoom from page dimensions (without rendering)
+            // This ensures consistent sizing for all pages including the first one
+            double[] firstPageDimensions = pdfService.getPageDimensions(newDocument, 0, 1.0f);
+            double initialZoom = zoomManager.calculateInitialZoomFromDimensions(
+                    firstPageDimensions[0], firstPageDimensions[1]);
             zoomManager.setCurrentZoom(initialZoom);
             newDocument.setZoomLevel(initialZoom);
 
