@@ -7,9 +7,11 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.text.PDFTextStripperByArea;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.util.CoordinateConverter;
+import org.pdflite.util.SmartTextSelector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -44,24 +46,26 @@ public class ContextMenuHandler {
 
     // Selection state
     private SelectionInfo currentSelection;
+    private final SmartTextSelector smartTextSelector;
 
     private List<ImageInfo> currentPageImages = new ArrayList<>();
     private ImageInfo currentImageUnderCursor;
+    private int currentPageIndex = -1;
 
     public ContextMenuHandler() {
         logger.info("ContextMenuHandler initialized!");
+        this.smartTextSelector = new SmartTextSelector();
     }
 
     /**
-     * Analyzes rectangular selection area on the PDF page.
+     * Analyzes rectangular selection area on the PDF page using smart text selection.
      *
      * <p>
      * <b>Coordinate Conversion Pipeline:</b></p>
      * <ol>
      * <li>Input: Canvas coordinates (pixels, Y=top)</li>
-     * <li>Normalize: Create bounding box (x, y, width, height)</li>
-     * <li>Convert: Apply the scale factor (zoom * 150/72)</li>
-     * <li>Extract: Pass to PDFTextStripperByArea (expects Y=top)</li>
+     * <li>Convert: Apply the scale factor to get PDF coordinates</li>
+     * <li>Extract: Use SmartTextSelector to find nearest characters and extract text</li>
      * </ol>
      *
      * @param document  The PDF document
@@ -83,31 +87,33 @@ public class ContextMenuHandler {
         }
 
         try {
-            PDPage page = document.getDocument().getPage(pageIndex);
-            PDRectangle cropBox = page.getCropBox();
-            float pageWidth = cropBox.getWidth();
-            float pageHeight = cropBox.getHeight();
+            float pageHeight = ensureTextPositionsExtracted(document, pageIndex);
 
-            // Normalize canvas coordinates (create bounding box)
+            // Convert canvas coordinates to PDF coordinates
+            Point2D pdfStart = CoordinateConverter.canvasToPdfJavaPoint(
+                    canvasX1, canvasY1, pageHeight, zoom
+            );
+            Point2D pdfEnd = CoordinateConverter.canvasToPdfJavaPoint(
+                    canvasX2, canvasY2, pageHeight, zoom
+            );
+
+            // Use smart text selector to get the selected text
+            String selectedText = smartTextSelector.getSelectedText(pdfStart, pdfEnd);
+            String cleanedText = (selectedText != null) ? selectedText.trim() : "";
+
+            // Create selection info
             double x1 = Math.min(canvasX1, canvasX2);
             double y1 = Math.min(canvasY1, canvasY2);
             double width = Math.abs(canvasX2 - canvasX1);
             double height = Math.abs(canvasY2 - canvasY1);
-
-            // Convert to PDF Java Points (Y=top)
             Rectangle2D.Float pdfRect = CoordinateConverter.canvasToPdfJavaRect(
                     x1, y1, width, height, pageHeight, zoom
             );
 
-            // Validate coordinates
-            //logger.warn("Coordinates outside page bounds!");
-
-            // Extract text
-            currentSelection = extractTextFromRegion(page, pdfRect, pageIndex);
+            currentSelection = new SelectionInfo(pageIndex, pdfRect, cleanedText, new ArrayList<>());
 
             if (currentSelection.hasText()) {
                 logger.info("Length:   {} characters", currentSelection.getText().length());
-
             } else {
                 logger.info("No text found in selection");
             }
@@ -118,44 +124,98 @@ public class ContextMenuHandler {
     }
 
     /**
-     * Extracts text from a PDF Java rectangle (Y=top coordinates).
+     * Selects text at a point (for double-click word or triple-click line selection).
      *
-     * <p>
-     * <b>PDFBox Requirements:</b></p>
-     * <ul>
-     * <li>Input rectangle MUST use Java/AWT coordinates (Y=0 at top)</li>
-     * <li>Use {@code setSortByPosition(true)} for natural reading order</li>
-     * <li>Use {@code setShouldSeparateByBeads(false)} for area extraction</li>
-     * </ul>
-     *
-     * @param page      The PDF page
-     * @param rect      Rectangle in PDF Java coordinates (Y=top)
-     * @param pageIndex Page index for tracking
-     * @return SelectionInfo containing extracted text
-     * @throws IOException if extraction fails
+     * @param document  The PDF document
+     * @param pageIndex Zero-based page index
+     * @param canvasX   Canvas X coordinate (pixels)
+     * @param canvasY   Canvas Y coordinate (pixels)
+     * @param zoom      Current zoom level
+     * @param clickType "word" for double-click, "line" for triple-click
+     * @return Selected text
      */
-    private SelectionInfo extractTextFromRegion(PDPage page, Rectangle2D.Float rect, int pageIndex)
-            throws IOException {
+    public String selectTextAtPoint(PDFDocument document, int pageIndex,
+                                     double canvasX, double canvasY,
+                                     double zoom, String clickType) {
+        if (document == null || document.getDocument() == null) {
+            return "";
+        }
 
-        //logger.debug("Extracting text from region: ({:.2f},{:.2f})+{:.2f}x{:.2f}", rect.x, rect.y, rect.width, rect.height);
-        PDFTextStripperByArea stripper = new PDFTextStripperByArea();
+        try {
+            float pageHeight = ensureTextPositionsExtracted(document, pageIndex);
 
-        stripper.setSortByPosition(true);
-        stripper.setShouldSeparateByBeads(false);
+            // Convert canvas coordinates to PDF coordinates
+            Point2D pdfPoint = CoordinateConverter.canvasToPdfJavaPoint(
+                    canvasX, canvasY, pageHeight, zoom
+            );
 
-        String regionName = "selection";
-        stripper.addRegion(regionName, rect);
-        stripper.extractRegions(page);
+            String selectedText = "";
+            if ("word".equals(clickType)) {
+                selectedText = smartTextSelector.selectWord(pdfPoint);
+            } else if ("line".equals(clickType)) {
+                selectedText = smartTextSelector.selectLine(pdfPoint);
+            }
 
-        String text = stripper.getTextForRegion(regionName);
-        String cleanedText = (text != null) ? text.trim() : "";
+            return (selectedText != null) ? selectedText.trim() : "";
 
-        return new SelectionInfo(
-                pageIndex,
-                rect,
-                cleanedText,
-                new ArrayList<>() // TODO: Extract images
-        );
+        } catch (IOException e) {
+            logger.error("Error selecting text at point: {}", e.getMessage(), e);
+            return "";
+        }
+    }
+
+    /**
+     * Gets highlight regions for visual feedback (one rectangle per line of text).
+     *
+     * @param document  The PDF document
+     * @param pageIndex Zero-based page index
+     * @param canvasX1  Canvas X coordinate of the first corner (pixels)
+     * @param canvasY1  Canvas Y coordinate of the first corner (pixels)
+     * @param canvasX2  Canvas X coordinate of opposite corner (pixels)
+     * @param canvasY2  Canvas Y coordinate of the opposite corner (pixels)
+     * @param zoom      Current zoom level
+     * @return List of rectangles in canvas coordinates (one per line)
+     */
+    public List<Rectangle2D> getHighlightRegions(PDFDocument document, int pageIndex,
+                                                 double canvasX1, double canvasY1,
+                                                 double canvasX2, double canvasY2,
+                                                 double zoom) {
+        if (document == null || document.getDocument() == null) {
+            return new ArrayList<>();
+        }
+
+        try {
+            float pageHeight = ensureTextPositionsExtracted(document, pageIndex);
+
+            // Convert canvas coordinates to PDF coordinates
+            Point2D pdfStart = CoordinateConverter.canvasToPdfJavaPoint(
+                    canvasX1, canvasY1, pageHeight, zoom
+            );
+            Point2D pdfEnd = CoordinateConverter.canvasToPdfJavaPoint(
+                    canvasX2, canvasY2, pageHeight, zoom
+            );
+
+            // Get highlight regions in PDF coordinates
+            List<Rectangle2D> pdfRegions = smartTextSelector.getHighlightRegions(pdfStart, pdfEnd);
+
+            // Convert PDF regions to canvas coordinates
+            List<Rectangle2D> canvasRegions = new ArrayList<>();
+            double finalScale = zoom * org.pdflite.util.Constants.LOW_RENDER_SCALE;
+
+            for (Rectangle2D pdfRegion : pdfRegions) {
+                double canvasX = pdfRegion.getX() * finalScale;
+                double canvasY = pdfRegion.getY() * finalScale;
+                double canvasWidth = pdfRegion.getWidth() * finalScale;
+                double canvasHeight = pdfRegion.getHeight() * finalScale;
+                canvasRegions.add(new Rectangle2D.Double(canvasX, canvasY, canvasWidth, canvasHeight));
+            }
+
+            return canvasRegions;
+
+        } catch (IOException e) {
+            logger.error("Error getting highlight regions: {}", e.getMessage(), e);
+            return new ArrayList<>();
+        }
     }
 
     /**
@@ -163,15 +223,25 @@ public class ContextMenuHandler {
      */
     public void handleCopyText() {
         if (currentSelection != null && currentSelection.hasText()) {
-            ClipboardContent content = new ClipboardContent();
-            content.putString(currentSelection.getText());
-            Clipboard.getSystemClipboard().setContent(content);
-
-            logger.info("Copied {} characters to clipboard",
-                    currentSelection.getText().length());
+            copyToClipboard(currentSelection.getText());
         } else {
             logger.warn("No text to copy");
         }
+    }
+
+    /**
+     * Copies text to clipboard (used for automatic copying).
+     */
+    public void copyToClipboard(String text) {
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+
+        ClipboardContent content = new ClipboardContent();
+        content.putString(text);
+        Clipboard.getSystemClipboard().setContent(content);
+
+        logger.info("Copied {} characters to clipboard", text.length());
     }
 
     /**
@@ -327,5 +397,36 @@ public class ContextMenuHandler {
     public void clearImageCache() {
         currentPageImages.clear();
         currentImageUnderCursor = null;
+    }
+
+    /**
+     * Clears text selector cache (call when the page changes).
+     */
+    public void clearTextSelector() {
+        if (smartTextSelector != null) {
+            smartTextSelector.clear();
+        }
+        currentPageIndex = -1;
+    }
+
+    /**
+     * Ensures text positions are extracted for the given page and returns page height.
+     * This helper method eliminates duplicate code across multiple methods.
+     *
+     * @param document  The PDF document
+     * @param pageIndex Zero-based page index
+     * @return Page height in points
+     * @throws IOException if extraction fails
+     */
+    private float ensureTextPositionsExtracted(PDFDocument document, int pageIndex) throws IOException {
+        // Extract text positions if page changed
+        if (currentPageIndex != pageIndex) {
+            smartTextSelector.extractTextPositions(document.getDocument(), pageIndex);
+            currentPageIndex = pageIndex;
+        }
+
+        PDPage page = document.getDocument().getPage(pageIndex);
+        PDRectangle cropBox = page.getCropBox();
+        return cropBox.getHeight();
     }
 }
