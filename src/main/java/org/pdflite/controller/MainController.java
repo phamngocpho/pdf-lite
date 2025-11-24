@@ -26,6 +26,7 @@ import org.pdflite.manager.SearchDialogManager;
 import org.pdflite.manager.SearchManager;
 import org.pdflite.manager.ThemeManager;
 import org.pdflite.manager.UIStateManager;
+import org.pdflite.manager.UndoRedoManager;
 import org.pdflite.manager.ZoomManager;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
@@ -36,7 +37,7 @@ import org.pdflite.util.NavigationHelper;
 import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.pdflite.command.*;
+import org.pdflite.command.CommandManager;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
@@ -59,9 +60,6 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyCodeCombination;
-import javafx.scene.input.KeyCombination;
 import javafx.scene.control.Tooltip;
 /**
  * Main Controller for the PDF Lite Application.
@@ -148,6 +146,7 @@ public class MainController {
     private DocumentOperationManager documentOperationManager;
     private DocumentLifecycleManager documentLifecycleManager;
     private RecentFilesMenuManager recentFilesMenuManager;
+    private UndoRedoManager undoRedoManager;
 
     // ==================== Document State ====================
 
@@ -186,6 +185,10 @@ public class MainController {
         // Initialize managers
         initializeManagers();
         commandManager = new CommandManager();
+        
+        // Initialize UndoRedoManager early (annotationManager will be null initially)
+        initializeUndoRedoManager();
+        
         commandManager.addListener((canUndo, canRedo, undoDesc, redoDesc) -> {
             Platform.runLater(() -> {
                 // Update button states
@@ -204,8 +207,8 @@ public class MainController {
             });
         });
         rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
-            if (newScene != null) {
-                setupKeyboardShortcuts(newScene);
+            if (newScene != null && undoRedoManager != null) {
+                undoRedoManager.setupKeyboardShortcuts(newScene);
             }
         });
         // Set page change listener to update UI when page changes during scroll
@@ -285,6 +288,18 @@ public class MainController {
         }
 
         uiStateManager.updateUIState(false);
+    }
+
+    /**
+     * Initializes the UndoRedoManager.
+     */
+    private void initializeUndoRedoManager() {
+        undoRedoManager = new UndoRedoManager(
+                commandManager,
+                uiStateManager,
+                annotationManager,
+                this::reloadCurrentDocument
+        );
     }
 
     /**
@@ -441,6 +456,8 @@ public class MainController {
         // Initialize the annotation manager when the document is opened
         if (currentDocument != null && pagesContainer != null) {
             annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
+            // Re-initialize UndoRedoManager with the new annotationManager
+            initializeUndoRedoManager();
         }
     }
 
@@ -515,42 +532,14 @@ public class MainController {
 
     @FXML
     private void handleDeletePage() {
-        if (currentDocument == null) {
-            return;
+        if (documentOperationManager != null) {
+            documentOperationManager.handleDeletePage(
+                currentDocument,
+                commandManager,
+                this,
+                this::reloadCurrentDocument
+            );
         }
-
-        int total = currentDocument.getTotalPages();
-        if (total <= 1) {
-            uiStateManager.showError("Delete Page", "Cannot delete the last remaining page.");
-            return;
-        }
-
-        int current = currentDocument.getCurrentPage();
-
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Delete Page");
-        confirm.setHeaderText("Delete current page?");
-        confirm.setContentText("This will remove page " + (current + 1) + " from the document.\n" +
-                              "You can undo this action with Ctrl+Z.");
-        confirm.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
-        confirm.showAndWait().ifPresent(result -> {
-            if (result == ButtonType.OK) {
-                try {
-                    // Create and execute delete command through CommandManager
-                    DeletePageCommand command = new DeletePageCommand(this, pdfService, current);
-                    commandManager.executeCommand(command, () -> {
-                        reloadCurrentDocument();
-                    });
-                    
-                    logger.info("Delete page command executed successfully");
-                    
-                } catch (Exception e) {
-                    logger.error("Error deleting page {}", current + 1, e);
-                    uiStateManager.showError("Delete Page Error", 
-                        "Could not delete the page: " + e.getMessage());
-                }
-            }
-        });
     }
     // ==================== Zoom Operations ====================
 
@@ -825,119 +814,38 @@ public class MainController {
     }
     @FXML
     private void handleRedo() {
-        if (!commandManager.canRedo()) {
-            return;
-        }
-
-        try {
-            String description = commandManager.getRedoDescription();
-            logger.info("Performing redo: {}", description);
-
-            boolean success = commandManager.redo(() -> {
-                reloadCurrentDocument();
-            });
-
-            if (success) {
-                uiStateManager.updateStatus("Redone: " + description);
-            }
-        } catch (IOException e) {
-            logger.error("Error performing redo", e);
-            uiStateManager.showError("Redo Error", "Could not redo the action: " + e.getMessage());
+        if (undoRedoManager != null) {
+            undoRedoManager.handleRedo();
         }
     }
     @FXML
     private void handleUndo() {
-        // Phần 1: Undo của annotationManager (nếu có)
-        if (annotationManager != null) {
-            annotationManager.handleUndo();
-        }
-
-        // Phần 2: Undo theo commandManager
-        if (!commandManager.canUndo()) {
-            return;
-        }
-
-        try {
-            String description = commandManager.getUndoDescription();
-            logger.info("Performing undo: {}", description);
-
-            boolean success = commandManager.undo(() -> {
-                reloadCurrentDocument();
-            });
-
-            if (success) {
-                uiStateManager.updateStatus("Undone: " + description);
-            }
-        } catch (IOException e) {
-            logger.error("Error performing undo", e);
-            uiStateManager.showError("Undo Error", "Could not undo the action: " + e.getMessage());
+        if (undoRedoManager != null) {
+            undoRedoManager.handleUndo();
         }
     }
-    private void setupKeyboardShortcuts(Scene scene) {
-        // Ctrl+Z for Undo
-        scene.getAccelerators().put(
-            new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN),
-            this::handleUndo
-        );
-
-        // Ctrl+Y for Redo
-        scene.getAccelerators().put(
-            new KeyCodeCombination(KeyCode.Y, KeyCombination.CONTROL_DOWN),
-            this::handleRedo
-        );
-
-        // Ctrl+Shift+Z for Redo (alternative)
-        scene.getAccelerators().put(
-            new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN),
-            this::handleRedo
-        );
-
-        logger.info("Keyboard shortcuts registered: Ctrl+Z (Undo), Ctrl+Y (Redo)");
-    }
+    /**
+     * Reloads the current document, delegating to DocumentLifecycleManager.
+     * 
+     * @throws IOException if reloading fails
+     */
     public void reloadCurrentDocument() throws IOException {
-        if (currentDocument == null || currentDocument.getFile() == null) {
-            return;
+        DocumentLifecycleManager.ReloadResult result = documentLifecycleManager.reloadCurrentDocument(
+            currentDocument, pagesContainer, scrollPane, contentPane, loadingPages, renderExecutor
+        );
+        
+        // Update controller state with reloaded components
+        currentDocument = result.document();
+        pagesContainer = result.pagesContainer();
+        pageRenderer = result.pageRenderer();
+        scrollHandler = result.scrollHandler();
+        renderingManager = result.renderingManager();
+        
+        // Re-initialize annotation manager with new pages container
+        if (currentDocument != null && pagesContainer != null) {
+            annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
+            initializeUndoRedoManager();
         }
-        File currentFile = currentDocument.getFile();
-        double currentZoom = zoomManager.getCurrentZoom();
-        int currentPage = currentDocument.getCurrentPage();
-        logger.info("Reloading document: {}", currentFile.getName());
-        if (currentDocument.getDocument() != null) {
-            currentDocument.getDocument().close();
-        }
-        contentPane.getChildren().clear();
-        pagesContainer = null;
-        loadingPages.clear();
-        pageRenderer.clearCache();
-        pageRenderer.cancelAllPendingRenders();
-        pageRenderer = new PageRenderer(pdfService, renderExecutor);
-        scrollHandler = new ScrollHandler(pageRenderer, scrollPane);
-        currentDocument = fileManager.openFile(currentFile);
-
-        if (currentDocument == null) {
-            throw new IOException("Could not reopen document");
-        }
-        int newTotal = currentDocument.getTotalPages();
-        int newCurrentPage = Math.min(currentPage, newTotal - 1);
-        currentDocument.setCurrentPage(Math.max(0, newCurrentPage));
-        currentDocument.setZoomLevel(currentZoom);
-        pageRenderer.setDocument(currentDocument, currentZoom);
-        zoomManager.setDocument(currentDocument);
-        zoomManager.setCurrentZoom(currentZoom);
-        renderingManager = new RenderingManager(pdfService, pageRenderer, scrollHandler, zoomManager);
-        renderingManager.setDocument(currentDocument);
-        renderingManager.setUIComponents(null, scrollPane, contentPane);
-        renderingManager.renderAllPages();
-        pagesContainer = renderingManager.getPagesContainer();
-        scrollHandler.setDocument(currentDocument, pagesContainer);
-        pageInfoManager.updatePageInfo(currentDocument);
-
-        Platform.runLater(() -> {
-            scrollHandler.scrollToPage(newCurrentPage);
-            pageInfoManager.updatePageInfo(currentDocument);
-        });
-
-        logger.info("Document reloaded successfully. Total pages: {}", newTotal);
     }
     /**
      * Gets the command manager.

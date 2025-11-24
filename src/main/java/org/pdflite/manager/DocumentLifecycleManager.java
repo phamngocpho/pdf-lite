@@ -2,9 +2,11 @@ package org.pdflite.manager;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.pdflite.controller.PageRenderer;
+import org.pdflite.controller.ScrollHandler;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
 import org.slf4j.Logger;
@@ -16,6 +18,7 @@ import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
 import javafx.scene.image.Image;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 /**
@@ -188,6 +191,102 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
                 uiStateManager.showError("Save Error", "Could not save the document: " + e.getMessage());
             }
         }
+    }
+
+    /**
+     * Reloads the current document, preserving the current page and zoom level.
+     * This is useful after operations that modify the PDF structure (e.g., delete page, rotate).
+     *
+     * @param currentDocument the current PDF document
+     * @param pagesContainer  the pages container VBox
+     * @param scrollPane      the scroll pane
+     * @param contentPane     the content pane
+     * @param loadingPages    set of currently loading pages
+     * @param renderExecutor  executor service for rendering
+     * @return a ReloadResult containing the updated document and pages container
+     * @throws IOException if reloading fails
+     */
+    public ReloadResult reloadCurrentDocument(PDFDocument currentDocument,
+                                              VBox pagesContainer,
+                                              ScrollPane scrollPane,
+                                              StackPane contentPane,
+                                              java.util.Set<Integer> loadingPages,
+                                              ExecutorService renderExecutor) throws IOException {
+        if (currentDocument == null || currentDocument.getFile() == null) {
+            throw new IOException("No document to reload");
+        }
+
+        File currentFile = currentDocument.getFile();
+        double currentZoom = zoomManager.getCurrentZoom();
+        int currentPage = currentDocument.getCurrentPage();
+
+        logger.info("Reloading document: {}", currentFile.getName());
+
+        // Close current document
+        if (currentDocument.getDocument() != null) {
+            currentDocument.getDocument().close();
+        }
+
+        // Clear UI components
+        contentPane.getChildren().clear();
+        pagesContainer = null;
+        loadingPages.clear();
+
+        // Create new renderer and scroll handler
+        PageRenderer newPageRenderer = new PageRenderer(pdfService, renderExecutor);
+        newPageRenderer.clearCache();
+        newPageRenderer.cancelAllPendingRenders();
+
+        ScrollHandler newScrollHandler = new ScrollHandler(newPageRenderer, scrollPane);
+
+        // Reopen document
+        PDFDocument reloadedDocument = fileManager.openFile(currentFile);
+        if (reloadedDocument == null) {
+            throw new IOException("Could not reopen document");
+        }
+
+        // Restore state
+        int newTotal = reloadedDocument.getTotalPages();
+        int newCurrentPage = Math.min(currentPage, newTotal - 1);
+        reloadedDocument.setCurrentPage(Math.max(0, newCurrentPage));
+        reloadedDocument.setZoomLevel(currentZoom);
+
+        // Update components
+        newPageRenderer.setDocument(reloadedDocument, currentZoom);
+        zoomManager.setDocument(reloadedDocument);
+        zoomManager.setCurrentZoom(currentZoom);
+
+        // Create new rendering manager with updated components
+        RenderingManager newRenderingManager = new RenderingManager(
+                pdfService, newPageRenderer, newScrollHandler, zoomManager);
+        newRenderingManager.setDocument(reloadedDocument);
+        newRenderingManager.setUIComponents(null, scrollPane, contentPane);
+        newRenderingManager.renderAllPages();
+
+        VBox newPagesContainer = newRenderingManager.getPagesContainer();
+        newScrollHandler.setDocument(reloadedDocument, newPagesContainer);
+        pageInfoManager.updatePageInfo(reloadedDocument);
+
+        // Scroll to the correct page
+        Platform.runLater(() -> {
+            newScrollHandler.scrollToPage(newCurrentPage);
+            pageInfoManager.updatePageInfo(reloadedDocument);
+        });
+
+        logger.info("Document reloaded successfully. Total pages: {}", newTotal);
+
+        return new ReloadResult(reloadedDocument, newPagesContainer, newPageRenderer, 
+                               newScrollHandler, newRenderingManager);
+    }
+
+    /**
+     * Result of a document reload operation.
+     */
+    public record ReloadResult(PDFDocument document, 
+                              VBox pagesContainer, 
+                              PageRenderer pageRenderer,
+                              ScrollHandler scrollHandler,
+                              RenderingManager renderingManager) {
     }
 }
 
