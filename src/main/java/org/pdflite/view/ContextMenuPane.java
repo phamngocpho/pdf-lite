@@ -34,6 +34,7 @@ public class ContextMenuPane extends StackPane {
 
     private static final Color HIGHLIGHT_FILL = Color.color(0.0, 0.47, 0.84, 0.3); // Similar to SmartPDFViewer
     private static final double MIN_SELECTION_SIZE = 5.0;
+    private static final double HIGHLIGHT_HEIGHT_MULTIPLIER = 1.3; // Increase height by 30%
 
     public ContextMenuPane(ContextMenuHandler handler) {
         this.handler = handler;
@@ -247,11 +248,15 @@ public class ContextMenuPane extends StackPane {
 
         // Create rectangles for each region
         for (Rectangle2D region : regions) {
+            // Increase height for better visibility
+            double increasedHeight = region.getHeight() * HIGHLIGHT_HEIGHT_MULTIPLIER;
+            double heightDiff = increasedHeight - region.getHeight();
+            
             Rectangle highlightRect = new Rectangle(
                     region.getX(),
-                    region.getY(),
+                    region.getY() - heightDiff / 2, // Center the increased height
                     region.getWidth(),
-                    region.getHeight()
+                    increasedHeight
             );
             highlightRect.setFill(HIGHLIGHT_FILL);
             highlightRect.setMouseTransparent(true);
