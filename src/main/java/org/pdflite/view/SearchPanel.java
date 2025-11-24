@@ -76,36 +76,46 @@ public class SearchPanel extends VBox {
     private void setupUI() {
         setSpacing(10);
         setPadding(new Insets(10));
-        setStyle("-fx-background-color: #f5f5f5;");
+        getStyleClass().add("search-panel-root");
 
         // Search controls
         VBox searchControls = new VBox(10);
-        searchControls.setStyle("-fx-background-color: white; -fx-padding: 10; -fx-border-color: #cccccc;");
+        searchControls.getStyleClass().add("search-controls");
 
         Label searchLabel = new Label("Search:");
-        searchLabel.setStyle("-fx-font-weight: bold;");
+        searchLabel.getStyleClass().add("search-title");
 
         searchField.setPromptText("Enter keyword...");
+        searchField.getStyleClass().add("search-input");
 
         HBox searchBox = new HBox(10);
         searchBox.getChildren().addAll(searchField, searchButton, cancelButton, progressIndicator);
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
         HBox optionsBox = new HBox(20);
+        caseSensitiveCheckbox.getStyleClass().add("search-checkbox");
+        wholeWordCheckbox.getStyleClass().add("search-checkbox");
         optionsBox.getChildren().addAll(caseSensitiveCheckbox, wholeWordCheckbox);
 
         searchControls.getChildren().addAll(searchLabel, searchBox, optionsBox);
 
         // Results section
         VBox resultsSection = new VBox(5);
-        VBox.setVgrow(resultsSection, Priority.ALWAYS);
+        resultsSection.getStyleClass().add("search-results");
 
         HBox resultsHeader = new HBox(10);
         resultsHeader.setAlignment(Pos.CENTER_LEFT);
+
         Label resultsLabel = new Label("Results:");
-        resultsLabel.setStyle("-fx-font-weight: bold;");
+        resultsLabel.getStyleClass().add("search-title");
+
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
+
+
+        prevResultButton.getStyleClass().add("search-nav-btn");
+        nextResultButton.getStyleClass().add("search-nav-btn");
+
         resultsHeader.getChildren().addAll(resultsLabel, spacer, prevResultButton, nextResultButton);
 
         resultsListView.setItems(searchResults);
@@ -116,7 +126,7 @@ public class SearchPanel extends VBox {
 
         // Status bar
         HBox statusBar = new HBox();
-        statusBar.setStyle("-fx-background-color: #e0e0e0; -fx-padding: 5;");
+        statusBar.getStyleClass().add("search-status-bar");
         statusBar.getChildren().add(statusLabel);
 
         // Add all sections
@@ -130,7 +140,7 @@ public class SearchPanel extends VBox {
         nextResultButton.setDisable(true);
 
         // Style buttons
-        searchButton.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white;");
+        searchButton.getStyleClass().add("search-button");
     }
 
     /**

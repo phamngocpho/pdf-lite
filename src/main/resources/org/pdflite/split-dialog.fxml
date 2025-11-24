@@ -10,13 +10,17 @@
 
     <!-- Top: Title and File Info -->
     <top>
-        <VBox spacing="10" style="-fx-background-color: #f5f5f5; -fx-padding: 15;">
-            <Label text="Split PDF File" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+        <VBox spacing="10" styleClass="dialog-header">
+            <padding>
+                <Insets top="15" right="15" bottom="15" left="15"/>
+            </padding>
+
+            <Label text="Split PDF File" styleClass="dialog-title"/>
             <HBox spacing="10">
-                <Label text="File:" style="-fx-font-weight: bold;"/>
-                <Label fx:id="fileNameLabel" text="No file selected" style="-fx-text-fill: #333;"/>
+                <Label text="File:" styleClass="dialog-label-strong"/>
+                <Label fx:id="fileNameLabel" text="No file selected" styleClass="dialog-label-muted"/>
             </HBox>
-            <Label fx:id="totalPagesLabel" text="Total Pages: 0" style="-fx-text-fill: #666;"/>
+            <Label fx:id="totalPagesLabel" text="Total Pages: 0" styleClass="dialog-label-muted"/>
         </VBox>
     </top>
 
@@ -30,11 +34,10 @@
                     <Insets top="15" right="10" bottom="15" left="15"/>
                 </padding>
 
-                <Label text="Page Preview" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                <Label text="Page Preview" styleClass="dialog-label-strong"/>
 
-                <ScrollPane fx:id="previewScrollPane" VBox.vgrow="ALWAYS" fitToWidth="true"
-                            style="-fx-background-color: #fafafa;">
-                    <FlowPane fx:id="previewPane" hgap="10" vgap="10" style="-fx-background-color: #fafafa;">
+                <ScrollPane fx:id="previewScrollPane" VBox.vgrow="ALWAYS" fitToWidth="true">
+                    <FlowPane fx:id="previewPane" hgap="10" vgap="10">
                         <padding>
                             <Insets top="10" right="10" bottom="10" left="10"/>
                         </padding>
@@ -48,7 +51,7 @@
                     <Insets top="15" right="15" bottom="15" left="10"/>
                 </padding>
 
-                <Label text="Split Options" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+                <Label text="Split Options" styleClass="dialog-label-strong"/>
 
                 <!-- Split Mode Selection -->
                 <VBox spacing="10">
@@ -58,14 +61,15 @@
                                  style="-fx-font-weight: bold;"/>
 
                     <VBox fx:id="rangeInputBox" spacing="10" style="-fx-padding: 0 0 0 25;">
-                        <Label text="Enter page ranges (e.g., 1-5, 10-15):" style="-fx-text-fill: #666;"/>
+                        <Label text="Enter page ranges (e.g., 1-5, 10-15):"
+                               styleClass="dialog-label-muted"/>
 
                         <HBox spacing="10" alignment="CENTER_LEFT">
                             <TextField fx:id="rangeTextField" promptText="e.g., 1-5" prefWidth="200"/>
                             <Button fx:id="addRangeButton" text="Add Range" onAction="#handleAddRange"/>
                         </HBox>
 
-                        <Label text="Selected Ranges:" style="-fx-text-fill: #666; -fx-font-size: 11px;"/>
+                        <Label text="Selected Ranges:" styleClass="dialog-label-muted"/>
                         <ListView fx:id="rangesListView" prefHeight="150" minHeight="100" VBox.vgrow="ALWAYS"/>
 
                         <HBox spacing="10">
@@ -80,7 +84,7 @@
                                  style="-fx-font-weight: bold;"/>
 
                     <VBox fx:id="pagesInputBox" spacing="10" style="-fx-padding: 0 0 0 25;">
-                        <Label text="Number of pages per file:" style="-fx-text-fill: #666;"/>
+                        <Label text="Number of pages per file:" styleClass="dialog-label-muted"/>
                         <TextField fx:id="pagesPerFileTextField" promptText="e.g., 10" prefWidth="150"/>
                     </VBox>
 
@@ -91,16 +95,15 @@
                                  style="-fx-font-weight: bold;"/>
 
                     <Label text="Each page will be saved as a separate PDF file."
-                           style="-fx-text-fill: #666; -fx-padding: 0 0 0 25;" wrapText="true"/>
+                           styleClass="dialog-label-muted" wrapText="true"/>
                 </VBox>
 
                 <Separator/>
 
                 <!-- Output Options -->
                 <VBox spacing="10">
-                    <Label text="Output Options" style="-fx-font-weight: bold;"/>
-                    <CheckBox fx:id="zipOutputCheckBox" text="Create ZIP archive of split files"
-                    />
+                    <Label text="Output Options" styleClass="dialog-label-strong"/>
+                    <CheckBox fx:id="zipOutputCheckBox" text="Create ZIP archive of split files"/>
                 </VBox>
 
                 <Region VBox.vgrow="ALWAYS"/>
@@ -111,7 +114,7 @@
 
     <!-- Bottom: Status and Actions -->
     <bottom>
-        <VBox spacing="10" style="-fx-background-color: #f5f5f5;">
+        <VBox spacing="10" styleClass="dialog-footer">
             <padding>
                 <Insets top="15" right="15" bottom="15" left="15"/>
             </padding>
@@ -120,12 +123,12 @@
             <ProgressBar fx:id="progressBar" prefWidth="Infinity" managed="false" visible="false"/>
 
             <!-- Status Label -->
-            <Label fx:id="statusLabel" text="Ready to split" style="-fx-text-fill: #666;"/>
+            <Label fx:id="statusLabel" text="Ready to split" styleClass="dialog-label-muted"/>
 
             <!-- Action Buttons -->
             <HBox spacing="10" alignment="CENTER_RIGHT">
                 <Button fx:id="splitButton" text="Split PDF" onAction="#handleSplit"
-                        style="-fx-font-weight: bold; -fx-background-color: #2196F3; -fx-text-fill: white;"
+                        styleClass="primary-button"
                         prefWidth="120"/>
                 <Button fx:id="cancelButton" text="Cancel" onAction="#handleCancel" prefWidth="100"/>
             </HBox>
@@ -133,4 +136,3 @@
     </bottom>
 
 </BorderPane>
-

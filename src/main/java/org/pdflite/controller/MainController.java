@@ -169,18 +169,33 @@ public class MainController {
         navigationHelper = new NavigationHelper(this, pdfService, renderExecutor, loadingPages);
         searchManager = new SearchManager(this, navigationHelper);
 
-        // Theme
-        rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
-            if (newScene != null) {
-                themeManager = new ThemeManager(newScene);
-            }
-        });
-
         // Initialize a recent files manager (needed by RecentFilesMenuManager)
         recentFilesManager = new RecentFilesManager();
 
         // Initialize managers
         initializeManagers();
+
+        rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (newScene != null) {
+                themeManager = new ThemeManager(newScene);
+                searchDialogManager.setThemeManager(themeManager);
+
+                // Cập nhật ThemeManager cho các Manager cần dùng nó
+                if (dialogManager != null) dialogManager = new DialogManager(rootPane, themeManager, uiStateManager);
+                if (encryptionManager != null) encryptionManager = new EncryptionManager(rootPane, pdfService, themeManager, uiStateManager);
+
+                // Cập nhật DocumentOperationManager để nó có ThemeManager mới
+                documentOperationManager = new DocumentOperationManager(pdfService, renderingManager, zoomManager,
+                        pageInfoManager, uiStateManager, themeManager, fileManager);
+
+                // Cập nhật DocumentLifecycleManager
+                documentLifecycleManager = new DocumentLifecycleManager(pdfService, fileManager, zoomManager,
+                        renderingManager, pageInfoManager, uiStateManager, themeManager, recentFilesManager,
+                        recentFilesMenuManager);
+
+                recentFilesMenuManager.updateRecentFilesMenu();
+            }
+        });
 
         // Set page change listener to update UI when page changes during scroll
         // Must be after initializeManagers() so pageInfoManager is initialized
@@ -285,8 +300,7 @@ public class MainController {
         pageInfoManager = new PageInfoManager(totalPagesLabel, pageNumberField, prevButton, nextButton);
 
         // Search Dialog Manager
-        searchDialogManager = new SearchDialogManager(rootPane, pageRenderer, zoomManager, renderingManager,
-                uiStateManager);
+        searchDialogManager = new SearchDialogManager(rootPane, pageRenderer, zoomManager, renderingManager, uiStateManager, themeManager);
 
         // New managers
         dialogManager = new DialogManager(rootPane, themeManager, uiStateManager);

@@ -9,14 +9,21 @@
             prefWidth="400.0">
 
     <top>
-        <VBox style="-fx-padding: 15; -fx-background-color: #f4f4f4; -fx-border-color: #cccccc; -fx-border-width: 0 0 1 0;">
-            <Label text="Insert Blank Page" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
-            <Label text="Configure page size and position." style="-fx-text-fill: #666666;"/>
+        <VBox styleClass="dialog-header">
+            <padding>
+                <Insets top="15" right="15" bottom="15" left="15"/>
+            </padding>
+            <Label text="Insert Blank Page" styleClass="dialog-title"/>
+            <Label text="Configure page size and position." styleClass="dialog-label-muted"/>
         </VBox>
     </top>
 
     <center>
-        <GridPane hgap="10" vgap="10" style="-fx-padding: 20;">
+        <GridPane hgap="10" vgap="10">
+            <padding>
+                <Insets top="20" right="20" bottom="20" left="20"/>
+            </padding>
+
             <Label text="Page Size:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
             <ComboBox fx:id="pageSizeCombo" prefWidth="200" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
 
@@ -41,14 +48,20 @@
             </VBox>
 
             <Label text="Quantity:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
-            <Spinner fx:id="countSpinner" min="1" max="50" initialValue="1" editable="true" prefWidth="80" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+            <Spinner fx:id="countSpinner" min="1" max="50" initialValue="1" editable="true"
+                     prefWidth="80" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
         </GridPane>
     </center>
 
     <bottom>
-        <HBox spacing="10" alignment="CENTER_RIGHT" style="-fx-padding: 15; -fx-background-color: #f4f4f4; -fx-border-color: #cccccc; -fx-border-width: 1 0 0 0;">
+        <HBox spacing="10" alignment="CENTER_RIGHT" styleClass="dialog-footer">
+            <padding>
+                <Insets top="15" right="15" bottom="15" left="15"/>
+            </padding>
+
             <Button fx:id="btnCancel" text="Cancel" onAction="#handleCancel" prefWidth="80"/>
-            <Button fx:id="btnInsert" text="Insert" onAction="#handleInsert" prefWidth="80" style="-fx-base: #2196F3; -fx-text-fill: white;"/>
+            <Button fx:id="btnInsert" text="Insert" onAction="#handleInsert"
+                    prefWidth="80" styleClass="primary-button"/>
         </HBox>
     </bottom>
 
