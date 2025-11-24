@@ -28,6 +28,7 @@ public class SmartTextSelector {
     public static class CharacterInfo {
         private final String text;
         private final float x, y, width, height;
+        private final float widthOfSpace;
         private final int lineNumber;
 
         public CharacterInfo(TextPosition tp, int page, int line) {
@@ -36,6 +37,7 @@ public class SmartTextSelector {
             this.y = tp.getY();
             this.width = tp.getWidth();
             this.height = tp.getHeight();
+            this.widthOfSpace = tp.getWidthOfSpace();
             this.lineNumber = line;
         }
 
@@ -70,12 +72,16 @@ public class SmartTextSelector {
                 for (TextPosition tp : textPositions) {
                     characters.add(new CharacterInfo(tp, pageNum, currentLine));
                 }
-                if (text.contains("\n") || text.contains("\r")) {
-                    currentLine++;
-                }
+            }
+
+            @Override
+            protected void writeLineSeparator() throws IOException {
+                currentLine++;
+                super.writeLineSeparator();
             }
         };
 
+        stripper.setSortByPosition(true);
         stripper.setStartPage(pageNum + 1);
         stripper.setEndPage(pageNum + 1);
         stripper.getText(doc);
@@ -201,74 +207,31 @@ public class SmartTextSelector {
             endIdx = temp;
         }
 
-        // Group consecutive characters on the same line into continuous rectangles
-        if (startIdx > endIdx) {
-            return regions;
-        }
+        // Create a rectangle for each character (not grouped by line)
+        Rectangle2D currentRect = null;
+        int currentLine = -1;
 
-        // Calculate average character width for gap detection
-        float avgCharWidth = 0;
-        int charCount = 0;
-        for (int i = startIdx; i <= endIdx && i < startIdx + 10; i++) {
-            avgCharWidth += characters.get(i).width;
-            charCount++;
-        }
-        if (charCount > 0) {
-            avgCharWidth /= charCount;
-        } else {
-            avgCharWidth = 5.0f; // Default fallback
-        }
-        
-        float currentMinX = characters.get(startIdx).x;
-        float currentMaxX = characters.get(startIdx).x + characters.get(startIdx).width;
-        float currentMinY = characters.get(startIdx).y - characters.get(startIdx).height;
-        float currentMaxY = characters.get(startIdx).y;
-        int currentLine = characters.get(startIdx).lineNumber;
-
-        for (int i = startIdx + 1; i <= endIdx; i++) {
+        for (int i = startIdx; i <= endIdx; i++) {
             CharacterInfo ch = characters.get(i);
-            
-            // Check if character is on the same line and close enough
-            boolean sameLine = ch.lineNumber == currentLine;
-            float charMinX = ch.x;
-            float charMaxX = ch.x + ch.width;
-            
-            // Only group if gap is small (less than 1.5x average character width)
-            // This prevents grouping across large spaces (like between words)
-            float gap = charMinX - currentMaxX;
-            boolean closeEnough = gap >= 0 && gap <= avgCharWidth * 1.5f;
-            
-            if (sameLine && closeEnough) {
-                // Extend current rectangle
-                currentMinX = Math.min(currentMinX, charMinX);
-                currentMaxX = Math.max(currentMaxX, charMaxX);
-                currentMinY = Math.min(currentMinY, ch.y - ch.height);
-                currentMaxY = Math.max(currentMaxY, ch.y);
-            } else {
-                // Finish current rectangle
-                regions.add(new Rectangle2D.Float(
-                    currentMinX,
-                    currentMinY,
-                    currentMaxX - currentMinX,
-                    currentMaxY - currentMinY
-                ));
-                
-                // Start new rectangle
-                currentMinX = charMinX;
-                currentMaxX = charMaxX;
-                currentMinY = ch.y - ch.height;
-                currentMaxY = ch.y;
+            Rectangle2D charRect = ch.getBounds();
+
+            if (currentRect == null) {
+                currentRect = charRect;
                 currentLine = ch.lineNumber;
+            } else {
+                if (ch.lineNumber == currentLine) {
+                    Rectangle2D.union(currentRect, charRect, currentRect);
+                } else {
+                    regions.add(currentRect);
+                    currentRect = charRect;
+                    currentLine = ch.lineNumber;
+                }
             }
         }
-        
-        // Add the last rectangle
-        regions.add(new Rectangle2D.Float(
-            currentMinX,
-            currentMinY,
-            currentMaxX - currentMinX,
-            currentMaxY - currentMinY
-        ));
+
+        if (currentRect != null) {
+            regions.add(currentRect);
+        }
 
         return regions;
     }
@@ -328,6 +291,22 @@ public class SmartTextSelector {
             CharacterInfo ch = characters.get(i);
             if (currentLine != -1 && ch.lineNumber != currentLine) {
                 sb.append('\n');
+            } else if (i > startIdx) {
+                CharacterInfo prev = characters.get(i - 1);
+                if (prev.lineNumber == ch.lineNumber) {
+                    float gap = ch.x - (prev.x + prev.width);
+                    float spaceWidth = ch.widthOfSpace;
+                    if (spaceWidth <= 0) {
+                        spaceWidth = prev.widthOfSpace;
+                    }
+                    if (spaceWidth <= 0) {
+                        spaceWidth = ch.width;
+                    }
+
+                    if (gap > spaceWidth * Constants.TEXT_SELECTION_SPACE_THRESHOLD) {
+                        sb.append(' ');
+                    }
+                }
             }
             sb.append(ch.text);
             currentLine = ch.lineNumber;
