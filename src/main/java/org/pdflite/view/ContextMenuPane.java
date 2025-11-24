@@ -7,10 +7,14 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.StackPane;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.paint.Color;
+import javafx.scene.Group;
 import org.pdflite.controller.ContextMenuHandler;
 import org.pdflite.model.PDFDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.awt.geom.Rectangle2D;
+import java.util.List;
 
 public class ContextMenuPane extends StackPane {
     private static final Logger logger = LoggerFactory.getLogger(ContextMenuPane.class);
@@ -24,10 +28,11 @@ public class ContextMenuPane extends StackPane {
     // Selection tracking
     private boolean isSelecting = false;
     private double selectionStartX, selectionStartY;
-    private Rectangle selectionRect;
+    private Group highlightGroup; // Group containing highlight rectangles for each line
+    private int clickCount = 0;
+    private javafx.animation.Timeline clickTimer;
 
-    private static final Color SELECTION_FILL = Color.color(0.2, 0.5, 1.0, 0.2);
-    private static final Color SELECTION_STROKE = Color.DODGERBLUE;
+    private static final Color HIGHLIGHT_FILL = Color.color(0.0, 0.47, 0.84, 0.3); // Similar to SmartPDFViewer
     private static final double MIN_SELECTION_SIZE = 5.0;
 
     public ContextMenuPane(ContextMenuHandler handler) {
@@ -44,21 +49,19 @@ public class ContextMenuPane extends StackPane {
     }
 
     private void setupSelectionVisual() {
-        selectionRect = new Rectangle();
-        selectionRect.setFill(SELECTION_FILL);
-        selectionRect.setStroke(SELECTION_STROKE);
-        selectionRect.setStrokeWidth(2);
-        selectionRect.setVisible(false);
-        selectionRect.setMouseTransparent(true);
-        selectionRect.setManaged(false);
+        // Group for highlight regions (one per line)
+        highlightGroup = new Group();
+        highlightGroup.setMouseTransparent(true);
+        highlightGroup.setManaged(false);
 
-        getChildren().add(selectionRect);
+        getChildren().add(highlightGroup);
     }
 
     private void setupEventHandlers() {
         setOnMousePressed(this::handleMousePressed);
         setOnMouseDragged(this::handleMouseDragged);
         setOnMouseReleased(this::handleMouseReleased);
+        setOnMouseClicked(this::handleMouseClicked);
         setOnContextMenuRequested(event -> {
             double x = event.getX();
             double y = event.getY();
@@ -73,10 +76,8 @@ public class ContextMenuPane extends StackPane {
                     currentZoom
             );
 
-            // Check for text selection
-            boolean hasSelection = selectionRect.isVisible() &&
-                    selectionRect.getWidth() >= MIN_SELECTION_SIZE &&
-                    selectionRect.getHeight() >= MIN_SELECTION_SIZE;
+            // Check for text selection (has highlight regions)
+            boolean hasSelection = !highlightGroup.getChildren().isEmpty() && highlightGroup.isVisible();
 
             // Show menu if it has text OR image
             if (hasSelection || handler.hasImageAtPosition()) {
@@ -96,14 +97,11 @@ public class ContextMenuPane extends StackPane {
         if (event.getButton() == MouseButton.PRIMARY) {
             isSelecting = true;
 
+            // Clear previous highlights
+            clearHighlightRegions();
+
             selectionStartX = event.getX();
             selectionStartY = event.getY();
-
-            selectionRect.setX(selectionStartX);
-            selectionRect.setY(selectionStartY);
-            selectionRect.setWidth(0);
-            selectionRect.setHeight(0);
-            selectionRect.setVisible(true);
 
             //logger.debug("Selection START at ({:.1f}, {:.1f})",selectionStartX, selectionStartY);
 
@@ -130,10 +128,12 @@ public class ContextMenuPane extends StackPane {
             double width = Math.abs(currentX - selectionStartX);
             double height = Math.abs(currentY - selectionStartY);
 
-            selectionRect.setX(x);
-            selectionRect.setY(y);
-            selectionRect.setWidth(width);
-            selectionRect.setHeight(height);
+            // Update highlight regions directly (no rectangle box)
+            if (width >= MIN_SELECTION_SIZE && height >= MIN_SELECTION_SIZE) {
+                updateHighlightRegions(x, y, x + width, y + height);
+            } else {
+                clearHighlightRegions();
+            }
 
             //logger.trace("Selection DRAG: ({:.1f}, {:.1f}) + {:.1f}x{:.1f}", x, y, width, height);
 
@@ -153,18 +153,73 @@ public class ContextMenuPane extends StackPane {
         }
     }
 
+    private void handleMouseClicked(MouseEvent event) {
+        if (event.getButton() == MouseButton.PRIMARY) {
+            clickCount++;
+
+            if (clickTimer != null) {
+                clickTimer.stop();
+            }
+
+            clickTimer = new javafx.animation.Timeline(
+                    new javafx.animation.KeyFrame(
+                            javafx.util.Duration.millis(300),
+                            e -> {
+                                handleClicks(event);
+                                clickCount = 0;
+                            }
+                    )
+            );
+            clickTimer.setCycleCount(1);
+            clickTimer.play();
+        }
+    }
+
+    private void handleClicks(MouseEvent event) {
+        if (clickCount == 2) {
+            // Double-click: select word
+            String selectedText = handler.selectTextAtPoint(
+                    currentDocument,
+                    currentPageIndex,
+                    event.getX(),
+                    event.getY(),
+                    currentZoom,
+                    "word"
+            );
+            if (!selectedText.isEmpty()) {
+                logger.info("Selected word: {}", selectedText);
+            }
+        } else if (clickCount >= 3) {
+            // Triple-click: select line
+            String selectedText = handler.selectTextAtPoint(
+                    currentDocument,
+                    currentPageIndex,
+                    event.getX(),
+                    event.getY(),
+                    currentZoom,
+                    "line"
+            );
+            if (!selectedText.isEmpty()) {
+                logger.info("Selected line: {}", selectedText);
+            }
+        }
+    }
+
     private void finalizeSelection(double endX, double endY) {
-        double width = selectionRect.getWidth();
-        double height = selectionRect.getHeight();
+        // Calculate final bounding box
+        double x = Math.min(selectionStartX, endX);
+        double y = Math.min(selectionStartY, endY);
+        double width = Math.abs(endX - selectionStartX);
+        double height = Math.abs(endY - selectionStartY);
 
         if (width < MIN_SELECTION_SIZE || height < MIN_SELECTION_SIZE) {
             //logger.debug("Selection too small ({:.1f}x{:.1f}), ignored", width, height);
-            selectionRect.setVisible(false);
+            clearSelection();
             return;
         }
 
-        double x = selectionRect.getX();
-        double y = selectionRect.getY();
+        // Update highlight regions (already updated during drag, but ensure it's final)
+        updateHighlightRegions(x, y, x + width, y + height);
 
         //logger.info("Selection FINALIZED: ({:.1f}, {:.1f}) + {:.1f}x{:.1f} px", x, y, width, height);
 
@@ -178,11 +233,38 @@ public class ContextMenuPane extends StackPane {
         );
     }
 
-    private void showContextMenuForSelection(MouseEvent event) {
-        updateContextMenuItems();
-        contextMenu.show(this, event.getScreenX(), event.getScreenY());
+    private void updateHighlightRegions(double x1, double y1, double x2, double y2) {
+        // Clear existing highlights
+        clearHighlightRegions();
 
-        //logger.info("Context menu shown");
+        // Get highlight regions from handler
+        List<Rectangle2D> regions = handler.getHighlightRegions(
+                currentDocument,
+                currentPageIndex,
+                x1, y1, x2, y2,
+                currentZoom
+        );
+
+        // Create rectangles for each region
+        for (Rectangle2D region : regions) {
+            Rectangle highlightRect = new Rectangle(
+                    region.getX(),
+                    region.getY(),
+                    region.getWidth(),
+                    region.getHeight()
+            );
+            highlightRect.setFill(HIGHLIGHT_FILL);
+            highlightRect.setMouseTransparent(true);
+            highlightRect.setManaged(false);
+            highlightGroup.getChildren().add(highlightRect);
+        }
+
+        highlightGroup.setVisible(true);
+    }
+
+    private void clearHighlightRegions() {
+        highlightGroup.getChildren().clear();
+        highlightGroup.setVisible(false);
     }
 
     private void setupContextMenu() {
@@ -227,15 +309,14 @@ public class ContextMenuPane extends StackPane {
         this.currentPageIndex = pageIndex;
         this.currentZoom = zoom;
 
-        // Clear image cache when page changes
+        // Clear image and text selector cache when page changes
         if (pageChanged) {
             handler.clearImageCache();
+            handler.clearTextSelector();
         }
     }
 
     public void clearSelection() {
-        selectionRect.setVisible(false);
-        selectionRect.setWidth(0);
-        selectionRect.setHeight(0);
+        clearHighlightRegions();
     }
 }
