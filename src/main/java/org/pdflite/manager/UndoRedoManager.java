@@ -6,7 +6,10 @@ import org.pdflite.command.CommandManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javafx.application.Platform;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
@@ -196,6 +199,41 @@ public class UndoRedoManager {
         );
 
         logger.info("Keyboard shortcuts registered: Ctrl+Z (Undo), Ctrl+Y (Redo), Ctrl+Shift+Z (Redo)");
+    }
+
+    /**
+     * Sets up a command history listener to update undo/redo button states.
+     * <p>
+     * This listener will:
+     * - Enable/disable undo and redo buttons based on availability
+     * - Update button tooltips with command descriptions
+     * </p>
+     *
+     * @param undoButton the undo button (can be null)
+     * @param redoButton the redo button (can be null)
+     */
+    public void setupCommandHistoryListener(Button undoButton, Button redoButton) {
+        commandManager.addListener((canUndo, canRedo, undoDesc, redoDesc) -> {
+            Platform.runLater(() -> {
+                // Update undo button state
+                if (undoButton != null) {
+                    undoButton.setDisable(!canUndo);
+                    if (canUndo && undoDesc != null) {
+                        undoButton.setTooltip(new Tooltip("Undo: " + undoDesc));
+                    }
+                }
+                
+                // Update redo button state
+                if (redoButton != null) {
+                    redoButton.setDisable(!canRedo);
+                    if (canRedo && redoDesc != null) {
+                        redoButton.setTooltip(new Tooltip("Redo: " + redoDesc));
+                    }
+                }
+            });
+        });
+        
+        logger.info("Command history listener registered for UI button updates");
     }
 }
 

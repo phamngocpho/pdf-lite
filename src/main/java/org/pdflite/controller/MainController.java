@@ -60,7 +60,6 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import javafx.scene.control.Tooltip;
 /**
  * Main Controller for the PDF Lite Application.
  * <p>
@@ -189,23 +188,10 @@ public class MainController {
         // Initialize UndoRedoManager early (annotationManager will be null initially)
         initializeUndoRedoManager();
         
-        commandManager.addListener((canUndo, canRedo, undoDesc, redoDesc) -> {
-            Platform.runLater(() -> {
-                // Update button states
-                if (undoButton != null) {
-                    undoButton.setDisable(!canUndo);
-                    if (canUndo && undoDesc != null) {
-                        undoButton.setTooltip(new Tooltip("Undo: " + undoDesc));
-                    }
-                }
-                if (redoButton != null) {
-                    redoButton.setDisable(!canRedo);
-                    if (canRedo && redoDesc != null) {
-                        redoButton.setTooltip(new Tooltip("Redo: " + redoDesc));
-                    }
-                }
-            });
-        });
+        // Setup command history listener for undo/redo buttons
+        if (undoRedoManager != null) {
+            undoRedoManager.setupCommandHistoryListener(undoButton, redoButton);
+        }
         rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null && undoRedoManager != null) {
                 undoRedoManager.setupKeyboardShortcuts(newScene);
