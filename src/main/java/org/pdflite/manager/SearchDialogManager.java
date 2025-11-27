@@ -26,6 +26,8 @@ public class SearchDialogManager {
     private final RenderingManager renderingManager;
     private final UIStateManager uiStateManager;
 
+    private ThemeManager themeManager;
+
     private SearchDialogController searchDialogController;
     private Stage searchDialogStage;
 
@@ -37,15 +39,17 @@ public class SearchDialogManager {
      * @param zoomManager      the zoom manager
      * @param renderingManager the rendering manager
      * @param uiStateManager   the UI state manager
+     * @param themeManager     the theme manager
      */
     public SearchDialogManager(BorderPane rootPane, PageRenderer pageRenderer,
                                ZoomManager zoomManager, RenderingManager renderingManager,
-                               UIStateManager uiStateManager) {
+                               UIStateManager uiStateManager, ThemeManager themeManager) {
         this.rootPane = rootPane;
         this.pageRenderer = pageRenderer;
         this.zoomManager = zoomManager;
         this.renderingManager = renderingManager;
         this.uiStateManager = uiStateManager;
+        this.themeManager = themeManager;
     }
 
     /**
@@ -74,12 +78,22 @@ public class SearchDialogManager {
 
                 searchDialogStage = new Stage();
                 searchDialogStage.setTitle("Search in PDF");
-                searchDialogStage.setScene(new Scene(root));
+
+                Scene scene = new Scene(root);
+                searchDialogStage.setScene(scene);
+
+                if (themeManager != null) {
+                    themeManager.applyThemeToScene(scene);
+                }
+
                 searchDialogStage.initOwner(rootPane.getScene().getWindow());
 
                 searchDialogStage.setOnCloseRequest(e -> searchDialogController.cleanup());
             } else {
                 searchDialogController.setPDFDocument(currentDocument);
+                if (themeManager != null) {
+                    themeManager.applyThemeToScene(searchDialogStage.getScene());
+                }
             }
 
             if (pageRenderer != null) {
@@ -107,5 +121,13 @@ public class SearchDialogManager {
             searchDialogStage.close();
         }
     }
+    public void setThemeManager(ThemeManager themeManager) {
+        this.themeManager = themeManager;
+
+        if (searchDialogStage != null) {
+            themeManager.applyThemeToScene(searchDialogStage.getScene());
+        }
+    }
+
 }
 

@@ -1,57 +1,78 @@
 package org.pdflite.manager;
 
 import javafx.scene.Scene;
+import javafx.scene.control.DialogPane;
+import java.util.Objects;
 
-public record ThemeManager(Scene mainScene) { // Đổi tên 'scene' thành 'mainScene' để rõ ràng hơn
-    private static final String LIGHT_THEME = "/org/pdflite/light-theme.css"; // Đảm bảo đường dẫn đúng
-    private static final String DARK_THEME = "/org/pdflite/dark-theme.css";   // Đảm bảo đường dẫn đúng
+/**
+ * Quản lý giao diện (Theme) cho ứng dụng.
+ * Chuyển từ record sang class để quản lý trạng thái tốt hơn.
+ */
+public class ThemeManager {
 
-    // NEW: Thêm một trường để lưu trữ theme CSS hiện tại được áp dụng
-    private static String currentThemeCssPath = LIGHT_THEME; // Mặc định là LIGHT_THEME
+    private static final String LIGHT_THEME = "/org/pdflite/light-theme.css";
+    private static final String DARK_THEME = "/org/pdflite/dark-theme.css";
 
-    // Constructor chuẩn của record.
-    // Thêm logic khởi tạo ban đầu cho mainScene (đã có) và áp dụng theme mặc định.
+    private final Scene mainScene;
+    private String currentTheme; // Biến lưu theme hiện tại
+
     public ThemeManager(Scene mainScene) {
         this.mainScene = mainScene;
-        // Áp dụng theme mặc định khi ThemeManager được tạo cho mainScene
+        this.currentTheme = LIGHT_THEME;
+
         if (mainScene != null) {
-            applyThemeInternal(mainScene, currentThemeCssPath);
+            applyThemeInternal(mainScene, currentTheme);
         }
     }
 
     public void setLightTheme() {
-        currentThemeCssPath = LIGHT_THEME; // Cập nhật theme hiện tại
-        applyThemeInternal(mainScene, currentThemeCssPath); // Áp dụng cho mainScene
+        currentTheme = LIGHT_THEME;
+        applyThemeInternal(mainScene, currentTheme);
     }
 
     public void setDarkTheme() {
-        currentThemeCssPath = DARK_THEME; // Cập nhật theme hiện tại
-        applyThemeInternal(mainScene, currentThemeCssPath); // Áp dụng cho mainScene
+        currentTheme = DARK_THEME;
+        applyThemeInternal(mainScene, currentTheme);
     }
 
-    // Phương thức private nội bộ để thực hiện việc áp dụng CSS
     private void applyThemeInternal(Scene targetScene, String themePath) {
         if (targetScene == null) return;
 
-        var resource = getClass().getResource(themePath);
-        if (resource == null) {
-            System.err.println("Theme file not found: " + themePath);
-            return;
-        }
+        try {
+            var resource = getClass().getResource(themePath);
+            if (resource == null) {
+                System.err.println("Lỗi: Không tìm thấy file theme: " + themePath);
+                return;
+            }
 
-        targetScene.getStylesheets().clear();
-        targetScene.getStylesheets().add(resource.toExternalForm());
+            targetScene.getStylesheets().clear();
+            targetScene.getStylesheets().add(resource.toExternalForm());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    // NEW: Phương thức public để áp dụng theme cho MỘT SCENE BẤT KỲ từ bên ngoài.
-    // Phương thức này sẽ được MainController gọi cho Alert/Dialog
     public void applyThemeToScene(Scene targetScene) {
         if (targetScene == null) return;
-        applyThemeInternal(targetScene, currentThemeCssPath); // Dùng theme hiện tại đã lưu
+        applyThemeInternal(targetScene, currentTheme);
     }
 
-    // NEW: Getter để UIStateManager (hoặc các nơi khác) có thể lấy đường dẫn CSS theme hiện tại
+
+    public void applyThemeToDialog(DialogPane dialogPane) {
+        if (dialogPane == null) return;
+
+        try {
+            dialogPane.getStylesheets().clear();
+            var resource = getClass().getResource(currentTheme);
+            if (resource != null) {
+                dialogPane.getStylesheets().add(resource.toExternalForm());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public String getCurrentThemeCssPath() {
-        return currentThemeCssPath;
+        return currentTheme;
     }
 }

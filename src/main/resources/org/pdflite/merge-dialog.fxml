@@ -10,10 +10,14 @@
 
     <!-- Top: Title and Instructions -->
     <top>
-        <VBox spacing="10" style="-fx-background-color: #f5f5f5; -fx-padding: 15;">
-            <Label text="Merge PDF Files" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
+        <VBox spacing="10" styleClass="dialog-header">
+            <padding>
+                <Insets top="15" right="15" bottom="15" left="15"/>
+            </padding>
+
+            <Label text="Merge PDF Files" styleClass="dialog-title"/>
             <Label text="Add multiple PDF files, reorder them by dragging, and merge into a single document."
-                   style="-fx-text-fill: #666;" wrapText="true"/>
+                   styleClass="dialog-label-muted" wrapText="true"/>
         </VBox>
     </top>
 
@@ -26,14 +30,13 @@
 
             <!-- Toolbar -->
             <HBox spacing="10" alignment="CENTER_LEFT">
-                <Button fx:id="addFilesButton" text="Add Files..." onAction="#handleAddFiles"
-                        style="-fx-font-weight: bold;"/>
+                <Button fx:id="addFilesButton" text="Add Files..." onAction="#handleAddFiles"/>
                 <Button fx:id="removeButton" text="Remove" onAction="#handleRemove"/>
                 <Separator orientation="VERTICAL"/>
                 <Button fx:id="moveUpButton" text="↑ Move Up" onAction="#handleMoveUp"/>
                 <Button fx:id="moveDownButton" text="↓ Move Down" onAction="#handleMoveDown"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Label text="Drag rows to reorder" style="-fx-text-fill: #888; -fx-font-style: italic;"/>
+                <Label text="Drag rows to reorder" styleClass="dialog-label-muted"/>
             </HBox>
 
             <!-- Table -->
@@ -53,7 +56,7 @@
 
     <!-- Bottom: Status and Actions -->
     <bottom>
-        <VBox spacing="10" style="-fx-background-color: #f5f5f5;">
+        <VBox spacing="10" styleClass="dialog-footer">
             <padding>
                 <Insets top="15" right="15" bottom="15" left="15"/>
             </padding>
@@ -62,12 +65,12 @@
             <ProgressBar fx:id="progressBar" prefWidth="Infinity" managed="false" visible="false"/>
 
             <!-- Status Label -->
-            <Label fx:id="statusLabel" text="Ready to merge" style="-fx-text-fill: #666;"/>
+            <Label fx:id="statusLabel" text="Ready to merge" styleClass="dialog-label-muted"/>
 
             <!-- Action Buttons -->
             <HBox spacing="10" alignment="CENTER_RIGHT">
                 <Button fx:id="mergeButton" text="Merge PDFs" onAction="#handleMerge"
-                        style="-fx-font-weight: bold; -fx-background-color: #4CAF50; -fx-text-fill: white;"
+                        styleClass="primary-button"
                         prefWidth="120"/>
                 <Button fx:id="cancelButton" text="Cancel" onAction="#handleCancel" prefWidth="100"/>
             </HBox>
@@ -75,4 +78,3 @@
     </bottom>
 
 </BorderPane>
-

@@ -12,21 +12,21 @@
 
     <!-- Top: Search controls -->
     <top>
-        <VBox spacing="10" style="-fx-background-color: #f5f5f5; -fx-border-color: #cccccc;">
+        <VBox spacing="10" styleClass="dialog-header">
             <padding>
                 <Insets top="10" right="10" bottom="10" left="10"/>
             </padding>
 
             <!-- Search field and button -->
             <HBox spacing="10" alignment="CENTER_LEFT">
-                <Label text="Search:" style="-fx-font-weight: bold;"/>
+                <Label text="Search:" styleClass="dialog-label-strong"/>
                 <TextField fx:id="searchField"
                            promptText="Enter keyword to search..."
                            HBox.hgrow="ALWAYS"/>
                 <Button fx:id="searchButton"
                         text="Search"
                         onAction="#handleSearch"
-                        style="-fx-background-color: #2196F3; -fx-text-fill: white;"/>
+                        styleClass="primary-button"/>
                 <Button fx:id="cancelButton"
                         text="Cancel"
                         onAction="#handleCancel"/>
@@ -50,7 +50,7 @@
             </BorderPane.margin>
 
             <HBox spacing="10" alignment="CENTER_LEFT">
-                <Label text="Results:" style="-fx-font-weight: bold;"/>
+                <Label text="Results:" styleClass="dialog-label-strong"/>
                 <Region HBox.hgrow="ALWAYS"/>
                 <Button fx:id="prevResultButton"
                         text="◀ Previous"
@@ -69,12 +69,12 @@
     <!-- Bottom: Status and close button -->
     <bottom>
         <HBox spacing="10" alignment="CENTER_LEFT"
-              style="-fx-background-color: #e0e0e0; -fx-border-color: #cccccc;">
+              styleClass="dialog-footer">
             <padding>
                 <Insets top="5" right="10" bottom="5" left="10"/>
             </padding>
 
-            <Label fx:id="statusLabel" text="Ready" HBox.hgrow="ALWAYS"/>
+            <Label fx:id="statusLabel" text="Ready" styleClass="dialog-label-muted" HBox.hgrow="ALWAYS"/>
             <Button fx:id="closeButton" text="Close" onAction="#handleClose"/>
         </HBox>
     </bottom>
