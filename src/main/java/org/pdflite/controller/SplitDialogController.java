@@ -101,7 +101,10 @@ public class SplitDialogController {
         splitByRangeRadio.setSelected(true);
 
         // Setup listeners for radio buttons
-        splitModeGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> updateInputVisibility());
+        splitModeGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
+            updateInputVisibility();
+            updateButtonStates();
+        });
 
         // Setup ranges list view
         rangesListView.setItems(rangesList);
@@ -110,6 +113,9 @@ public class SplitDialogController {
         updateButtonStates();
         rangesListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) ->
                 updateButtonStates());
+        
+        // Listen to changes in pagesPerFileTextField for option 2
+        pagesPerFileTextField.textProperty().addListener((obs, oldVal, newVal) -> updateButtonStates());
 
         // Hide the progress bar initially
         progressBar.setVisible(false);
@@ -124,6 +130,19 @@ public class SplitDialogController {
      */
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+        
+        // Ensure FlowPane layout is calculated correctly after the dialog is shown
+        // This fixes the issue where FlowPane doesn't calculate the correct column count initially
+        // Use a small delay to ensure the dialog is fully rendered
+        Platform.runLater(() -> Platform.runLater(() -> {
+            if (previewPane != null && previewScrollPane != null) {
+                // Force layout calculation after the dialog is visible
+                previewScrollPane.applyCss();
+                previewScrollPane.layout();
+                previewPane.applyCss();
+                previewPane.layout();
+            }
+        }));
     }
 
     /**
@@ -504,7 +523,31 @@ public class SplitDialogController {
         boolean hasSelection = rangesListView.getSelectionModel().getSelectedItem() != null;
 
         removeRangeButton.setDisable(!hasSelection);
-        splitButton.setDisable(sourceFile == null);
+        
+        // Enable split button based on selected mode and validation
+        boolean canSplit = false;
+        if (sourceFile == null) {
+            canSplit = false;
+        } else if (splitByRangeRadio.isSelected()) {
+            // For custom ranges, need at least one range
+            canSplit = !rangesList.isEmpty();
+        } else if (splitByPagesRadio.isSelected()) {
+            // For page count, need a valid number
+            String pagesText = pagesPerFileTextField.getText().trim();
+            if (!pagesText.isEmpty()) {
+                try {
+                    int pagesPerFile = Integer.parseInt(pagesText);
+                    canSplit = pagesPerFile >= 1 && pagesPerFile <= totalPages;
+                } catch (NumberFormatException e) {
+                    canSplit = false;
+                }
+            }
+        } else if (splitAllPagesRadio.isSelected()) {
+            // For individual pages, always enabled if the file exists
+            canSplit = true;
+        }
+        
+        splitButton.setDisable(!canSplit);
     }
 
     /**

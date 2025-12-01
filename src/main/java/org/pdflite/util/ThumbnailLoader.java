@@ -119,7 +119,12 @@ public class ThumbnailLoader {
             });
         }
 
-        Platform.runLater(() -> updateStatus.accept("Thumbnails loaded"));
+        Platform.runLater(() -> {
+            updateStatus.accept("Thumbnails loaded");
+            // Force layout recalculation to ensure correct column count
+            previewPane.applyCss();
+            previewPane.layout();
+        });
     }
 
     /**

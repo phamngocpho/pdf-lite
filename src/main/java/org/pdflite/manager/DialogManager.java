@@ -243,6 +243,16 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
             themeManager.applyThemeToScene(dialogScene);
         }
 
+        // Apply CSS and layout to ensure accurate size calculation
+        // This is important for cross-platform compatibility
+        root.applyCss();
+        root.layout();
+        
+        // Size the stage to fit its content
+        // minWidth/minHeight are set in FXML files to ensure the minimum size on Ubuntu
+        // sizeToScene() will calculate the actual size based on content
+        dialogStage.sizeToScene();
+
         return dialogStage;
     }
 
