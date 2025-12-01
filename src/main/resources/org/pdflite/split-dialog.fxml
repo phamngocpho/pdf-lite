@@ -74,7 +74,7 @@
                         </HBox>
 
                         <Label text="Selected Ranges:" styleClass="dialog-label-muted"/>
-                        <ListView fx:id="rangesListView" prefHeight="150" minHeight="100" VBox.vgrow="ALWAYS"/>
+                        <ListView fx:id="rangesListView" prefHeight="80" minHeight="50" maxHeight="150"/>
 
                         <HBox spacing="10">
                             <Button fx:id="removeRangeButton" text="Remove Selected" onAction="#handleRemoveRange"/>
