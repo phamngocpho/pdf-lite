@@ -3,14 +3,12 @@ package org.pdflite.controller;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
-import javafx.stage.Modality;
 import org.pdflite.manager.AnnotationManager;
 import org.pdflite.manager.DialogManager;
 import org.pdflite.manager.DocumentLifecycleManager;
@@ -18,6 +16,7 @@ import org.pdflite.manager.DocumentOperationManager;
 import org.pdflite.manager.EncryptionManager;
 import org.pdflite.manager.FileManager;
 import org.pdflite.manager.FullscreenManager;
+import org.pdflite.manager.ListenerFactory;
 import org.pdflite.manager.PageInfoManager;
 import org.pdflite.manager.RecentFilesManager;
 import org.pdflite.manager.RecentFilesMenuManager;
@@ -38,13 +37,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.ColorPicker;
 import javafx.scene.control.ComboBox;
-import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.ScrollPane;
@@ -136,6 +131,7 @@ public class MainController {
     private SearchDialogManager searchDialogManager;
     private ThemeManager themeManager;
     private RecentFilesManager recentFilesManager;
+    private ListenerFactory.ZoomChangeListenerWithContext zoomChangeListener;
 
     // New managers
     private DialogManager dialogManager;
@@ -150,7 +146,7 @@ public class MainController {
     private PDFDocument currentDocument;
     private VBox pagesContainer;
     private final ExecutorService renderExecutor = Executors.newFixedThreadPool(6);
-    private final java.util.Set<Integer> loadingPages = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private final Set<Integer> loadingPages = ConcurrentHashMap.newKeySet();
     private boolean highlightModeActive = false;
 
     // ==================== Initialization ====================
@@ -199,13 +195,7 @@ public class MainController {
 
         // Set page change listener to update UI when page changes during scroll
         // Must be after initializeManagers() so pageInfoManager is initialized
-        scrollHandler.setPageChangeListener(newPageIndex -> Platform.runLater(() -> {
-            if (currentDocument != null) {
-                // The scroll handler already updated currentDocument.setCurrentPage(newPageIndex)
-                // Just update the UI
-                pageInfoManager.updatePageInfo(currentDocument);
-            }
-        }));
+        scrollHandler.setPageChangeListener(ListenerFactory.createPageChangeListener(currentDocument, pageInfoManager));
 
         // Setup rendering manager with UI components
         if (renderingManager != null) {
@@ -227,38 +217,46 @@ public class MainController {
         }
         if (drawingToolsGroup != null) {
             drawingToolsGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
-
-                if (newVal == null) {
-                    // No tool selected - enable text selection by default (like browsers)
-                    updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
-                    if (pageRenderer != null) pageRenderer.setSelectionModeActive(pagesContainer, true);
+                ToggleButton selectedBtn = (newVal != null) ? (ToggleButton) newVal : null;
+                
+                // Handle tool selection - annotationManager will be null until the document is opened
+                if (annotationManager == null) {
+                    // If no document is open, just handle basic selection mode
+                    if (selectedBtn == null) {
+                        // No tool selected - enable text selection by default
+                        if (pageRenderer != null && pagesContainer != null) {
+                            pageRenderer.setSelectionModeActive(pagesContainer, true);
+                        }
+                    } else if (selectedBtn == btnSelectText) {
+                        // Text selection tool
+                        if (pageRenderer != null && pagesContainer != null) {
+                            pageRenderer.setSelectionModeActive(pagesContainer, true);
+                        }
+                        uiStateManager.updateStatus("Tool: Text Selection");
+                    } else {
+                        // Drawing tool selected - disable text selection
+                        if (pageRenderer != null && pagesContainer != null) {
+                            pageRenderer.setSelectionModeActive(pagesContainer, false);
+                        }
+                    }
                     return;
                 }
-
-                ToggleButton selectedBtn = (ToggleButton) newVal;
-
-                if (selectedBtn == btnSelectText) {
-                    // Tắt vẽ
-                    updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
-                    // Bật chọn Text
-                    if (pageRenderer != null) pageRenderer.setSelectionModeActive(pagesContainer, true);
-
-                    uiStateManager.updateStatus("Tool: Text Selection");
-                } else {
-                    // Drawing tool selected - disable text selection
-                    if (pageRenderer != null) pageRenderer.setSelectionModeActive(pagesContainer, false);
-
-
-                    // Ánh xạ công cụ
-                    if (selectedBtn == btnDrawRect) {
-                        updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.RECTANGLE);
-                    } else if (selectedBtn == btnDrawCircle) {
-                        updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.CIRCLE);
-                    } else if (selectedBtn == btnDrawArrow) {
-                        updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.ARROW);
-                    }
-                    updateDrawingStyleForAllPages();
-                }
+                
+                // Document is an open-use annotation manager
+                annotationManager.handleToolSelection(
+                    selectedBtn,
+                    btnSelectText,
+                    btnDrawRect,
+                    btnDrawCircle,
+                    btnDrawArrow,
+                    active -> {
+                        if (pageRenderer != null && pagesContainer != null) {
+                            pageRenderer.setSelectionModeActive(pagesContainer, active);
+                        }
+                    },
+                    pagesContainer,
+                    this::updateDrawingStyleForAllPages
+                );
             });
         }
         if (btnSelectText != null) makeToggleButtonDeselectable(btnSelectText);
@@ -285,18 +283,19 @@ public class MainController {
         // UI State Manager (needed by other managers)
         uiStateManager = new UIStateManager(statusLabel, prevButton, nextButton, pageNumberField, zoomComboBox);
 
-        // Zoom Manager
-        zoomManager = new ZoomManager(pdfService, createZoomChangeListener());
+        // Zoom Manager - create with a listener that can be updated when the document is opened
+        zoomChangeListener = ListenerFactory.createZoomChangeListener(renderingManager, searchManager, uiStateManager);
+        zoomManager = new ZoomManager(pdfService, zoomChangeListener);
         zoomManager.initialize(zoomComboBox, scrollPane);
 
         // Rendering Manager
         renderingManager = new RenderingManager(pdfService, pageRenderer, scrollHandler, zoomManager);
 
         // File Manager
-        fileManager = new FileManager(pdfService, createFileOperationListener());
+        fileManager = new FileManager(pdfService, ListenerFactory.createFileOperationListener(uiStateManager));
 
         // Fullscreen Manager
-        fullscreenManager = new FullscreenManager(rootPane, toolbar, createFullscreenListener());
+        fullscreenManager = new FullscreenManager(rootPane, toolbar, ListenerFactory.createFullscreenListener(uiStateManager));
 
         // Page Info Manager
         pageInfoManager = new PageInfoManager(totalPagesLabel, pageNumberField, prevButton, nextButton);
@@ -326,84 +325,6 @@ public class MainController {
         annotationManager = null;
     }
 
-    /**
-     * Creates the zoom change listener.
-     */
-    private ZoomManager.ZoomChangeListener createZoomChangeListener() {
-        return new ZoomManager.ZoomChangeListener() {
-            @Override
-            public void onZoomChanged(double newZoom) {
-                if (currentDocument != null && pagesContainer != null && scrollPane != null) {
-                    // Switch layout mode based on the threshold (70% => 0.7)
-                    try {
-                        if (renderingManager != null) {
-                            boolean shouldTwoPage = newZoom < 0.7;
-                            renderingManager.setTwoPageMode(shouldTwoPage);
-                        }
-                    } catch (Exception e) {
-                        logger.error("Error switching page layout mode", e);
-                    }
-
-                    Objects.requireNonNull(renderingManager).preserveScrollPositionAndApplyZoom(newZoom);
-                    Platform.runLater(() -> searchManager.updateHighlightsAfterZoom(newZoom));
-                }
-            }
-
-            @Override
-            public void onZoomApplied(double newZoom, String statusMessage) {
-                uiStateManager.updateStatus(statusMessage);
-            }
-        };
-    }
-
-    /**
-     * Creates the file operation listener.
-     */
-    private FileManager.FileOperationListener createFileOperationListener() {
-        return new FileManager.FileOperationListener() {
-            @Override
-            public void onFileOpened(PDFDocument document, File file) {
-                // Handled in openPDFFile
-            }
-
-            @Override
-            public void onFileSaved(String fileName) {
-                uiStateManager.updateStatus("Saved: " + fileName);
-            }
-
-            @Override
-            public void onFileSaveAs(String fileName) {
-                uiStateManager.updateStatus("Saved As: " + fileName);
-            }
-
-            @Override
-            public void onError(String title, String message) {
-                uiStateManager.showError(title, message);
-            }
-
-            @Override
-            public void onPageDeleted(int pageNumber) {
-                uiStateManager.updateStatus("Deleted page " + pageNumber);
-            }
-        };
-    }
-
-    /**
-     * Creates the fullscreen listener.
-     */
-    private FullscreenManager.FullscreenListener createFullscreenListener() {
-        return new FullscreenManager.FullscreenListener() {
-            @Override
-            public void onFullscreenChanged(boolean isFullscreen) {
-                // Fullscreen state changed
-            }
-
-            @Override
-            public void updateStatus(String message) {
-                uiStateManager.updateStatus(message);
-            }
-        };
-    }
 
     // ==================== File Operations ====================
 
@@ -422,8 +343,8 @@ public class MainController {
     }
 
     private void openPDFFile(File file) {
-        java.util.concurrent.atomic.AtomicReference<VBox> pagesContainerRef =
-                new java.util.concurrent.atomic.AtomicReference<>(pagesContainer);
+        AtomicReference<VBox> pagesContainerRef =
+                new AtomicReference<>(pagesContainer);
         currentDocument = documentLifecycleManager.openPDFFile(file, currentDocument, pageRenderer,
                 scrollPane, pagesContainerRef);
         pagesContainer = pagesContainerRef.get();
@@ -431,6 +352,14 @@ public class MainController {
         // Initialize the annotation manager when the document is opened
         if (currentDocument != null && pagesContainer != null) {
             annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
+            
+            // Update zoom change listener with document context
+            if (zoomChangeListener != null) {
+                zoomChangeListener.updateContext(currentDocument, pagesContainer, scrollPane);
+            }
+            
+            // Update page change listener with document context
+            scrollHandler.setPageChangeListener(ListenerFactory.createPageChangeListener(currentDocument, pageInfoManager));
             
             // Enable text selection by default (like browsers) when the document is opened
             // Use Platform.runLater to ensure pages are fully rendered first
@@ -454,25 +383,7 @@ public class MainController {
 
         // Warn the user if the document is encrypted
         if (currentDocument.getDocument().isEncrypted()) {
-            Alert alert = new Alert(Alert.AlertType.WARNING);
-            alert.setTitle("Cảnh báo");
-            alert.setHeaderText("File có mật khẩu bảo vệ");
-            alert.setContentText("""
-                    Lưu ý: File mới sẽ KHÔNG CÓ MẬT KHẨU.
-                    
-                    Nếu muốn giữ mật khẩu hoặc đặt mật khẩu mới,
-                    vui lòng sử dụng chức năng 'Encrypt PDF' sau khi lưu.""");
-
-            ButtonType continueButton = new ButtonType("Tiếp tục lưu", ButtonBar.ButtonData.OK_DONE);
-            ButtonType cancelButton = new ButtonType("Hủy", ButtonBar.ButtonData.CANCEL_CLOSE);
-            alert.getButtonTypes().setAll(continueButton, cancelButton);
-
-            if (themeManager != null) {
-                themeManager.applyThemeToScene(alert.getDialogPane().getScene());
-            }
-
-            var result = alert.showAndWait();
-            if (result.isEmpty() || result.get() != continueButton) {
+            if (!dialogManager.showEncryptedSaveWarning()) {
                 return; // User cancelled
             }
         }
@@ -518,14 +429,14 @@ public class MainController {
         }
 
         int current = currentDocument.getCurrentPage();
-        java.util.concurrent.atomic.AtomicReference<VBox> pagesContainerRef =
-                new java.util.concurrent.atomic.AtomicReference<>(pagesContainer);
-        java.util.concurrent.atomic.AtomicReference<PageRenderer> pageRendererRef =
-                new java.util.concurrent.atomic.AtomicReference<>(pageRenderer);
-        java.util.concurrent.atomic.AtomicReference<ScrollHandler> scrollHandlerRef =
-                new java.util.concurrent.atomic.AtomicReference<>(scrollHandler);
-        java.util.concurrent.atomic.AtomicReference<RenderingManager> renderingManagerRef =
-                new java.util.concurrent.atomic.AtomicReference<>(renderingManager);
+        AtomicReference<VBox> pagesContainerRef =
+                new AtomicReference<>(pagesContainer);
+        AtomicReference<PageRenderer> pageRendererRef =
+                new AtomicReference<>(pageRenderer);
+        AtomicReference<ScrollHandler> scrollHandlerRef =
+                new AtomicReference<>(scrollHandler);
+        AtomicReference<RenderingManager> renderingManagerRef =
+                new AtomicReference<>(renderingManager);
 
         PDFDocument newDocument = documentOperationManager.deletePage(currentDocument, current,
                 renderExecutor, loadingPages, contentPane, scrollPane, pagesContainerRef,
@@ -703,22 +614,7 @@ public class MainController {
 
     @FXML
     private void handleAbout() {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("About PDF Lite");
-        alert.setHeaderText("PDF Lite - PDF Viewer & Editor");
-        alert.setContentText("""
-                Version 1.0
-                
-                A lightweight PDF viewer with annotation features.
-                
-                Built with JavaFX and Apache PDFBox""");
-
-        DialogPane dialogPane = alert.getDialogPane();
-        if (themeManager != null) {
-            themeManager.applyThemeToScene(dialogPane.getScene());
-        }
-
-        alert.showAndWait();
+        dialogManager.showAboutDialog();
     }
 
     // ==================== Merge and Split Operations ====================
@@ -837,96 +733,25 @@ public class MainController {
             return;
         }
 
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/org/pdflite/insert-dialog.fxml"));
-            Parent root = loader.load();
-            InsertDialogController controller = loader.getController();
+        InsertDialogController controller = dialogManager.openInsertDialog(currentDocument);
+        if (controller == null || !controller.isInsertClicked()) {
+            return;
+        }
 
-            // Get the current page size to use as default in the dialog
-            int currentPageIndex = currentDocument.getCurrentPage();
-            org.apache.pdfbox.pdmodel.PDPage currentPage = currentDocument.getDocument().getPage(currentPageIndex);
-            org.apache.pdfbox.pdmodel.common.PDRectangle currentMediaBox = currentPage.getMediaBox();
-            controller.setDefaultSize(currentMediaBox.getWidth(), currentMediaBox.getHeight());
+        AtomicReference<VBox> pagesContainerRef =
+                new AtomicReference<>(pagesContainer);
 
-            Stage stage = new Stage();
-            stage.setTitle("Insert Blank Page");
-            stage.initModality(Modality.WINDOW_MODAL);
-            stage.initOwner(rootPane.getScene().getWindow());
-            stage.setScene(new Scene(root));
+        PDFDocument updatedDocument = documentOperationManager.insertBlankPages(
+                currentDocument, controller, pagesContainerRef, loadingPages,
+                pageRenderer, scrollHandler, scrollPane);
 
-            if (themeManager != null) themeManager.applyThemeToScene(stage.getScene());
-
-            stage.showAndWait();
-
-            if (controller.isInsertClicked()) {
-                int count = controller.getCount();
-                int index = controller.getInsertIndex(currentDocument.getCurrentPage(), currentDocument.getTotalPages());
-                
-                // Get page size from the page at the insert position (or the nearest page)
-                // This ensures inserted pages match the size of pages at the insert location
-                int refPageIndex = getRefPageIndex(index);
-
-                org.apache.pdfbox.pdmodel.PDPage refPage = currentDocument.getDocument().getPage(refPageIndex);
-                org.apache.pdfbox.pdmodel.common.PDRectangle refMediaBox = refPage.getMediaBox();
-                
-                // Use size from the reference page if "Match Current Page" was selected, otherwise use dialog values
-                float w, h;
-                if ("Match Current Page".equals(controller.getSelectedPageSize())) {
-                    w = refMediaBox.getWidth();
-                    h = refMediaBox.getHeight();
-                } else {
-                    w = controller.getWidth();
-                    h = controller.getHeight();
-                }
-
-                pdfService.insertBlankPage(currentDocument, index, w, h, count);
-
-                if (index <= currentDocument.getCurrentPage()) {
-                    currentDocument.setCurrentPage(currentDocument.getCurrentPage() + count);
-                }
-
-                if (pagesContainer != null) pagesContainer.getChildren().clear();
-                loadingPages.clear();
-                pageRenderer.clearCache();
-                pageRenderer.cancelAllPendingRenders();
-
-                renderingManager.renderAllPages();
-                scrollHandler.setDocument(currentDocument, pagesContainer);
-                pageInfoManager.updatePageInfo(currentDocument);
-
-                Platform.runLater(() -> {
-                    scrollPane.applyCss();
-                    scrollPane.layout();
-                    Platform.runLater(() -> {
-                        double currentV = scrollPane.getVvalue();
-                        scrollPane.setVvalue(currentV + 0.00001);
-                        scrollPane.setVvalue(currentV);
-                        scrollHandler.handleScroll();
-                    });
-                });
-
-                uiStateManager.updateStatus("Inserted " + count + " blank page(s).");
+        if (updatedDocument != null) {
+            pagesContainer = pagesContainerRef.get();
+            // Recreate annotation manager with updated documents
+            if (pagesContainer != null) {
+                annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
             }
-
-        } catch (Exception e) {
-            logger.error("Error inserting page", e);
-            uiStateManager.showError("Insert Error", e.getMessage());
         }
-    }
-
-    private int getRefPageIndex(int index) {
-        int refPageIndex;
-        if (index >= currentDocument.getTotalPages()) {
-            // Inserting at the end-use last page
-            refPageIndex = Math.max(0, currentDocument.getTotalPages() - 1);
-        } else if (index > 0) {
-            // Inserting in the middle-use page at insert position (or previous page)
-            refPageIndex = Math.min(index, currentDocument.getTotalPages() - 1);
-        } else {
-            // Inserting at beginning - use first page
-            refPageIndex = 0;
-        }
-        return refPageIndex;
     }
 }
 

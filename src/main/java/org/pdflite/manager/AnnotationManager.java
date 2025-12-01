@@ -134,5 +134,64 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
             }
         }
     }
+
+    /**
+     * Handles tool selection change for annotation tools.
+     * This method processes the selected tool and updates the annotation mode accordingly.
+     *
+     * @param selectedBtn        the selected toggle button (null if none selected)
+     * @param btnSelectText      the text selection toggle button
+     * @param btnDrawRect        the rectangle drawing toggle button
+     * @param btnDrawCircle      the circle drawing toggle button
+     * @param btnDrawArrow       the arrow drawing toggle button
+     * @param setSelectionMode   callback to set text selection mode (pagesContainer, active)
+     * @param pagesContainer     the page container
+     * @param updateDrawingStyle callback to update drawing style for all pages
+     */
+    public void handleToolSelection(ToggleButton selectedBtn,
+                                    ToggleButton btnSelectText,
+                                    ToggleButton btnDrawRect,
+                                    ToggleButton btnDrawCircle,
+                                    ToggleButton btnDrawArrow,
+                                    Consumer<Boolean> setSelectionMode,
+                                    VBox pagesContainer,
+                                    Runnable updateDrawingStyle) {
+        if (selectedBtn == null) {
+            // No tool selected - enable text selection by default (like browsers)
+            updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
+            if (setSelectionMode != null) {
+                setSelectionMode.accept(true);
+            }
+            return;
+        }
+
+        if (selectedBtn == btnSelectText) {
+            // Tắt vẽ
+            updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
+            // Bật chọn Text
+            if (setSelectionMode != null) {
+                setSelectionMode.accept(true);
+            }
+            uiStateManager.updateStatus("Tool: Text Selection");
+        } else {
+            // Drawing tool selected - disable text selection
+            if (setSelectionMode != null) {
+                setSelectionMode.accept(false);
+            }
+
+            // Ánh xạ công cụ
+            if (selectedBtn == btnDrawRect) {
+                updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.RECTANGLE);
+            } else if (selectedBtn == btnDrawCircle) {
+                updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.CIRCLE);
+            } else if (selectedBtn == btnDrawArrow) {
+                updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.ARROW);
+            }
+            
+            if (updateDrawingStyle != null) {
+                updateDrawingStyle.run();
+            }
+        }
+    }
 }
 

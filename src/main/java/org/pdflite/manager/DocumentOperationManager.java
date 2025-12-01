@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.pdflite.controller.InsertDialogController;
 import org.pdflite.controller.PageRenderer;
 import org.pdflite.controller.ScrollHandler;
 import org.pdflite.model.PDFDocument;
@@ -213,6 +214,105 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
         });
 
         return result[0];
+    }
+
+    /**
+     * Inserts blank pages into the document.
+     *
+     * @param currentDocument the current PDF document
+     * @param controller      the insert dialog controller with user selections
+     * @param pagesContainer  the page container (will be updated)
+     * @param loadingPages    the set of pages currently loading
+     * @param pageRenderer   the page renderer
+     * @param scrollHandler  the scroll handler
+     * @param scrollPane     the scroll pane
+     * @return the updated PDFDocument, or null if insertion failed
+     */
+    public PDFDocument insertBlankPages(PDFDocument currentDocument, InsertDialogController controller,
+                                       AtomicReference<VBox> pagesContainer, Set<Integer> loadingPages,
+                                       PageRenderer pageRenderer, ScrollHandler scrollHandler,
+                                       ScrollPane scrollPane) {
+        if (currentDocument == null || controller == null || !controller.isInsertClicked()) {
+            return null;
+        }
+
+        try {
+            int count = controller.getCount();
+            int index = controller.getInsertIndex(currentDocument.getCurrentPage(), currentDocument.getTotalPages());
+
+            // Get page size from the page at the insert position (or the nearest page)
+            int refPageIndex = getRefPageIndex(index, currentDocument);
+            org.apache.pdfbox.pdmodel.PDPage refPage = currentDocument.getDocument().getPage(refPageIndex);
+            org.apache.pdfbox.pdmodel.common.PDRectangle refMediaBox = refPage.getMediaBox();
+
+            // Use size from the reference page if "Match Current Page" was selected, otherwise use dialog values
+            float w, h;
+            if ("Match Current Page".equals(controller.getSelectedPageSize())) {
+                w = refMediaBox.getWidth();
+                h = refMediaBox.getHeight();
+            } else {
+                w = controller.getWidth();
+                h = controller.getHeight();
+            }
+
+            pdfService.insertBlankPage(currentDocument, index, w, h, count);
+
+            if (index <= currentDocument.getCurrentPage()) {
+                currentDocument.setCurrentPage(currentDocument.getCurrentPage() + count);
+            }
+
+            // Clear and re-render pages
+            if (pagesContainer.get() != null) pagesContainer.get().getChildren().clear();
+            loadingPages.clear();
+            pageRenderer.clearCache();
+            pageRenderer.cancelAllPendingRenders();
+
+            renderingManager.renderAllPages();
+            scrollHandler.setDocument(currentDocument, pagesContainer.get());
+            pageInfoManager.updatePageInfo(currentDocument);
+
+            // Refresh scroll position
+            Platform.runLater(() -> {
+                scrollPane.applyCss();
+                scrollPane.layout();
+                Platform.runLater(() -> {
+                    double currentV = scrollPane.getVvalue();
+                    scrollPane.setVvalue(currentV + 0.00001);
+                    scrollPane.setVvalue(currentV);
+                    scrollHandler.handleScroll();
+                });
+            });
+
+            uiStateManager.updateStatus("Inserted " + count + " blank page(s).");
+            return currentDocument;
+
+        } catch (Exception e) {
+            logger.error("Error inserting pages", e);
+            uiStateManager.showError("Insert Error", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Gets the reference page index for determining page size when inserting pages.
+     *
+     * @param index           the insertion index
+     * @param currentDocument the current PDF document
+     * @return the reference page index
+     */
+    private int getRefPageIndex(int index, PDFDocument currentDocument) {
+        int refPageIndex;
+        if (index >= currentDocument.getTotalPages()) {
+            // Inserting at the end - use last page
+            refPageIndex = Math.max(0, currentDocument.getTotalPages() - 1);
+        } else if (index > 0) {
+            // Inserting in the middle - use page at insert position (or previous page)
+            refPageIndex = Math.min(index, currentDocument.getTotalPages() - 1);
+        } else {
+            // Inserting at beginning - use first page
+            refPageIndex = 0;
+        }
+        return refPageIndex;
     }
 }
 

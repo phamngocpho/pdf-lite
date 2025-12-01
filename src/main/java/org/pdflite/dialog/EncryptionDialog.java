@@ -116,7 +116,9 @@ public class EncryptionDialog extends Dialog<EncryptionDialog.EncryptionResult> 
         );
 
         getDialogPane().setContent(vbox);
-        getDialogPane().setPrefWidth(500);
+        // Set minimum size for Ubuntu/Linux compatibility
+        getDialogPane().setMinWidth(500);
+        getDialogPane().setMinHeight(550);
 
         // Validation
         javafx.scene.Node encryptButton = getDialogPane().lookupButton(encryptButtonType);

@@ -111,15 +111,30 @@ public class ThumbnailLoader {
                                                   PDFService pdfService, Consumer<String> updateStatus) throws IOException {
         for (int i = 0; i < totalPages; i++) {
             final int pageNum = i;
-            Image thumbnail = pdfService.renderPage(doc, pageNum, (float) PREVIEW_SCALE);
+            try {
+                Image thumbnail = pdfService.renderPage(doc, pageNum, (float) PREVIEW_SCALE);
 
-            Platform.runLater(() -> {
-                VBox pageBox = createThumbnailBox(thumbnail, pageNum + 1);
-                previewPane.getChildren().add(pageBox);
-            });
+                Platform.runLater(() -> {
+                    VBox pageBox = createThumbnailBox(thumbnail, pageNum + 1);
+                    previewPane.getChildren().add(pageBox);
+                });
+            } catch (java.nio.channels.ClosedChannelException e) {
+                // Document was closed while rendering, stop loading thumbnails
+                logger.warn("Document was closed while loading thumbnails, stopping at page {}", pageNum + 1);
+                break;
+            } catch (Exception e) {
+                // Log but continue with next page if one fails (for other errors)
+                logger.warn("Error rendering thumbnail for page {}: {}", pageNum + 1, e.getMessage());
+                // Continue to next page instead of breaking
+            }
         }
 
-        Platform.runLater(() -> updateStatus.accept("Thumbnails loaded"));
+        Platform.runLater(() -> {
+            updateStatus.accept("Thumbnails loaded");
+            // Force layout recalculation to ensure correct column count
+            previewPane.applyCss();
+            previewPane.layout();
+        });
     }
 
     /**

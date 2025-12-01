@@ -7,7 +7,7 @@
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="org.pdflite.controller.SearchDialogController"
-            prefWidth="600" prefHeight="500"
+            minWidth="600" minHeight="500"
             stylesheets="@styles.css">
 
     <!-- Top: Search controls -->

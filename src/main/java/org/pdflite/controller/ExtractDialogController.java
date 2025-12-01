@@ -94,6 +94,19 @@ public class ExtractDialogController {
      */
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+        
+        // Ensure FlowPane layout is calculated correctly after the dialog is shown
+        // This fixes the issue where FlowPane doesn't calculate the correct column count initially
+        // Use a small delay to ensure the dialog is fully rendered
+        Platform.runLater(() -> Platform.runLater(() -> {
+            if (previewPane != null && previewScrollPane != null) {
+                // Force layout calculation after the dialog is visible
+                previewScrollPane.applyCss();
+                previewScrollPane.layout();
+                previewPane.applyCss();
+                previewPane.layout();
+            }
+        }));
     }
 
     /**
@@ -149,6 +162,11 @@ public class ExtractDialogController {
         }
 
         updateStatus("Ready to extract");
+
+        // Resize dialog after UI is initialized (workaround for Ubuntu sizing issue)
+        if (dialogStage != null) {
+            Platform.runLater(() -> Platform.runLater(() -> dialogStage.sizeToScene()));
+        }
 
         if (file != null) {
             logger.info("Loaded PDF: {} ({} pages)", file.getName(), pageCount);
