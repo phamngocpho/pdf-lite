@@ -2,6 +2,7 @@ package org.pdflite.manager;
 
 import java.io.IOException;
 
+import javafx.application.Platform;
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
 import org.pdflite.controller.ExtractDialogController;
 import org.pdflite.controller.InsertDialogController;
@@ -248,10 +249,19 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
         root.applyCss();
         root.layout();
         
+        // Workaround for Ubuntu/Linux dialog sizing issue
+        // See: https://stackoverflow.com/questions/55190380/javafx-creates-alert-dialog-which-is-too-small
+        // Set resizable to true initially to allow proper sizing on Linux
+        dialogStage.setResizable(true);
+        
         // Size the stage to fit its content
         // minWidth/minHeight are set in FXML files to ensure the minimum size on Ubuntu
         // sizeToScene() will calculate the actual size based on content
         dialogStage.sizeToScene();
+        
+        // After the dialog is shown, set resizable back to false (if desired)
+        // This ensures proper sizing on Ubuntu while maintaining non-resizable behavior
+        dialogStage.setOnShown(e -> Platform.runLater(() -> dialogStage.setResizable(false)));
 
         return dialogStage;
     }
