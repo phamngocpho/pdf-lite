@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
 import org.pdflite.controller.ExtractDialogController;
+import org.pdflite.controller.InsertDialogController;
 import org.pdflite.controller.MergeDialogController;
 import org.pdflite.controller.PrintDialogController;
 import org.pdflite.controller.SplitDialogController;
@@ -16,6 +17,9 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.DialogPane;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -240,6 +244,93 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
         }
 
         return dialogStage;
+    }
+
+    /**
+     * Opens the insert blank page dialog.
+     *
+     * @param currentDocument the current PDF document
+     * @return InsertDialogController if the dialog was opened successfully, null otherwise
+     */
+    public InsertDialogController openInsertDialog(PDFDocument currentDocument) {
+        if (currentDocument == null) {
+            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            return null;
+        }
+
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    getClass().getResource("/org/pdflite/insert-dialog.fxml"));
+            Parent root = loader.load();
+
+            InsertDialogController controller = loader.getController();
+
+            // Get the current page size to use as default in the dialog
+            int currentPageIndex = currentDocument.getCurrentPage();
+            org.apache.pdfbox.pdmodel.PDPage currentPage = currentDocument.getDocument().getPage(currentPageIndex);
+            org.apache.pdfbox.pdmodel.common.PDRectangle currentMediaBox = currentPage.getMediaBox();
+            controller.setDefaultSize(currentMediaBox.getWidth(), currentMediaBox.getHeight());
+
+            Stage dialogStage = createDialogStage(root, "Insert Blank Page");
+            dialogStage.showAndWait();
+
+            return controller;
+
+        } catch (IOException e) {
+            logger.error("Error opening insert dialog", e);
+            uiStateManager.showError("Error", "Could not open insert dialog: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Displays the About dialog.
+     */
+    public void showAboutDialog() {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("About PDF Lite");
+        alert.setHeaderText("PDF Lite - PDF Viewer & Editor");
+        alert.setContentText("""
+                Version 1.0
+                
+                A lightweight PDF viewer with annotation features.
+                
+                Built with JavaFX and Apache PDFBox""");
+
+        DialogPane dialogPane = alert.getDialogPane();
+        if (themeManager != null) {
+            themeManager.applyThemeToScene(dialogPane.getScene());
+        }
+
+        alert.showAndWait();
+    }
+
+    /**
+     * Shows a warning dialog for saving encrypted PDFs.
+     * Returns true if the user wants to continue, false if canceled.
+     *
+     * @return true if the user wants to continue saving, false if canceled
+     */
+    public boolean showEncryptedSaveWarning() {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle("Cảnh báo");
+        alert.setHeaderText("File có mật khẩu bảo vệ");
+        alert.setContentText("""
+                Lưu ý: File mới sẽ KHÔNG CÓ MẬT KHẨU.
+                
+                Nếu muốn giữ mật khẩu hoặc đặt mật khẩu mới,
+                vui lòng sử dụng chức năng 'Encrypt PDF' sau khi lưu.""");
+
+        ButtonType continueButton = new ButtonType("Tiếp tục lưu", ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelButton = new ButtonType("Hủy", ButtonBar.ButtonData.CANCEL_CLOSE);
+        alert.getButtonTypes().setAll(continueButton, cancelButton);
+
+        if (themeManager != null) {
+            themeManager.applyThemeToScene(alert.getDialogPane().getScene());
+        }
+
+        var result = alert.showAndWait();
+        return result.isPresent() && result.get() == continueButton;
     }
 }
 
