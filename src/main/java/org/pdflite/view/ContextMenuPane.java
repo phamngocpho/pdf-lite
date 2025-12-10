@@ -249,22 +249,27 @@ public class ContextMenuPane extends StackPane {
         // Create rectangles for each region
         for (Rectangle2D region : regions) {
             // Increase height for better visibility
-            double increasedHeight = region.getHeight() * HIGHLIGHT_HEIGHT_MULTIPLIER;
-            double heightDiff = increasedHeight - region.getHeight();
-            
-            Rectangle highlightRect = new Rectangle(
-                    region.getX(),
-                    region.getY() - heightDiff / 2, // Center the increased height
-                    region.getWidth(),
-                    increasedHeight
-            );
-            highlightRect.setFill(HIGHLIGHT_FILL);
-            highlightRect.setMouseTransparent(true);
-            highlightRect.setManaged(false);
+            Rectangle highlightRect = getHighlightRect(region);
             highlightGroup.getChildren().add(highlightRect);
         }
 
         highlightGroup.setVisible(true);
+    }
+
+    private static Rectangle getHighlightRect(Rectangle2D region) {
+        double increasedHeight = region.getHeight() * HIGHLIGHT_HEIGHT_MULTIPLIER;
+        double heightDiff = increasedHeight - region.getHeight();
+
+        Rectangle highlightRect = new Rectangle(
+                region.getX(),
+                region.getY() - heightDiff / 2, // Center the increased height
+                region.getWidth(),
+                increasedHeight
+        );
+        highlightRect.setFill(HIGHLIGHT_FILL);
+        highlightRect.setMouseTransparent(true);
+        highlightRect.setManaged(false);
+        return highlightRect;
     }
 
     private void clearHighlightRegions() {
