@@ -4,6 +4,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import javafx.collections.ListChangeListener;
+import javafx.scene.layout.HBox;
+
 
 import org.pdflite.controller.MainController;
 import org.pdflite.model.PDFDocument;
@@ -45,6 +50,11 @@ public class SearchManager {
     // Search results state
     private final Map<Integer, List<SearchResult>> resultsByPage = new HashMap<>();
     private SearchResult activeResult = null;
+    
+    // Page listeners for auto-highlighting
+    private final Map<VBox, ListChangeListener<Node>> pageListeners = new HashMap<>();
+    private ListChangeListener<Node> containerListener;
+
 
     // Panel position enum
     public enum SearchPanelPosition {
@@ -88,13 +98,20 @@ public class SearchManager {
 
         groupResultsByPage(results);
 
-        logger.info("Loading {} pages with search results...", resultsByPage.size());
+        groupResultsByPage(results);
 
-        loadPagesWithResults(new ArrayList<>(resultsByPage.keySet()), () -> Platform.runLater(() -> {
+        logger.info("Prepared {} pages with search results for lazy highlighting", resultsByPage.size());
+
+        // Setup listeners to catch future renders (lazy loading)
+        setupPageChangeListeners();
+        
+        // Update currently visible/rendered pages
+        Platform.runLater(() -> {
             updateAllHighlights();
-            logger.info("Highlighted {} search results across {} pages",
-                    results.size(), resultsByPage.size());
-        }));
+            logger.info("Highlighted search results on currently rendered pages");
+        });
+
+
     }
 
     public void navigateToResult(SearchResult result) {
@@ -134,10 +151,14 @@ public class SearchManager {
         }
 
         Platform.runLater(() -> {
+            // With the listener system, we mostly rely on page reload.
+            // But we still update scale for any existing layers just in case.
             updateAnnotationLayersScale(newZoom);
+            // Re-apply highlights to ensure consistency
             updateAllHighlights();
             logger.debug("Updated highlights after zoom to {}%", newZoom * 100);
         });
+
     }
 
     // ==================== PANEL MANAGEMENT ====================
@@ -191,7 +212,11 @@ public class SearchManager {
         mainController.getRootPane().setRight(null);
         searchPanelVisible = false;
 
+        searchPanelVisible = false;
+
         clearHighlights();
+        removePageListeners();
+
         logger.info("Search panel hidden");
     }
 
@@ -206,36 +231,7 @@ public class SearchManager {
         }
     }
 
-    private void loadPagesWithResults(List<Integer> pageIndices, Runnable onComplete) {
-        loadPagesRecursive(pageIndices, 0, onComplete);
-    }
 
-    private void loadPagesRecursive(List<Integer> pageIndices, int currentIndex, Runnable onComplete) {
-        if (currentIndex >= pageIndices.size()) {
-            if (onComplete != null) {
-                onComplete.run();
-            }
-            return;
-        }
-
-        int pageIndex = pageIndices.get(currentIndex);
-        VBox pagesContainer = mainController.getPagesContainer();
-
-        if (pagesContainer == null || pageIndex < 0 || pageIndex >= mainController.getTotalPages()) {
-            loadPagesRecursive(pageIndices, currentIndex + 1, onComplete);
-            return;
-        }
-
-        VBox pageBox = findPageBox(pagesContainer, pageIndex);
-
-        if (pageBox != null && navigationHelper.isPageRendered(pageBox)) {
-            logger.debug("Page {} already rendered, skipping", pageIndex + 1);
-            loadPagesRecursive(pageIndices, currentIndex + 1, onComplete);
-        } else {
-            logger.debug("Loading page {} for search highlights", pageIndex + 1);
-            navigationHelper.loadPageAndWait(pageIndex, pageBox, () -> loadPagesRecursive(pageIndices, currentIndex + 1, onComplete));
-        }
-    }
 
     private void updateAllHighlights() {
         VBox pagesContainer = mainController.getPagesContainer();
@@ -409,5 +405,97 @@ public class SearchManager {
      */
     public SearchResult getActiveResult() {
         return activeResult;
+    }
+
+    // ==================== LISTENER MANAGEMENT ====================
+
+    private void setupPageChangeListeners() {
+        VBox pagesContainer = mainController.getPagesContainer();
+        if (pagesContainer == null) return;
+
+        // Cleanup old listeners if any
+        removePageListeners();
+
+        // 1. Listen for new pages being added (e.g. from renderAllPages)
+        containerListener = change -> {
+            while (change.next()) {
+                if (change.wasAdded()) {
+                    for (Node node : change.getAddedSubList()) {
+                        if (node instanceof VBox pageBox) {
+                            registerPageBoxListener(pageBox);
+                        } else if (node instanceof HBox row) {
+                            for (Node child : row.getChildren()) {
+                                if (child instanceof VBox pageBox) {
+                                    registerPageBoxListener(pageBox);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        pagesContainer.getChildren().addListener(containerListener);
+
+        // 2. Register listeners for existing pages
+        for (VBox pageBox : collectPageBoxes(pagesContainer)) {
+            registerPageBoxListener(pageBox);
+        }
+        
+        logger.debug("Page change listeners setup complete");
+    }
+
+    private void registerPageBoxListener(VBox pageBox) {
+        if (pageListeners.containsKey(pageBox)) return;
+
+        ListChangeListener<Node> listener = change -> {
+            while (change.next()) {
+                if (change.wasAdded()) {
+                    // When content is added (e.g. Image loaded replacing placeholder),
+                    // check if we have an AnnotationLayer and apply highlights.
+                    Platform.runLater(() -> checkAndHighlightPage(pageBox));
+                }
+            }
+        };
+
+        pageBox.getChildren().addListener(listener);
+        pageListeners.put(pageBox, listener);
+    }
+
+    private void checkAndHighlightPage(VBox pageBox) {
+        AnnotationLayer layer = findAnnotationLayer(pageBox);
+        if (layer != null) {
+            String id = pageBox.getId();
+            if (id != null && id.startsWith("page-")) {
+                try {
+                    int pageIndex = Integer.parseInt(id.replace("page-", ""));
+                    List<SearchResult> results = resultsByPage.get(pageIndex);
+                    
+                    if (results != null && !results.isEmpty()) {
+                        layer.setSearchHighlights(results);
+                        
+                        if (activeResult != null && activeResult.pageNumber() - 1 == pageIndex) {
+                            layer.setActiveSearchResult(activeResult);
+                        }
+                        logger.debug("Restored highlights for page {} (re-rendered)", pageIndex + 1);
+                    }
+                } catch (NumberFormatException e) {
+                    logger.warn("Invalid page ID format: {}", id);
+                }
+            }
+        }
+    }
+
+    private void removePageListeners() {
+        VBox pagesContainer = mainController.getPagesContainer();
+        
+        // Remove container listener
+        if (containerListener != null && pagesContainer != null) {
+            pagesContainer.getChildren().removeListener(containerListener);
+        }
+        containerListener = null;
+
+        // Remove page listeners
+        pageListeners.forEach((box, listener) -> box.getChildren().removeListener(listener));
+        pageListeners.clear();
     }
 }
