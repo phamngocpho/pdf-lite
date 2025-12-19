@@ -274,6 +274,110 @@
     -fx-padding: 4;
 }
 
+/* Custom Menu Item for Drawing Tools */
+.context-menu .custom-menu-item {
+    -fx-background-color: #ffffff;
+}
+
+.context-menu .custom-menu-item .drawing-tools-popup {
+    -fx-background-color: #ffffff;
+}
+
+.context-menu .custom-menu-item .drawing-tools-section-label {
+    -fx-font-weight: 600;
+    -fx-text-fill: #666666;
+    -fx-font-size: 11px;
+}
+
+.context-menu .custom-menu-item .stroke-width-value {
+    -fx-text-fill: #007AFF;
+    -fx-font-weight: 600;
+    -fx-font-size: 13px;
+}
+
+.context-menu .custom-menu-item .drawing-tools-separator {
+    -fx-background-color: #e0e0e0;
+}
+
+.context-menu .custom-menu-item .label {
+    -fx-text-fill: #333333;
+}
+
+.context-menu .custom-menu-item .separator {
+    -fx-background-color: #e0e0e0;
+}
+
+.context-menu .custom-menu-item .toggle-button {
+    -fx-background-color: #f5f5f5;
+    -fx-border-color: #d0d0d0;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.context-menu .custom-menu-item .toggle-button:hover {
+    -fx-background-color: #ebebeb;
+    -fx-border-color: #c0c0c0;
+}
+
+.context-menu .custom-menu-item .toggle-button:selected {
+    -fx-background-color: transparent;
+    -fx-border-color: #007AFF;
+    -fx-border-width: 2;
+}
+
+.context-menu .custom-menu-item .toggle-button:selected:hover {
+    -fx-background-color: rgba(0, 122, 255, 0.05);
+}
+
+/* Color Picker in Drawing Tools */
+.context-menu .custom-menu-item .color-picker {
+    -fx-background-color: #f5f5f5;
+    -fx-border-color: #d0d0d0;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 4 8;
+}
+
+.context-menu .custom-menu-item .color-picker:hover {
+    -fx-border-color: #c0c0c0;
+}
+
+.context-menu .custom-menu-item .color-picker .color-picker-label {
+    -fx-text-fill: #333333;
+    -fx-padding: 0 8 0 0;
+}
+
+.context-menu .custom-menu-item .color-picker .picker-color {
+    -fx-background-radius: 4;
+}
+
+.context-menu .custom-menu-item .color-picker .picker-color .picker-color-rect {
+    -fx-background-radius: 4;
+}
+
+/* Slider in Drawing Tools */
+.context-menu .custom-menu-item .slider .track {
+    -fx-background-color: #e0e0e0;
+    -fx-background-radius: 4;
+}
+
+.context-menu .custom-menu-item .slider .thumb {
+    -fx-background-color: #007AFF;
+    -fx-background-radius: 8;
+    -fx-pref-width: 16;
+    -fx-pref-height: 16;
+}
+
+.context-menu .custom-menu-item .slider .thumb:hover {
+    -fx-background-color: #0051D5;
+}
+
+.context-menu .custom-menu-item .slider .thumb:pressed {
+    -fx-background-color: #003D99;
+}
+
 /* ==================== DIALOG - MODERN ==================== */
 .dialog-pane {
     -fx-background-color: #ffffff;
@@ -558,4 +662,73 @@
 .title-bar-button.close-button:hover .window-icon-svg {
     -fx-fill: white;
     -fx-stroke: white;
+}
+
+/* ==================== DRAWING TOOLS GROUP ==================== */
+.drawing-tools-group {
+    -fx-background-color: rgba(0, 0, 0, 0.02);
+    -fx-background-radius: 8;
+    -fx-padding: 4 8;
+}
+
+.drawing-tools-group .menu-button {
+    -fx-font-weight: 500;
+}
+
+.drawing-tools-group .menu-button .label {
+    -fx-text-fill: #666666;
+}
+
+.drawing-tools-group .button {
+    -fx-background-color: #f5f5f5;
+    -fx-background-radius: 6;
+    -fx-min-width: 35;
+    -fx-pref-width: 35;
+}
+
+.drawing-tools-group .button:hover {
+    -fx-background-color: #ebebeb;
+}
+
+/* Drawing Tool SVG Icons */
+.drawing-tool-icon-svg {
+    -fx-fill: #666666;
+    -fx-stroke: #666666;
+    -fx-scale-x: 0.0208;
+    -fx-scale-y: 0.0208;
+}
+
+.toggle-button:hover .drawing-tool-icon-svg {
+    -fx-fill: #333333;
+    -fx-stroke: #333333;
+}
+
+.toggle-button:selected .drawing-tool-icon-svg {
+    -fx-fill: #007AFF;
+    -fx-stroke: #007AFF;
+}
+
+.toggle-button:selected:hover .drawing-tool-icon-svg {
+    -fx-fill: #0051D5;
+    -fx-stroke: #0051D5;
+}
+/* Zoom ComboBox Styling */
+.main-toolbar .combo-box {
+    -fx-background-color: white;
+    -fx-border-color: #d0d0d0;
+    -fx-border-width: 1;
+}
+
+.main-toolbar .combo-box:focused {
+    -fx-border-color: #007AFF;
+    -fx-border-width: 1;
+}
+
+.main-toolbar .combo-box .list-cell {
+    -fx-background-color: white;
+    -fx-text-fill: #1a1a1a;
+}
+
+.main-toolbar .combo-box .list-cell:hover {
+    -fx-background-color: #f5f5f5;
 }

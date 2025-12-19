@@ -9,6 +9,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
+import javafx.scene.control.*;
 import org.pdflite.manager.*;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
@@ -21,18 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.ColorPicker;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.Menu;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.Slider;
-import javafx.scene.control.TextField;
-import javafx.scene.control.TextFormatter;
-import javafx.scene.control.ToggleButton;
-import javafx.scene.control.ToggleGroup;
-import javafx.scene.control.ToolBar;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -55,6 +44,7 @@ import javafx.stage.Stage;
 public class MainController {
 
     private static final Logger logger = LoggerFactory.getLogger(MainController.class);
+    public MenuButton drawingToolsMenu;
 
     // ==================== FXML Injected UI Components ====================
 
@@ -85,6 +75,8 @@ public class MainController {
     @FXML
     private Slider strokeWidthSlider;
     @FXML
+    private Label strokeWidthLabel;
+    @FXML
     private ToggleGroup drawingToolsGroup;
     @FXML
     private ToggleButton btnDrawRect;
@@ -92,6 +84,8 @@ public class MainController {
     private ToggleButton btnDrawCircle;
     @FXML
     private ToggleButton btnDrawArrow;
+    @FXML
+    private Button undoButton;
     @FXML
     private javafx.scene.layout.HBox customTitleBar;
     @FXML
@@ -187,6 +181,9 @@ public class MainController {
         // Initialize image insertion manager (will be fully initialized after rendering manager is ready)
         imageInsertionManager = new ImageInsertionManager(rootPane, uiStateManager, renderingManager, pageRenderer);
 
+        // Initialize drawing tool icon manager
+        DrawingToolIconManager drawingToolIconManager = new DrawingToolIconManager();
+
         // Initialize managers
         initializeManagers();
 
@@ -275,13 +272,28 @@ public class MainController {
         if (btnDrawCircle != null) makeToggleButtonDeselectable(btnDrawCircle);
         if (btnDrawArrow != null) makeToggleButtonDeselectable(btnDrawArrow);
 
+        // Setup drawing tool icons
+        if (drawingToolIconManager != null) {
+            drawingToolIconManager.setupDrawingToolIcons(btnDrawRect, btnDrawCircle, btnDrawArrow);
+            drawingToolIconManager.setupUndoIcon(undoButton);
+        }
+
         if (colorPicker != null) {
             colorPicker.setValue(javafx.scene.paint.Color.BLACK);
             colorPicker.setOnAction(e -> updateDrawingStyleForAllPages());
         }
 
         if (strokeWidthSlider != null) {
-            strokeWidthSlider.valueProperty().addListener((obs, oldVal, newVal) -> updateDrawingStyleForAllPages());
+            strokeWidthSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+                updateDrawingStyleForAllPages();
+                if (strokeWidthLabel != null) {
+                    strokeWidthLabel.setText(String.format("%.0f", newVal.doubleValue()));
+                }
+            });
+            // Initialize label with current value
+            if (strokeWidthLabel != null) {
+                strokeWidthLabel.setText(String.format("%.0f", strokeWidthSlider.getValue()));
+            }
         }
 
         uiStateManager.updateUIState(false);
@@ -663,7 +675,7 @@ public class MainController {
                 logger.error("Failed to recover after delete error", recovery);
             }
         }
-    };
+    }
 
     // ==================== Zoom Operations ====================
 

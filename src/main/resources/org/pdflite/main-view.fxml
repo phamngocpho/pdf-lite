@@ -129,45 +129,70 @@
                 <!-- Zoom Group -->
                 <HBox spacing="3" alignment="CENTER">
                     <Button text="Zoom Out" onAction="#handleZoomOut"/>
-                    <ComboBox fx:id="zoomComboBox" onAction="#handleZoomChange" prefWidth="150" minWidth="150"/>
+                    <ComboBox fx:id="zoomComboBox" onAction="#handleZoomChange" prefWidth="90" minWidth="90"/>
                     <Button text="Zoom In" onAction="#handleZoomIn"/>
                 </HBox>
 
                 <Region prefWidth="20"/>
 
-                <!-- Drawing Tools -->
-                <HBox spacing="2" alignment="CENTER">
-                    <ToggleButton fx:id="btnDrawRect" text="▭" toggleGroup="$drawingToolsGroup"
-                                  style="-fx-font-size: 24px;">
-                        <tooltip><Tooltip text="Draw Rectangle"/></tooltip>
-                    </ToggleButton>
-
-                    <ToggleButton fx:id="btnDrawCircle" text="○" toggleGroup="$drawingToolsGroup"
-                                  style="-fx-font-size: 14px;">
-                        <tooltip><Tooltip text="Draw Circle"/></tooltip>
-                    </ToggleButton>
-
-                    <ToggleButton fx:id="btnDrawArrow" text="↗" toggleGroup="$drawingToolsGroup"
-                                  style="-fx-font-size: 14px;">
-                        <tooltip><Tooltip text="Draw Arrow"/></tooltip>
-                    </ToggleButton>
-                </HBox>
-
-                <Region prefWidth="20"/>
-
-                <Button text="Undo" onAction="#handleUndo">
-                    <tooltip><Tooltip text="Undo last drawing (Ctrl+Z)"/></tooltip>
-                </Button>
-
-                <Region prefWidth="20"/>
-
-                <HBox spacing="5" alignment="CENTER">
-                    <ColorPicker fx:id="colorPicker" prefWidth="40" style="-fx-color-label-visible: false;"/>
-
-                    <VBox alignment="CENTER">
-                        <Slider fx:id="strokeWidthSlider" min="1" max="10" value="2" prefWidth="60"/>
-                        <Label text="Width" style="-fx-font-size: 9px;"/>
-                    </VBox>
+                <!-- Drawing Tools Group -->
+                <HBox spacing="5" alignment="CENTER" styleClass="drawing-tools-group">
+                    <MenuButton fx:id="drawingToolsMenu" text="✏ Draw">
+                        <tooltip><Tooltip text="Drawing Tools"/></tooltip>
+                        <items>
+                            <CustomMenuItem hideOnClick="false">
+                                <content>
+                                    <VBox spacing="12" styleClass="drawing-tools-popup" style="-fx-padding: 16;">
+                                        <!-- Drawing Tools Section -->
+                                        <VBox spacing="8">
+                                            <Label text="Drawing Tools" styleClass="drawing-tools-section-label"/>
+                                            <HBox spacing="8" alignment="CENTER">
+                                                <ToggleButton fx:id="btnDrawRect" toggleGroup="$drawingToolsGroup"
+                                                              prefWidth="50" prefHeight="50">
+                                                    <tooltip><Tooltip text="Rectangle"/></tooltip>
+                                                </ToggleButton>
+                                                <ToggleButton fx:id="btnDrawCircle" toggleGroup="$drawingToolsGroup"
+                                                              prefWidth="50" prefHeight="50">
+                                                    <tooltip><Tooltip text="Circle"/></tooltip>
+                                                </ToggleButton>
+                                                <ToggleButton fx:id="btnDrawArrow" toggleGroup="$drawingToolsGroup"
+                                                              prefWidth="50" prefHeight="50">
+                                                    <tooltip><Tooltip text="Arrow"/></tooltip>
+                                                </ToggleButton>
+                                            </HBox>
+                                        </VBox>
+                                        
+                                        <Separator styleClass="drawing-tools-separator"/>
+                                        
+                                        <!-- Color Section -->
+                                        <VBox spacing="8">
+                                            <Label text="Color" styleClass="drawing-tools-section-label"/>
+                                            <ColorPicker fx:id="colorPicker" prefWidth="178" prefHeight="32" maxWidth="178"
+                                                         style="-fx-color-label-visible: true;"/>
+                                        </VBox>
+                                        
+                                        <Separator styleClass="drawing-tools-separator"/>
+                                        
+                                        <!-- Stroke Width Section -->
+                                        <VBox spacing="8">
+                                            <HBox spacing="5" alignment="CENTER_LEFT">
+                                                <Label text="Stroke Width" styleClass="drawing-tools-section-label"/>
+                                                <Region HBox.hgrow="ALWAYS"/>
+                                                <Label fx:id="strokeWidthLabel" text="2" styleClass="stroke-width-value"/>
+                                            </HBox>
+                                            <Slider fx:id="strokeWidthSlider" min="1" max="10" value="2" 
+                                                    prefWidth="170" blockIncrement="1" 
+                                                    style="-fx-padding: 4 0;"/>
+                                        </VBox>
+                                    </VBox>
+                                </content>
+                            </CustomMenuItem>
+                        </items>
+                    </MenuButton>
+                    
+                    <Button fx:id="undoButton" onAction="#handleUndo" prefWidth="35" prefHeight="35">
+                        <tooltip><Tooltip text="Undo (Ctrl+Z)"/></tooltip>
+                    </Button>
                 </HBox>
 
                 <Region prefWidth="20"/>
