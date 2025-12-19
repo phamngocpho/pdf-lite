@@ -54,6 +54,8 @@
                 <Menu text="Tools">
                     <MenuItem text="Highlight" onAction="#handleHighlight"/>
                     <SeparatorMenuItem/>
+                    <MenuItem text="Add Watermark..." onAction="#handleAddWatermark"/>
+                    <SeparatorMenuItem/>
                     <MenuItem text="Merge PDFs..." onAction="#handleMergePDFs"/>
                     <MenuItem text="Split PDF..." onAction="#handleSplitPDF"/>
                     <MenuItem text="Extract Pages..." onAction="#handleExtractPages"/>
@@ -142,7 +144,7 @@
                 <HBox spacing="5" alignment="CENTER">
                     <ColorPicker fx:id="colorPicker" prefWidth="40" style="-fx-color-label-visible: false;"/>
 
-                    <VBox alignment="CENTER" spacing="0">
+                    <VBox alignment="CENTER">
                         <Slider fx:id="strokeWidthSlider" min="1" max="10" value="2" prefWidth="60"/>
                         <Label text="Width" style="-fx-font-size: 9px;"/>
                     </VBox>
@@ -154,6 +156,8 @@
                     <tooltip><Tooltip text="PDF Operations"/></tooltip>
                     <items>
                         <MenuItem text="Insert page" onAction="#handleInsertPage"/>
+                        <MenuItem text="Add Watermark..." onAction="#handleAddWatermark"/>
+                        <SeparatorMenuItem/>
                         <MenuItem text="Merge PDFs..." onAction="#handleMergePDFs"/>
                         <MenuItem text="Split PDF..." onAction="#handleSplitPDF"/>
                         <MenuItem text="Extract Pages..." onAction="#handleExtractPages"/>
