@@ -140,6 +140,7 @@ public class MainController {
     private DocumentOperationManager documentOperationManager;
     private DocumentLifecycleManager documentLifecycleManager;
     private RecentFilesMenuManager recentFilesMenuManager;
+    private org.pdflite.manager.ContentStreamManager contentStreamManager;
 
     // ==================== Document State ====================
 
@@ -283,13 +284,18 @@ public class MainController {
         // UI State Manager (needed by other managers)
         uiStateManager = new UIStateManager(statusLabel, prevButton, nextButton, pageNumberField, zoomComboBox);
 
-        // Zoom Manager - create with a listener that can be updated when the document is opened
-        zoomChangeListener = ListenerFactory.createZoomChangeListener(renderingManager, searchManager, uiStateManager);
-        zoomManager = new ZoomManager(pdfService, zoomChangeListener);
+        // Create ZoomManager first (without listener)
+        zoomManager = new ZoomManager(pdfService, null);
         zoomManager.initialize(zoomComboBox, scrollPane);
 
-        // Rendering Manager
+        // Rendering Manager - needs zoomManager
         renderingManager = new RenderingManager(pdfService, pageRenderer, scrollHandler, zoomManager);
+        
+        // Now create zoom change listener with renderingManager
+        zoomChangeListener = ListenerFactory.createZoomChangeListener(renderingManager, searchManager, uiStateManager);
+        
+        // Set the listener to zoomManager
+        zoomManager.setZoomChangeListener(zoomChangeListener);
 
         // File Manager
         fileManager = new FileManager(pdfService, ListenerFactory.createFileOperationListener(uiStateManager));
@@ -323,6 +329,105 @@ public class MainController {
 
         // Annotation Manager (will be initialized when the document is opened)
         annotationManager = null;
+
+        // Content Stream Manager
+        contentStreamManager = new org.pdflite.manager.ContentStreamManager();
+
+        // Set text edit callback for context menu
+        setupTextEditCallback();
+    }
+
+    /**
+     * Sets up the text edit callback for the context menu handler.
+     * This callback is invoked when the user edits text and clicks OK in the text edit dialog.
+     */
+    private void setupTextEditCallback() {
+        pageRenderer.getContextMenuHandler().setTextEditCallback(
+            (pageIndex, coverX, coverY, coverWidth, coverHeight, textX, textY, newText, fontSize, font) -> {
+            try {
+                // Get current document
+                if (currentDocument == null) {
+                    uiStateManager.updateStatus("No document loaded");
+                    logger.warn("Cannot replace text: no document loaded");
+                    return;
+                }
+
+                // Get the page
+                org.apache.pdfbox.pdmodel.PDPage page = currentDocument.getDocument().getPage(pageIndex);
+
+                // Replace text: cover old text with white rectangle, then add new text
+                logger.info("Replacing text on page {}: covering ({}, {}) {}x{}, adding '{}' at ({}, {}) with font {} size {}",
+                        pageIndex + 1, coverX, coverY, coverWidth, coverHeight, 
+                        newText, textX, textY, font.getName(), fontSize);
+
+                contentStreamManager.replaceText(
+                        currentDocument.getDocument(),
+                        page,
+                        coverX, coverY, coverWidth, coverHeight,
+                        newText,
+                        textX, textY,
+                        font,
+                        fontSize
+                );
+
+                // Mark document as modified
+                currentDocument.setHasUnsavedEdits(true);
+                logger.info("Document marked as modified");
+
+                // Refresh the page rendering to show the new text
+                refreshCurrentPage();
+
+                // Update status
+                uiStateManager.updateStatus("Text replaced successfully - Save to persist changes");
+
+            } catch (IOException e) {
+                logger.error("Error adding text to PDF", e);
+                uiStateManager.updateStatus("Error adding text: " + e.getMessage());
+                
+                // Show error dialog
+                Platform.runLater(() -> {
+                    javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
+                            javafx.scene.control.Alert.AlertType.ERROR);
+                    alert.setTitle("Text Edit Error");
+                    alert.setHeaderText("Failed to add text to PDF");
+                    alert.setContentText(e.getMessage());
+                    alert.showAndWait();
+                });
+            } catch (IndexOutOfBoundsException e) {
+                logger.error("Invalid page index: {}", pageIndex, e);
+                uiStateManager.updateStatus("Error: Invalid page index");
+                
+                Platform.runLater(() -> {
+                    javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
+                            javafx.scene.control.Alert.AlertType.ERROR);
+                    alert.setTitle("Text Edit Error");
+                    alert.setHeaderText("Invalid page index");
+                    alert.setContentText("Page " + (pageIndex + 1) + " does not exist in the document.");
+                    alert.showAndWait();
+                });
+            }
+        });
+        
+        logger.info("Text edit callback configured successfully");
+    }
+
+    /**
+     * Refreshes the current page rendering to show changes.
+     */
+    private void refreshCurrentPage() {
+        if (currentDocument == null || pagesContainer == null) {
+            return;
+        }
+
+        logger.info("Refreshing current page rendering");
+
+        // Clear caches to force re-render
+        currentDocument.clearCache();
+        pageRenderer.clearCache();
+        pageRenderer.cancelAllPendingRenders();
+
+        // Re-render all visible pages
+        Platform.runLater(() -> renderingManager.renderAllPages());
     }
 
 
@@ -352,6 +457,16 @@ public class MainController {
         // Initialize the annotation manager when the document is opened
         if (currentDocument != null && pagesContainer != null) {
             annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
+            
+            // Update zoom manager with current document
+            if (zoomManager != null) {
+                zoomManager.setDocument(currentDocument);
+            }
+            
+            // Update rendering manager with current document
+            if (renderingManager != null) {
+                renderingManager.setDocument(currentDocument);
+            }
             
             // Update zoom change listener with document context
             if (zoomChangeListener != null) {
@@ -591,6 +706,181 @@ public class MainController {
 
     public void highlightSearchResult(SearchResult result) {
         searchManager.navigateToResult(result);
+    }
+
+    // ==================== Image Insertion Operations ====================
+
+    @FXML
+    private void handleInsertImage() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            return;
+        }
+
+        try {
+            // Load the FXML file
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader();
+            loader.setLocation(getClass().getResource("/org/pdflite/image-placement-dialog.fxml"));
+            javafx.scene.layout.VBox dialogRoot = loader.load();
+
+            // Get the controller and configure it
+            org.pdflite.dialog.ImagePlacementDialogController controller = loader.getController();
+            
+            // Create ImageManager
+            org.pdflite.manager.ImageManager imageManager = new org.pdflite.manager.ImageManager(uiStateManager);
+            controller.setImageManager(imageManager);
+            controller.setTotalPages(currentDocument.getTotalPages());
+            controller.setDefaultPage(currentDocument.getCurrentPage() + 1);
+            
+            // Set page height for coordinate conversion
+            int currentPageIndex = currentDocument.getCurrentPage();
+            double pageHeight = currentDocument.getDocument().getPage(currentPageIndex).getMediaBox().getHeight();
+            controller.setPageHeight(pageHeight);
+
+            // Create and show the dialog
+            javafx.stage.Stage dialogStage = new javafx.stage.Stage();
+            dialogStage.setTitle("Insert Image");
+            dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            dialogStage.initOwner(rootPane.getScene().getWindow());
+            dialogStage.setScene(new javafx.scene.Scene(dialogRoot));
+            controller.setDialogStage(dialogStage);
+
+            dialogStage.showAndWait();
+
+            // If insert was clicked, place the image
+            if (controller.isInsertClicked()) {
+                org.pdflite.model.ImagePlacement placement = controller.getResultPlacement();
+                imageManager.placeImage(currentDocument.getDocument(), placement);
+                
+                // Record the edit operation
+                currentDocument.recordEdit(org.pdflite.model.ImageInsert.create(
+                    placement.pageIndex(), placement));
+                
+                // Clear ALL caches to force re-render from modified PDDocument
+                currentDocument.clearCache();  // Clear PDFDocument cache
+                pageRenderer.clearCache();      // Clear PageRenderer cache
+                pageRenderer.cancelAllPendingRenders();  // Cancel any pending renders
+                
+                // Refresh display to show the inserted image
+                renderingManager.renderAllPages();
+                
+                uiStateManager.updateStatus("Image inserted successfully - save document to persist changes");
+                logger.info("Image inserted on page {}", placement.pageIndex());
+            }
+        } catch (java.io.IOException e) {
+            logger.error("Error showing image placement dialog", e);
+            uiStateManager.showError("Error", "Could not open image placement dialog: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error inserting image", e);
+            uiStateManager.showError("Error", "Could not insert image: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleInsertStamp() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            return;
+        }
+
+        try {
+            // Load the FXML file
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader();
+            loader.setLocation(getClass().getResource("/org/pdflite/image-placement-dialog.fxml"));
+            javafx.scene.layout.VBox dialogRoot = loader.load();
+
+            // Get the controller and configure it
+            org.pdflite.dialog.ImagePlacementDialogController controller = loader.getController();
+            
+            // Create ImageManager
+            org.pdflite.manager.ImageManager imageManager = new org.pdflite.manager.ImageManager(uiStateManager);
+            controller.setImageManager(imageManager);
+            controller.setTotalPages(currentDocument.getTotalPages());
+            controller.setDefaultPage(currentDocument.getCurrentPage() + 1);
+            
+            // Set page height for coordinate conversion
+            int currentPageIndex = currentDocument.getCurrentPage();
+            double pageHeight = currentDocument.getDocument().getPage(currentPageIndex).getMediaBox().getHeight();
+            controller.setPageHeight(pageHeight);
+
+            // Create and show the dialog
+            javafx.stage.Stage dialogStage = new javafx.stage.Stage();
+            dialogStage.setTitle("Insert Stamp");
+            dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            dialogStage.initOwner(rootPane.getScene().getWindow());
+            dialogStage.setScene(new javafx.scene.Scene(dialogRoot));
+            controller.setDialogStage(dialogStage);
+
+            dialogStage.showAndWait();
+
+            // If insert was clicked, create the stamp
+            if (controller.isInsertClicked()) {
+                org.pdflite.model.ImagePlacement placement = controller.getResultPlacement();
+                
+                if (placement.isStamp()) {
+                    imageManager.createStampAnnotation(currentDocument.getDocument(), placement);
+                } else {
+                    // User unchecked the stamp option, place as regular image
+                    imageManager.placeImage(currentDocument.getDocument(), placement);
+                }
+                
+                // Record the edit operation
+                currentDocument.recordEdit(org.pdflite.model.ImageInsert.create(
+                    placement.pageIndex(), placement));
+                
+                // Clear ALL caches to force re-render from modified PDDocument
+                currentDocument.clearCache();  // Clear PDFDocument cache
+                pageRenderer.clearCache();      // Clear PageRenderer cache
+                pageRenderer.cancelAllPendingRenders();  // Cancel any pending renders
+                
+                // Refresh display to show the inserted stamp
+                renderingManager.renderAllPages();
+                
+                uiStateManager.updateStatus("Stamp inserted successfully - save document to persist changes");
+                logger.info("Stamp inserted on page {}", placement.pageIndex());
+            }
+        } catch (java.io.IOException e) {
+            logger.error("Error showing stamp placement dialog", e);
+            uiStateManager.showError("Error", "Could not open stamp placement dialog: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error inserting stamp", e);
+            uiStateManager.showError("Error", "Could not insert stamp: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void handleEditText() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            return;
+        }
+
+        uiStateManager.updateStatus("Text editing: This feature requires selecting text first. " +
+                "Note: PDF text editing is complex and may not work for all PDFs.");
+        
+        // Show info dialog explaining how to use text editing
+        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
+        alert.setTitle("Text Editing");
+        alert.setHeaderText("How to Edit Text in PDF");
+        alert.setContentText(
+                """
+                        Text editing in PDF is a complex operation with limitations:
+                        
+                        1. Enable 'Text Selection' mode from the toolbar
+                        2. Click on the text you want to edit
+                        3. Right-click and select 'Edit Text' from context menu
+                        4. Edit the text in the dialog
+                        5. Click OK to apply changes
+                        
+                        Note: This feature is experimental and may not work for:
+                        - Scanned PDFs (images of text)
+                        - PDFs with complex formatting
+                        - Encrypted or protected PDFs
+                        
+                        For best results, use 'Insert Image' to add new content instead."""
+        );
+        alert.initOwner(rootPane.getScene().getWindow());
+        alert.showAndWait();
     }
 
     // ==================== PDF Encryption/Decryption ====================

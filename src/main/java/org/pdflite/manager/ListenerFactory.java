@@ -50,6 +50,8 @@ public class ListenerFactory {
             this.renderingManager = renderingManager;
             this.searchManager = searchManager;
             this.uiStateManager = uiStateManager;
+            logger.info("ZoomChangeListenerWithContext created - renderingManager: {}", 
+                    renderingManager != null ? "set" : "null");
         }
 
         /**
@@ -63,10 +65,20 @@ public class ListenerFactory {
             this.currentDocument = currentDocument;
             this.pagesContainer = pagesContainer;
             this.scrollPane = scrollPane;
+            logger.info("ZoomChangeListener context updated - document: {}, pagesContainer: {}, scrollPane: {}, renderingManager: {}",
+                    currentDocument != null ? "loaded" : "null",
+                    pagesContainer != null ? "set" : "null",
+                    scrollPane != null ? "set" : "null",
+                    renderingManager != null ? "set" : "null");
         }
 
         @Override
         public void onZoomChanged(double newZoom) {
+            logger.info("ZoomChangeListener.onZoomChanged called - newZoom: {}, document: {}, pagesContainer: {}, renderingManager: {}",
+                    newZoom,
+                    currentDocument != null ? "loaded" : "null",
+                    pagesContainer != null ? "set" : "null",
+                    renderingManager != null ? "set" : "null");
             handleZoomChanged(newZoom, currentDocument, pagesContainer, scrollPane, renderingManager, searchManager);
         }
 
@@ -93,11 +105,19 @@ public class ListenerFactory {
                                          ScrollPane scrollPane,
                                          RenderingManager renderingManager,
                                          SearchManager searchManager) {
+        logger.info("handleZoomChanged - newZoom: {}, document: {}, pagesContainer: {}, scrollPane: {}, renderingManager: {}",
+                newZoom,
+                currentDocument != null ? "loaded" : "null",
+                pagesContainer != null ? "set" : "null",
+                scrollPane != null ? "set" : "null",
+                renderingManager != null ? "set" : "null");
+        
         if (currentDocument != null && pagesContainer != null && scrollPane != null) {
             // Switch layout mode based on the threshold (70% => 0.7)
             try {
                 if (renderingManager != null) {
                     boolean shouldTwoPage = newZoom < 0.7;
+                    logger.info("Setting two-page mode: {}", shouldTwoPage);
                     renderingManager.setTwoPageMode(shouldTwoPage);
                 }
             } catch (Exception e) {
@@ -105,9 +125,15 @@ public class ListenerFactory {
             }
 
             if (renderingManager != null) {
+                logger.info("Calling renderingManager.preserveScrollPositionAndApplyZoom({})", newZoom);
                 renderingManager.preserveScrollPositionAndApplyZoom(newZoom);
+            } else {
+                logger.warn("renderingManager is null!");
             }
             Platform.runLater(() -> searchManager.updateHighlightsAfterZoom(newZoom));
+        } else {
+            logger.warn("Cannot handle zoom change - missing components: document={}, pagesContainer={}, scrollPane={}",
+                    currentDocument != null, pagesContainer != null, scrollPane != null);
         }
     }
 

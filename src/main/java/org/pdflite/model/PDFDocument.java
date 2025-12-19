@@ -41,6 +41,16 @@ public class PDFDocument {
     private int rotation;
     private final List<Annotation> annotations;
     private final Map<String, Image> imageCache;
+    
+    /**
+     * Flag indicating whether the document has unsaved edits.
+     */
+    private boolean hasUnsavedEdits;
+    
+    /**
+     * List of edit operations performed on this document.
+     */
+    private final List<EditOperation> editHistory;
 
     /**
      * Maximum number of pages to keep in the image cache.
@@ -74,6 +84,8 @@ public class PDFDocument {
         this.zoomLevel = 1.0;
         this.rotation = 0;
         this.annotations = new ArrayList<>();
+        this.hasUnsavedEdits = false;
+        this.editHistory = new ArrayList<>();
         // Use LinkedHashMap with access order for LRU cache
         this.imageCache = new LinkedHashMap<>(MAX_CACHE_SIZE, 0.75f, true) {
             @Override
@@ -280,6 +292,74 @@ public class PDFDocument {
     public void updateDocument(PDDocument newDocument) {
         this.document = newDocument;
         clearCache();
+    }
+
+    /**
+     * Records an edit operation in the document's edit history.
+     * <p>
+     * This method adds the operation to the edit history and marks the document
+     * as having unsaved edits.
+     * </p>
+     *
+     * @param operation the edit operation to record
+     */
+    public void recordEdit(EditOperation operation) {
+        if (operation != null) {
+            editHistory.add(operation);
+            hasUnsavedEdits = true;
+        }
+    }
+
+    /**
+     * Checks whether the document has unsaved edits.
+     *
+     * @return true if there are unsaved edits, false otherwise
+     */
+    public boolean hasUnsavedEdits() {
+        return hasUnsavedEdits;
+    }
+
+    /**
+     * Sets whether this document has unsaved edits.
+     *
+     * @param hasUnsavedEdits true if there are unsaved edits, false otherwise
+     */
+    public void setHasUnsavedEdits(boolean hasUnsavedEdits) {
+        this.hasUnsavedEdits = hasUnsavedEdits;
+    }
+
+    /**
+     * Gets the edit history for this document.
+     *
+     * @return an unmodifiable view of the edit history
+     */
+    public List<EditOperation> getEditHistory() {
+        return new ArrayList<>(editHistory);
+    }
+
+    /**
+     * Marks the document as saved, clearing the unsaved edits flag.
+     * <p>
+     * This method should be called after successfully saving the document.
+     * Note that this does not clear the edit history, which is preserved
+     * for potential undo/redo functionality.
+     * </p>
+     */
+    public void markAsSaved() {
+        hasUnsavedEdits = false;
+    }
+
+    /**
+     * Clears the edit history.
+     * <p>
+     * This method removes all recorded edit operations. It should be used
+     * carefully, typically only when opening a new document or after a
+     * successful save where the history is no longer needed.
+     * </p>
+     */
+    public void clearEditHistory() {
+        editHistory.clear();
+        hasUnsavedEdits = false;
     }
 
 }

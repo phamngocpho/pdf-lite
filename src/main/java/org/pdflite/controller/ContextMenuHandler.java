@@ -4,6 +4,9 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.apache.pdfbox.text.PDFTextStripperByArea;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.util.CoordinateConverter;
@@ -51,10 +54,31 @@ public class ContextMenuHandler {
     private List<ImageInfo> currentPageImages = new ArrayList<>();
     private ImageInfo currentImageUnderCursor;
     private int currentPageIndex = -1;
+    private float currentPageHeight = 0;
+    
+    // Callback for text editing
+    private TextEditCallback textEditCallback;
 
     public ContextMenuHandler() {
         logger.info("ContextMenuHandler initialized!");
         this.smartTextSelector = new SmartTextSelector();
+    }
+    
+    /**
+     * Sets the callback for text editing operations.
+     */
+    public void setTextEditCallback(TextEditCallback callback) {
+        this.textEditCallback = callback;
+    }
+    
+    /**
+     * Callback interface for text editing operations.
+     */
+    public interface TextEditCallback {
+        void onTextEdit(int pageIndex, 
+                       float coverX, float coverY, float coverWidth, float coverHeight,
+                       float textX, float textY, 
+                       String newText, float fontSize, PDFont font);
     }
 
     /**
@@ -97,11 +121,16 @@ public class ContextMenuHandler {
                     canvasX2, canvasY2, pageHeight, zoom
             );
 
-            // Use smart text selector to get the selected text
+            // Use smart text selector to get the selected text, positions, and highlight regions
             String selectedText = smartTextSelector.getSelectedText(pdfStart, pdfEnd);
             String cleanedText = (selectedText != null) ? selectedText.trim() : "";
+            List<org.apache.pdfbox.text.TextPosition> textPositions = 
+                smartTextSelector.getSelectedTextPositions(pdfStart, pdfEnd);
+            List<Rectangle2D> highlightRegions = 
+                smartTextSelector.getHighlightRegions(pdfStart, pdfEnd);
 
-            // Create selection info
+            // Create selection info using the drag rectangle converted to PDF coordinates
+            // The drag rectangle gives us the correct position in PDF space
             double x1 = Math.min(canvasX1, canvasX2);
             double y1 = Math.min(canvasY1, canvasY2);
             double width = Math.abs(canvasX2 - canvasX1);
@@ -110,7 +139,8 @@ public class ContextMenuHandler {
                     x1, y1, width, height, pageHeight, zoom
             );
 
-            currentSelection = new SelectionInfo(pageIndex, pdfRect, cleanedText, new ArrayList<>());
+            currentSelection = new SelectionInfo(pageIndex, pdfRect, cleanedText, new ArrayList<>(), 
+                                                textPositions, highlightRegions);
 
             if (currentSelection.hasText()) {
                 logger.info("Length:   {} characters", currentSelection.getText().length());
@@ -230,6 +260,139 @@ public class ContextMenuHandler {
     }
 
     /**
+     * Opens the text edit dialog for the selected text.
+     * Note: This adds new text on top of the old text (PDF text editing limitation).
+     */
+    public void handleEditText() {
+        if (currentSelection == null || !currentSelection.hasText()) {
+            logger.warn("No text to edit");
+            return;
+        }
+
+        String originalText = currentSelection.getText();
+        logger.info("Opening text edit dialog for: '{}'", originalText);
+
+        try {
+            // Load the FXML file
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader();
+            loader.setLocation(getClass().getResource("/org/pdflite/text-edit-dialog.fxml"));
+            javafx.scene.layout.VBox dialogRoot = loader.load();
+
+            // Get the controller and set the original text
+            org.pdflite.dialog.TextEditDialogController controller = loader.getController();
+            controller.setOriginalText(originalText);
+
+            // Create and show the dialog
+            javafx.stage.Stage dialogStage = new javafx.stage.Stage();
+            dialogStage.setTitle("Edit Text");
+            dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            dialogStage.setScene(new javafx.scene.Scene(dialogRoot));
+            controller.setDialogStage(dialogStage);
+
+            dialogStage.showAndWait();
+
+            // If OK was clicked, add the new text via callback
+            if (controller.isOkClicked()) {
+                String newText = controller.getNewText();
+                logger.info("Text edit confirmed: '{}' -> '{}'", originalText, newText);
+                
+                if (textEditCallback != null) {
+                    // Use highlight regions to get the actual text bounds (what's shown in blue)
+                    List<Rectangle2D> highlightRegions = currentSelection.getHighlightRegions();
+                    
+                    if (highlightRegions == null || highlightRegions.isEmpty()) {
+                        logger.warn("No highlight regions available, using selection rectangle");
+                        // Fallback to selection rectangle
+                        highlightRegions = new ArrayList<>();
+                        highlightRegions.add(currentSelection.pdfRect);
+                    }
+                    
+                    // Calculate bounding box of all highlight regions
+                    double minX = Double.MAX_VALUE;
+                    double minY = Double.MAX_VALUE;
+                    double maxX = Double.MIN_VALUE;
+                    double maxY = Double.MIN_VALUE;
+                    
+                    for (Rectangle2D region : highlightRegions) {
+                        minX = Math.min(minX, region.getMinX());
+                        minY = Math.min(minY, region.getMinY());
+                        maxX = Math.max(maxX, region.getMaxX());
+                        maxY = Math.max(maxY, region.getMaxY());
+                    }
+                    
+                    // These are in Java coordinates (top-left origin)
+                    float xJava = (float) minX;
+                    float yJava = (float) minY;
+                    float width = (float) (maxX - minX);
+                    float height = (float) (maxY - minY);
+                    
+                    // Convert to PDF User Space coordinates (bottom-left origin)
+                    // For the covering rectangle. We need the bottom-left corner
+                    // to Extend upward for diacritics and downward for descenders
+                    float coverX = xJava;
+                    float coverY = currentPageHeight - yJava - height - 3.0f;  // Extend down 3 points
+                    float coverWidth = width;
+                    float coverHeight = height + 9.0f;  // Extend up 6 points plus down 3 points = total 9
+                    
+                    // For text placement, we need the baseline position
+                    // Since coverY was extended down by 3 points, add 3 to compensate and keep text position
+                    // Then add the original offset (12% of height)
+                    float textX = xJava;
+                    float textY = coverY + 3.0f + (height * 0.05f);
+                    
+                    // Extract font and font size from the first TextPosition
+                    PDFont originalFont = null;
+                    PDFont font = null;
+                    float fontSize = 12.0f; // Default fallback
+                    
+                    List<org.apache.pdfbox.text.TextPosition> positions = currentSelection.getTextPositions();
+                    if (positions != null && !positions.isEmpty()) {
+                        org.apache.pdfbox.text.TextPosition firstPos = positions.getFirst();
+                        try {
+                            originalFont = firstPos.getFont();
+                            fontSize = firstPos.getFontSizeInPt();
+                            logger.info("Extracted font: {} (size: {})", 
+                                    originalFont != null ? originalFont.getName() : "null", fontSize);
+                        } catch (Exception e) {
+                            logger.warn("Could not extract font from TextPosition: {}", e.getMessage());
+                        }
+                    }
+                    
+                    // Map the original font to a Standard 14 font that supports all characters
+                    // Embedded subset fonts cannot be used for new text
+                    font = mapToStandardFont(originalFont);
+                    
+                    // Ensure minimum font size for readability
+                    if (fontSize < 8.0f) {
+                        logger.warn("Font size {} too small, using 10pt", fontSize);
+                        fontSize = 10.0f;
+                    }
+                    
+                    logger.info("TEXT REPLACEMENT:");
+                    logger.info("  Page height: {}", currentPageHeight);
+                    logger.info("  Selection rect (Java coords): x={}, y={}, width={}, height={}",
+                            xJava, yJava, width, height);
+                    logger.info("  Cover rect (User Space): x={}, y={}, width={}, height={}",
+                            coverX, coverY, coverWidth, coverHeight);
+                    logger.info("  Text position (User Space): x={}, y={}", textX, textY);
+                    logger.info("  Font: {}, Size: {}", font.getName(), fontSize);
+                    
+                    textEditCallback.onTextEdit(currentSelection.pageIndex, 
+                                               coverX, coverY, coverWidth, coverHeight,
+                                               textX, textY,
+                                               newText, fontSize, font);
+                } else {
+                    logger.warn("Text edit callback not set - cannot add text to PDF");
+                }
+            } else {
+                logger.info("Text edit cancelled");
+            }
+        } catch (java.io.IOException e) {
+            logger.error("Error showing text edit dialog", e);
+        }
+    }
+
+    /**
      * Copies text to clipboard (used for automatic copying).
      */
     public void copyToClipboard(String text) {
@@ -269,6 +432,8 @@ public class ContextMenuHandler {
         private final int pageIndex;
         private final Rectangle2D.Float pdfRect;
         private final String text;
+        private final List<org.apache.pdfbox.text.TextPosition> textPositions;
+        private final List<Rectangle2D> highlightRegions;
 
 
         public SelectionInfo(int pageIndex, Rectangle2D.Float pdfRect,
@@ -276,6 +441,31 @@ public class ContextMenuHandler {
             this.pageIndex = pageIndex;
             this.pdfRect = pdfRect;
             this.text = text;
+            this.textPositions = new ArrayList<>();
+            this.highlightRegions = new ArrayList<>();
+            // TODO: Implement image extraction
+        }
+        
+        public SelectionInfo(int pageIndex, Rectangle2D.Float pdfRect,
+                             String text, List<Object> images, 
+                             List<org.apache.pdfbox.text.TextPosition> textPositions) {
+            this.pageIndex = pageIndex;
+            this.pdfRect = pdfRect;
+            this.text = text;
+            this.textPositions = textPositions != null ? textPositions : new ArrayList<>();
+            this.highlightRegions = new ArrayList<>();
+            // TODO: Implement image extraction
+        }
+        
+        public SelectionInfo(int pageIndex, Rectangle2D.Float pdfRect,
+                             String text, List<Object> images, 
+                             List<org.apache.pdfbox.text.TextPosition> textPositions,
+                             List<Rectangle2D> highlightRegions) {
+            this.pageIndex = pageIndex;
+            this.pdfRect = pdfRect;
+            this.text = text;
+            this.textPositions = textPositions != null ? textPositions : new ArrayList<>();
+            this.highlightRegions = highlightRegions != null ? highlightRegions : new ArrayList<>();
             // TODO: Implement image extraction
         }
 
@@ -293,6 +483,14 @@ public class ContextMenuHandler {
 
         public Rectangle2D.Float getPdfRect() {
             return pdfRect;
+        }
+        
+        public List<org.apache.pdfbox.text.TextPosition> getTextPositions() {
+            return textPositions;
+        }
+        
+        public List<Rectangle2D> getHighlightRegions() {
+            return highlightRegions;
         }
     }
 
@@ -410,6 +608,76 @@ public class ContextMenuHandler {
     }
 
     /**
+     * Maps an original PDF font to a Standard 14 font that supports all characters.
+     * Embedded subset fonts cannot be used for adding new text, so we need to
+     * find a similar Standard 14 font.
+     *
+     * @param originalFont The original font from the PDF (maybe null or subset)
+     * @return A Standard 14 font that can be used for new text
+     */
+    private PDFont mapToStandardFont(PDFont originalFont) {
+        if (originalFont == null) {
+            logger.info("No original font, using Helvetica");
+            return new PDType1Font(
+                Standard14Fonts.FontName.HELVETICA);
+        }
+        
+        String fontName = originalFont.getName().toLowerCase();
+        logger.info("Mapping font '{}' to Standard 14 font", originalFont.getName());
+        
+        // Check for bold
+        boolean isBold = fontName.contains("bold");
+        
+        // Check for italic/oblique
+        boolean isItalic = fontName.contains("italic") || fontName.contains("oblique");
+        
+        // Check for monospace/courier
+        boolean isMono = fontName.contains("courier") || fontName.contains("mono");
+        
+        // Check for serif/times
+        boolean isSerif = fontName.contains("times") || fontName.contains("serif");
+        
+        // Map to appropriate Standard 14 font
+        Standard14Fonts.FontName standardFont;
+        
+        if (isMono) {
+            if (isBold && isItalic) {
+                standardFont = Standard14Fonts.FontName.COURIER_BOLD_OBLIQUE;
+            } else if (isBold) {
+                standardFont = Standard14Fonts.FontName.COURIER_BOLD;
+            } else if (isItalic) {
+                standardFont = Standard14Fonts.FontName.COURIER_OBLIQUE;
+            } else {
+                standardFont = Standard14Fonts.FontName.COURIER;
+            }
+        } else if (isSerif) {
+            if (isBold && isItalic) {
+                standardFont = Standard14Fonts.FontName.TIMES_BOLD_ITALIC;
+            } else if (isBold) {
+                standardFont = Standard14Fonts.FontName.TIMES_BOLD;
+            } else if (isItalic) {
+                standardFont = Standard14Fonts.FontName.TIMES_ITALIC;
+            } else {
+                standardFont = Standard14Fonts.FontName.TIMES_ROMAN;
+            }
+        } else {
+            // Default to Helvetica (sans-serif)
+            if (isBold && isItalic) {
+                standardFont = Standard14Fonts.FontName.HELVETICA_BOLD_OBLIQUE;
+            } else if (isBold) {
+                standardFont = Standard14Fonts.FontName.HELVETICA_BOLD;
+            } else if (isItalic) {
+                standardFont = Standard14Fonts.FontName.HELVETICA_OBLIQUE;
+            } else {
+                standardFont = Standard14Fonts.FontName.HELVETICA;
+            }
+        }
+        
+        logger.info("Mapped to Standard 14 font: {}", standardFont);
+        return new PDType1Font(standardFont);
+    }
+
+    /**
      * Ensures text positions are extracted for the given page and returns page height.
      * This helper method eliminates duplicate code across multiple methods.
      *
@@ -427,6 +695,7 @@ public class ContextMenuHandler {
 
         PDPage page = document.getDocument().getPage(pageIndex);
         PDRectangle cropBox = page.getCropBox();
-        return cropBox.getHeight();
+        currentPageHeight = cropBox.getHeight();
+        return currentPageHeight;
     }
 }

@@ -281,6 +281,7 @@ public class ContextMenuPane extends StackPane {
         contextMenu = new ContextMenu();
 
         MenuItem copyText = new MenuItem("Copy Text");
+        MenuItem editText = new MenuItem("Edit Text");
         MenuItem copyImage = new MenuItem("Copy Image");
         MenuItem separator = new MenuItem("──────────");
         MenuItem clearSelection = new MenuItem("Clear Selection");
@@ -292,6 +293,11 @@ public class ContextMenuPane extends StackPane {
             clearSelection();
         });
 
+        editText.setOnAction(e -> {
+            handler.handleEditText();
+            clearSelection();
+        });
+
         copyImage.setOnAction(e -> {
             handler.handleCopyImage();
             logger.info("Image copied");
@@ -299,7 +305,7 @@ public class ContextMenuPane extends StackPane {
 
         clearSelection.setOnAction(e -> clearSelection());
 
-        contextMenu.getItems().addAll(copyText, copyImage, clearSelection);
+        contextMenu.getItems().addAll(copyText, editText, copyImage, clearSelection);
     }
 
     private void updateContextMenuItems() {
@@ -307,7 +313,8 @@ public class ContextMenuPane extends StackPane {
         boolean hasImage = handler.hasImageAtPosition();
 
         contextMenu.getItems().get(0).setDisable(!hasText);  // Copy Text
-        contextMenu.getItems().get(1).setDisable(!hasImage); // Copy Image
+        contextMenu.getItems().get(1).setDisable(!hasText);  // Edit Text
+        contextMenu.getItems().get(2).setDisable(!hasImage); // Copy Image
 
         logger.debug("Context menu: text={}, image={}", hasText, hasImage);
     }

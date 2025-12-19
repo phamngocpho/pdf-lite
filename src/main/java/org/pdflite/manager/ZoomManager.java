@@ -19,7 +19,7 @@ public class ZoomManager {
     private static final Logger logger = LoggerFactory.getLogger(ZoomManager.class);
 
     private final PDFService pdfService;
-    private final ZoomChangeListener zoomChangeListener;
+    private ZoomChangeListener zoomChangeListener;
 
     private double currentZoom = Constants.DEFAULT_ZOOM;
     private ComboBox<String> zoomComboBox;
@@ -39,10 +39,19 @@ public class ZoomManager {
      * Creates a new ZoomManager.
      *
      * @param pdfService         the PDF service for rendering pages
-     * @param zoomChangeListener listener for zoom change events
+     * @param zoomChangeListener listener for zoom change events (can be null initially)
      */
     public ZoomManager(PDFService pdfService, ZoomChangeListener zoomChangeListener) {
         this.pdfService = pdfService;
+        this.zoomChangeListener = zoomChangeListener;
+    }
+    
+    /**
+     * Sets the zoom change listener.
+     *
+     * @param zoomChangeListener the zoom change listener
+     */
+    public void setZoomChangeListener(ZoomChangeListener zoomChangeListener) {
         this.zoomChangeListener = zoomChangeListener;
     }
 
@@ -100,7 +109,9 @@ public class ZoomManager {
      * Handles zoom in action.
      */
     public void zoomIn() {
+        logger.info("Zoom In clicked - current zoom: {}, document: {}", currentZoom, currentDocument != null ? "loaded" : "null");
         currentZoom = Math.min(Constants.MAX_ZOOM, currentZoom + Constants.ZOOM_STEP);
+        logger.info("New zoom level: {}", currentZoom);
         applyZoom(null);
     }
 
@@ -108,7 +119,9 @@ public class ZoomManager {
      * Handles zoom out action.
      */
     public void zoomOut() {
+        logger.info("Zoom Out clicked - current zoom: {}, document: {}", currentZoom, currentDocument != null ? "loaded" : "null");
         currentZoom = Math.max(Constants.MIN_ZOOM, currentZoom - Constants.ZOOM_STEP);
+        logger.info("New zoom level: {}", currentZoom);
         applyZoom(null);
     }
 
@@ -188,8 +201,13 @@ public class ZoomManager {
      * @param prefix optional prefix for status message
      */
     private void applyZoom(String prefix) {
+        logger.info("applyZoom called - document: {}, listener: {}", 
+                currentDocument != null ? "loaded" : "null",
+                zoomChangeListener != null ? "set" : "null");
+        
         if (currentDocument != null) {
             currentDocument.setZoomLevel(currentZoom);
+            logger.info("Set document zoom level to: {}", currentZoom);
 
             // Update zoom combo box with clear percentage display
             if (zoomComboBox != null) {
@@ -203,9 +221,14 @@ public class ZoomManager {
                     : String.format("Zoom: %.0f%%", currentZoom * 100);
 
             if (zoomChangeListener != null) {
+                logger.info("Calling zoomChangeListener.onZoomChanged({})", currentZoom);
                 zoomChangeListener.onZoomChanged(currentZoom);
                 zoomChangeListener.onZoomApplied(currentZoom, statusMessage);
+            } else {
+                logger.warn("zoomChangeListener is null!");
             }
+        } else {
+            logger.warn("currentDocument is null - cannot apply zoom!");
         }
     }
 

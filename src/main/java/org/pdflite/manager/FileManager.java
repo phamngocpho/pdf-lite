@@ -153,6 +153,10 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
         }
 
         pdfService.save(document);
+        
+        // Mark document as saved after successful save
+        document.markAsSaved();
+        
         if (fileOperationListener != null) {
             fileOperationListener.onFileSaved(document.getFileName());
         }

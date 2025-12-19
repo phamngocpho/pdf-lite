@@ -91,6 +91,19 @@ public class AnnotationLayer extends Canvas {
     private double scale = 1.0;
     private int pageNumber;
 
+    // Text region highlighting
+    private final List<TextRegionHighlight> textRegionHighlights = new ArrayList<>();
+    private TextRegionHighlight selectedTextRegion = null;
+    private static final Color TEXT_REGION_HIGHLIGHT_COLOR = Color.LIGHTBLUE;
+    private static final Color SELECTED_TEXT_REGION_COLOR = Color.CYAN;
+    private static final double TEXT_REGION_OPACITY = 0.3;
+    private static final double SELECTED_TEXT_REGION_OPACITY = 0.5;
+
+    /**
+     * Record for storing text region highlight information.
+     */
+    public record TextRegionHighlight(double x, double y, double width, double height, String text) {}
+
     /**
      * Creates a new annotation layer with the specified dimensions.
      * <p>
@@ -304,6 +317,7 @@ public class AnnotationLayer extends Canvas {
             
             gc.clearRect(0, 0, getWidth(), getHeight());
             drawSearchHighlights(gc);
+            drawTextRegionHighlights(gc);
             for (Annotation annotation : annotations) {
                 if (annotation instanceof HighlightAnnotation highlight) {
                     gc.setFill(getColorWithAlpha(highlight.getColor(), 0.4));
@@ -438,7 +452,80 @@ public class AnnotationLayer extends Canvas {
         /**
          * Shape annotation mode (not yet implemented).
          */
-        SHAPE
+        SHAPE,
+
+        /**
+         * Text selection and editing mode.
+         * Allows users to click on text regions to select and edit them.
+         */
+        TEXT_SELECT_EDIT
+    }
+
+    // ==================== TEXT REGION HIGHLIGHTS ====================
+
+    /**
+     * Sets the text region highlights for this layer.
+     *
+     * @param regions the list of text region highlights
+     */
+    public void setTextRegionHighlights(List<TextRegionHighlight> regions) {
+        this.textRegionHighlights.clear();
+        if (regions != null) {
+            this.textRegionHighlights.addAll(regions);
+        }
+        redraw();
+        logger.debug("Set {} text region highlights", textRegionHighlights.size());
+    }
+
+    /**
+     * Sets the selected text region.
+     *
+     * @param region the selected text region, or null to clear selection
+     */
+    public void setSelectedTextRegion(TextRegionHighlight region) {
+        this.selectedTextRegion = region;
+        redraw();
+        if (region != null) {
+            logger.debug("Selected text region: '{}'", region.text());
+        } else {
+            logger.debug("Cleared text region selection");
+        }
+    }
+
+    /**
+     * Gets the selected text region.
+     *
+     * @return the selected text region, or null if none selected
+     */
+    public TextRegionHighlight getSelectedTextRegion() {
+        return selectedTextRegion;
+    }
+
+    /**
+     * Clears all text region highlights.
+     */
+    public void clearTextRegionHighlights() {
+        this.textRegionHighlights.clear();
+        this.selectedTextRegion = null;
+        redraw();
+        logger.debug("Cleared text region highlights");
+    }
+
+    /**
+     * Finds a text region at the specified coordinates.
+     *
+     * @param x the X coordinate
+     * @param y the Y coordinate
+     * @return the text region at the coordinates, or null if none found
+     */
+    public TextRegionHighlight findTextRegionAt(double x, double y) {
+        for (TextRegionHighlight region : textRegionHighlights) {
+            if (x >= region.x() && x <= (region.x() + region.width()) &&
+                y >= region.y() && y <= (region.y() + region.height())) {
+                return region;
+            }
+        }
+        return null;
     }
 
     // ==================== SEARCH HIGHLIGHTS ====================
@@ -543,5 +630,150 @@ public class AnnotationLayer extends Canvas {
         }
 
         logger.trace("Drew {} normal + {} active highlights", normalCount, activeCount);
+    }
+
+    /**
+     * Draws text region highlights on the canvas.
+     *
+     * @param gc the graphics context
+     */
+    private void drawTextRegionHighlights(GraphicsContext gc) {
+        if (textRegionHighlights.isEmpty() || gc == null) {
+            return;
+        }
+
+        try {
+            gc.save();
+
+            for (TextRegionHighlight region : textRegionHighlights) {
+                boolean isSelected = region.equals(selectedTextRegion);
+
+                Color highlightColor = isSelected ? SELECTED_TEXT_REGION_COLOR : TEXT_REGION_HIGHLIGHT_COLOR;
+                double opacity = isSelected ? SELECTED_TEXT_REGION_OPACITY : TEXT_REGION_OPACITY;
+
+                gc.setFill(Color.color(
+                        highlightColor.getRed(),
+                        highlightColor.getGreen(),
+                        highlightColor.getBlue(),
+                        opacity
+                ));
+
+                gc.fillRect(region.x(), region.y(), region.width(), region.height());
+
+                if (isSelected) {
+                    gc.setStroke(Color.BLUE);
+                    gc.setLineWidth(2);
+                    gc.strokeRect(region.x(), region.y(), region.width(), region.height());
+                }
+            }
+
+            gc.restore();
+        } catch (Exception e) {
+            logger.error("Error drawing text region highlights", e);
+        }
+    }
+
+    // ==================== ANNOTATION MANAGEMENT ====================
+
+    /**
+     * Finds an annotation at the specified coordinates using hit detection.
+     *
+     * @param x the X coordinate
+     * @param y the Y coordinate
+     * @return the annotation at the coordinates, or null if none found
+     */
+    public Annotation findAnnotationAt(double x, double y) {
+        // Search in reverse order (top annotation first)
+        for (int i = annotations.size() - 1; i >= 0; i--) {
+            Annotation annotation = annotations.get(i);
+            
+            if (annotation instanceof HighlightAnnotation highlight) {
+                // Check if point is within highlight bounds
+                if (x >= highlight.getX() && x <= (highlight.getX() + highlight.getWidth()) &&
+                    y >= highlight.getY() && y <= (highlight.getY() + highlight.getHeight())) {
+                    return annotation;
+                }
+            } else if (annotation instanceof ShapeAnnotation shape) {
+                // For shapes, check if point is within bounding box
+                double minX = Math.min(shape.getX(), shape.getEndX()) * scale;
+                double maxX = Math.max(shape.getX(), shape.getEndX()) * scale;
+                double minY = Math.min(shape.getY(), shape.getEndY()) * scale;
+                double maxY = Math.max(shape.getY(), shape.getEndY()) * scale;
+                
+                // Add some tolerance for easier selection
+                double tolerance = 10;
+                if (x >= (minX - tolerance) && x <= (maxX + tolerance) &&
+                    y >= (minY - tolerance) && y <= (maxY + tolerance)) {
+                    return annotation;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Removes an annotation from the layer.
+     *
+     * @param annotation the annotation to remove
+     * @return true if the annotation was removed, false otherwise
+     */
+    public boolean removeAnnotation(Annotation annotation) {
+        boolean removed = annotations.remove(annotation);
+        if (removed) {
+            redraw();
+            logger.debug("Removed annotation: {}", annotation);
+        }
+        return removed;
+    }
+
+    /**
+     * Updates the color of a HighlightAnnotation.
+     *
+     * @param annotation the annotation to update
+     * @param newColor the new color
+     * @return true if the color was updated, false otherwise
+     */
+    public boolean updateAnnotationColor(Annotation annotation, Color newColor) {
+        if (annotation instanceof HighlightAnnotation highlight) {
+            // Find the annotation in the list
+            int index = annotations.indexOf(annotation);
+            if (index >= 0) {
+                // Create new annotation with updated color
+                HighlightAnnotation updated = new HighlightAnnotation(
+                    highlight.getPageNumber(),
+                    highlight.getX(),
+                    highlight.getY(),
+                    highlight.getWidth(),
+                    highlight.getHeight(),
+                    newColor
+                );
+                
+                // Replace in list
+                annotations.set(index, updated);
+                redraw();
+                logger.debug("Updated annotation color to: {}", newColor);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Gets the number of annotations on this layer.
+     *
+     * @return the number of annotations
+     */
+    public int getAnnotationCount() {
+        return annotations.size();
+    }
+
+    /**
+     * Checks if the layer contains the specified annotation.
+     *
+     * @param annotation the annotation to check
+     * @return true if the annotation is in the layer, false otherwise
+     */
+    public boolean containsAnnotation(Annotation annotation) {
+        return annotations.contains(annotation);
     }
 }

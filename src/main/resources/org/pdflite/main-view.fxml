@@ -2,8 +2,6 @@
 
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.shape.Circle?>
-<?import javafx.scene.shape.Rectangle?>
 
 <BorderPane fx:id="rootPane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="org.pdflite.controller.MainController"
@@ -34,6 +32,11 @@
                 </Menu>
 
                 <Menu text="Edit">
+                    <MenuItem text="Edit Text..." onAction="#handleEditText" accelerator="Ctrl+E"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="Insert Image..." onAction="#handleInsertImage" accelerator="Ctrl+I"/>
+                    <MenuItem text="Insert Stamp..." onAction="#handleInsertStamp"/>
+                    <SeparatorMenuItem/>
                     <MenuItem text="Find..." onAction="#handleSearch" accelerator="Ctrl+F"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Hide Search Panel" onAction="#handleHideSearch" accelerator="Escape"/>
