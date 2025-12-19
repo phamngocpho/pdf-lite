@@ -23,6 +23,7 @@
                     </Menu>
                     <MenuItem text="Clear Recent Files" onAction="#handleClearRecentFiles"/>
                     <SeparatorMenuItem/>
+                    <MenuItem text="Export..." onAction="#handleExport" accelerator="Ctrl+Shift+E"/>
                     <MenuItem text="Print..." onAction="#handlePrint" accelerator="Ctrl+P"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Save" onAction="#handleSave"/>

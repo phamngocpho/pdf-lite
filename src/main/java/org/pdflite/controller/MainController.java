@@ -513,6 +513,140 @@ public class MainController {
     }
 
     @FXML
+    private void handleExport() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            return;
+        }
+
+        try {
+            // Load the FXML file
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader();
+            loader.setLocation(getClass().getResource("/org/pdflite/export-dialog.fxml"));
+            javafx.scene.layout.VBox dialogRoot = loader.load();
+
+            // Get the controller and configure it
+            org.pdflite.dialog.ExportDialogController controller = loader.getController();
+            controller.setTotalPages(currentDocument.getTotalPages());
+
+            // Create and show the dialog
+            javafx.stage.Stage dialogStage = new javafx.stage.Stage();
+            dialogStage.setTitle("Export PDF");
+            dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            dialogStage.initOwner(rootPane.getScene().getWindow());
+            dialogStage.setScene(new javafx.scene.Scene(dialogRoot));
+            controller.setDialogStage(dialogStage);
+
+            dialogStage.showAndWait();
+
+            // If export was clicked, perform the export
+            if (controller.isExportClicked()) {
+                org.pdflite.dialog.ExportDialogController.ExportConfig config = controller.getConfig();
+                org.pdflite.service.PDFExportService exportService = new org.pdflite.service.PDFExportService();
+                
+                // Determine which pages to export
+                java.util.List<Integer> pageIndices = new java.util.ArrayList<>();
+                
+                switch (config.pageRange) {
+                    case CURRENT:
+                        pageIndices.add(currentDocument.getCurrentPage());
+                        break;
+                    case ALL:
+                        for (int i = 0; i < currentDocument.getTotalPages(); i++) {
+                            pageIndices.add(i);
+                        }
+                        break;
+                    case SPECIFIC:
+                        pageIndices = parsePageRange(config.specificPages, currentDocument.getTotalPages());
+                        break;
+                }
+                
+                if (config.exportToImage) {
+                    // Export to image
+                    org.pdflite.service.PDFExportService.ImageFormat format = 
+                        config.imageFormat.equals("PNG") ? 
+                        org.pdflite.service.PDFExportService.ImageFormat.PNG : 
+                        org.pdflite.service.PDFExportService.ImageFormat.JPG;
+                    
+                    if (pageIndices.size() == 1) {
+                        // Single page export
+                        File outputFile = new File(config.outputPath);
+                        exportService.exportPageToImage(currentDocument, pageIndices.get(0), 
+                            outputFile, format, config.dpi);
+                        uiStateManager.updateStatus("Page exported to: " + outputFile.getName());
+                    } else {
+                        // Multiple pages export
+                        File outputDir = new File(config.outputPath);
+                        String prefix = currentDocument.getFile() != null ? 
+                            currentDocument.getFile().getName().replaceFirst("[.][^.]+$", "") : "page";
+                        java.util.List<File> files = exportService.exportPagesToImages(
+                            currentDocument, pageIndices, outputDir, prefix, format, config.dpi);
+                        uiStateManager.updateStatus("Exported " + files.size() + " pages to: " + outputDir.getName());
+                    }
+                } else {
+                    // Export to text
+                    File outputFile = new File(config.outputPath);
+                    
+                    if (pageIndices.size() == currentDocument.getTotalPages()) {
+                        exportService.exportAllToText(currentDocument, outputFile);
+                    } else if (pageIndices.size() == 1) {
+                        int page = pageIndices.get(0) + 1; // Convert to 1-based
+                        exportService.exportToText(currentDocument, outputFile, page, page);
+                    } else {
+                        int startPage = pageIndices.get(0) + 1;
+                        int endPage = pageIndices.get(pageIndices.size() - 1) + 1;
+                        exportService.exportToText(currentDocument, outputFile, startPage, endPage);
+                    }
+                    
+                    uiStateManager.updateStatus("Text exported to: " + outputFile.getName());
+                }
+                
+                logger.info("Export completed successfully");
+            }
+        } catch (java.io.IOException e) {
+            logger.error("Error showing export dialog", e);
+            uiStateManager.showError("Error", "Could not open export dialog: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error exporting", e);
+            uiStateManager.showError("Error", "Could not export: " + e.getMessage());
+        }
+    }
+    
+    private java.util.List<Integer> parsePageRange(String rangeStr, int totalPages) {
+        java.util.List<Integer> pages = new java.util.ArrayList<>();
+        String[] ranges = rangeStr.split(",");
+        
+        for (String range : ranges) {
+            range = range.trim();
+            if (range.contains("-")) {
+                String[] parts = range.split("-");
+                try {
+                    int start = Integer.parseInt(parts[0].trim()) - 1;
+                    int end = Integer.parseInt(parts[1].trim()) - 1;
+                    for (int i = Math.max(0, start); i <= Math.min(totalPages - 1, end); i++) {
+                        if (!pages.contains(i)) {
+                            pages.add(i);
+                        }
+                    }
+                } catch (NumberFormatException e) {
+                    logger.warn("Invalid page range: {}", range);
+                }
+            } else {
+                try {
+                    int page = Integer.parseInt(range) - 1;
+                    if (page >= 0 && page < totalPages && !pages.contains(page)) {
+                        pages.add(page);
+                    }
+                } catch (NumberFormatException e) {
+                    logger.warn("Invalid page number: {}", range);
+                }
+            }
+        }
+        
+        return pages;
+    }
+
+    @FXML
     private void handlePrint() {
         dialogManager.openPrintDialog(currentDocument, printService,
                 currentDocument != null ? currentDocument.getCurrentPage() : 0);
