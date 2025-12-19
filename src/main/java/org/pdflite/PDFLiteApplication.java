@@ -1,12 +1,15 @@
 package org.pdflite;
 
+import javafx.animation.FadeTransition;
+import javafx.animation.Interpolator;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
-import javafx.scene.image.Image;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import org.pdflite.controller.MainController;
+import org.pdflite.manager.TitleBarManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,8 +69,9 @@ public class PDFLiteApplication extends Application {
     public void start(Stage stage) throws IOException {
         logger.info("Starting PDF Lite Application");
 
-        // Set maximized first, before creating the scene, to avoid window flash
-        stage.setMaximized(true);
+        // Use undecorated style for a custom title bar
+        stage.initStyle(javafx.stage.StageStyle.UNDECORATED);
+        
         stage.setMinWidth(MIN_WIDTH);
         stage.setMinHeight(MIN_HEIGHT);
 
@@ -83,12 +87,6 @@ public class PDFLiteApplication extends Application {
         stage.setTitle("PDF Lite - PDF Viewer & Editor");
         stage.setScene(scene);
 
-        // Set application icon (if available)
-        try {
-            stage.getIcons().add(new Image(Objects.requireNonNull(PDFLiteApplication.class.getResourceAsStream("icon.png"))));
-        } catch (Exception e) {
-            logger.warn("Could not load application icon");
-        }
 
         // Get controller and set up a window close handler
         MainController controller = fxmlLoader.getController();
@@ -97,14 +95,27 @@ public class PDFLiteApplication extends Application {
             event.consume();
         });
 
-        // Hide the window initially to avoid flash, then show maximized
+        // Maximize the window to fill the screen (excluding taskbar)
+        TitleBarManager.maximizeToScreen(stage);
+        
+        // Set initial opacity to 0 for smooth fade-in
         stage.setOpacity(0);
+        
         stage.show();
         
-        // Force maximize and make visible on JavaFX thread
+        // Smooth fade-in animation with easing (like Windows 11)
         Platform.runLater(() -> {
-            stage.setMaximized(true);
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(200), scene.getRoot());
+            fadeIn.setFromValue(0.0);
+            fadeIn.setToValue(1.0);
+            fadeIn.setInterpolator(Interpolator.EASE_OUT);
+            
+            // Set stage opacity gradually for a smoother effect
             stage.setOpacity(1);
+            fadeIn.play();
+            
+            // Notify the controller that the window is maximized on startup
+            controller.notifyWindowMaximized();
         });
         
         logger.info("Application started successfully");

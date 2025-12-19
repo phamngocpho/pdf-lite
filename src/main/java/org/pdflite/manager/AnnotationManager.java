@@ -140,7 +140,6 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
      * This method processes the selected tool and updates the annotation mode accordingly.
      *
      * @param selectedBtn        the selected toggle button (null if none selected)
-     * @param btnSelectText      the text selection toggle button
      * @param btnDrawRect        the rectangle drawing toggle button
      * @param btnDrawCircle      the circle drawing toggle button
      * @param btnDrawArrow       the arrow drawing toggle button
@@ -149,7 +148,6 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
      * @param updateDrawingStyle callback to update drawing style for all pages
      */
     public void handleToolSelection(ToggleButton selectedBtn,
-                                    ToggleButton btnSelectText,
                                     ToggleButton btnDrawRect,
                                     ToggleButton btnDrawCircle,
                                     ToggleButton btnDrawArrow,
@@ -165,32 +163,22 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
             return;
         }
 
-        if (selectedBtn == btnSelectText) {
-            // Tắt vẽ
-            updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
-            // Bật chọn Text
-            if (setSelectionMode != null) {
-                setSelectionMode.accept(true);
-            }
-            uiStateManager.updateStatus("Tool: Text Selection");
-        } else {
-            // Drawing tool selected - disable text selection
-            if (setSelectionMode != null) {
-                setSelectionMode.accept(false);
-            }
+        // Drawing tool selected - disable text selection
+        if (setSelectionMode != null) {
+            setSelectionMode.accept(false);
+        }
 
-            // Ánh xạ công cụ
-            if (selectedBtn == btnDrawRect) {
-                updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.RECTANGLE);
-            } else if (selectedBtn == btnDrawCircle) {
-                updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.CIRCLE);
-            } else if (selectedBtn == btnDrawArrow) {
-                updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.ARROW);
-            }
-            
-            if (updateDrawingStyle != null) {
-                updateDrawingStyle.run();
-            }
+        // Map tool to annotation mode
+        if (selectedBtn == btnDrawRect) {
+            updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.RECTANGLE);
+        } else if (selectedBtn == btnDrawCircle) {
+            updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.CIRCLE);
+        } else if (selectedBtn == btnDrawArrow) {
+            updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.ARROW);
+        }
+        
+        if (updateDrawingStyle != null) {
+            updateDrawingStyle.run();
         }
     }
 }
