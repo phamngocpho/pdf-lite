@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.pdflite.dialog.ExportDialogController"
+      spacing="10" prefWidth="450" prefHeight="450">
+    <padding>
+        <Insets top="15" right="15" bottom="15" left="15"/>
+    </padding>
+
+    <fx:define>
+        <ToggleGroup fx:id="exportTypeGroup"/>
+        <ToggleGroup fx:id="pageRangeGroup"/>
+    </fx:define>
+
+    <Label text="Export PDF" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+    <Separator/>
+
+    <!-- Export Type -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Export to:" prefWidth="100"/>
+        <RadioButton fx:id="imageRadio" text="Image" toggleGroup="$exportTypeGroup" selected="true"/>
+        <RadioButton fx:id="textRadio" text="Text" toggleGroup="$exportTypeGroup"/>
+    </HBox>
+
+    <Separator/>
+
+    <!-- Image Options -->
+    <VBox fx:id="imageOptionsPane" spacing="10">
+        <Label text="Image Options" style="-fx-font-weight: bold;"/>
+        
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Format:" prefWidth="100"/>
+            <ComboBox fx:id="imageFormatComboBox" prefWidth="100"/>
+        </HBox>
+        
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="DPI:" prefWidth="100"/>
+            <Spinner fx:id="dpiSpinner" prefWidth="100" editable="true"/>
+            <Label text="(Higher = Better quality)" style="-fx-text-fill: gray; -fx-font-size: 10px;"/>
+        </HBox>
+    </VBox>
+
+    <!-- Text Options -->
+    <VBox fx:id="textOptionsPane" spacing="10" visible="false" managed="false">
+        <Label text="Text Options" style="-fx-font-weight: bold;"/>
+        <Label text="Text will be extracted and saved as plain text (.txt)" 
+               style="-fx-text-fill: gray; -fx-font-size: 11px;" wrapText="true"/>
+    </VBox>
+
+    <Separator/>
+
+    <!-- Page Range -->
+    <Label text="Pages to Export" style="-fx-font-weight: bold;"/>
+    
+    <RadioButton fx:id="currentPageRadio" text="Current page only" toggleGroup="$pageRangeGroup" selected="true"/>
+    <RadioButton fx:id="allPagesRadio" text="All pages" toggleGroup="$pageRangeGroup"/>
+    
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <RadioButton fx:id="specificPagesRadio" text="Specific pages:" toggleGroup="$pageRangeGroup"/>
+        <TextField fx:id="pageRangeField" promptText="e.g., 1-3,5,7-9" prefWidth="150" disable="true"/>
+    </HBox>
+
+    <Separator/>
+
+    <!-- Output Location -->
+    <Label text="Output Location" style="-fx-font-weight: bold;"/>
+    
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <TextField fx:id="outputPathField" HBox.hgrow="ALWAYS" promptText="Select output location..."/>
+        <Button fx:id="browseButton" text="Browse..." onAction="#handleBrowse" prefWidth="80"/>
+    </HBox>
+    
+    <Label fx:id="infoLabel" text="" style="-fx-text-fill: #0066cc; -fx-font-size: 11px;" wrapText="true"/>
+
+    <Region VBox.vgrow="ALWAYS"/>
+
+    <!-- Action Buttons -->
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button text="Cancel" onAction="#handleCancel" prefWidth="80"/>
+        <Button text="Export" onAction="#handleExport" defaultButton="true" prefWidth="80"/>
+    </HBox>
+</VBox>
