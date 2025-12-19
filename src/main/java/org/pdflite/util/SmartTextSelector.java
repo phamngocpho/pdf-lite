@@ -30,6 +30,7 @@ public class SmartTextSelector {
         private final float x, y, width, height;
         private final float widthOfSpace;
         private final int lineNumber;
+        private final TextPosition textPosition;
 
         public CharacterInfo(TextPosition tp, int page, int line) {
             this.text = tp.getUnicode();
@@ -39,6 +40,11 @@ public class SmartTextSelector {
             this.height = tp.getHeight();
             this.widthOfSpace = tp.getWidthOfSpace();
             this.lineNumber = line;
+            this.textPosition = tp;
+        }
+        
+        public TextPosition getTextPosition() {
+            return textPosition;
         }
 
         public Rectangle2D.Float getBounds() {
@@ -313,6 +319,43 @@ public class SmartTextSelector {
         }
 
         return sb.toString();
+    }
+
+    /**
+     * Gets TextPosition objects for selected text between two points.
+     *
+     * @param start Start point in PDF coordinates
+     * @param end   End point in PDF coordinates
+     * @return List of TextPosition objects in the selection
+     */
+    public List<TextPosition> getSelectedTextPositions(Point2D start, Point2D end) {
+        List<TextPosition> positions = new ArrayList<>();
+        
+        if (characters.isEmpty()) {
+            return positions;
+        }
+
+        CharacterInfo startChar = findNearestCharacter(start);
+        CharacterInfo endChar = findNearestCharacter(end);
+
+        if (startChar == null || endChar == null) {
+            return positions;
+        }
+
+        int startIdx = characters.indexOf(startChar);
+        int endIdx = characters.indexOf(endChar);
+
+        if (startIdx > endIdx) {
+            int temp = startIdx;
+            startIdx = endIdx;
+            endIdx = temp;
+        }
+
+        for (int i = startIdx; i <= endIdx; i++) {
+            positions.add(characters.get(i).getTextPosition());
+        }
+
+        return positions;
     }
 
     /**

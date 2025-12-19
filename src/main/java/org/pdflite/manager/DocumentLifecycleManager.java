@@ -96,7 +96,7 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
                 }
                 // Enable text selection by default (like browsers) after pages are rendered
                 // Text selection is already enabled by default in PageRenderer, but ensure it's applied
-                if (pageRenderer != null && pagesContainer.get() != null) {
+                if (pagesContainer.get() != null) {
                     pageRenderer.setSelectionModeActive(pagesContainer.get(), true);
                 }
             });
@@ -125,6 +125,30 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
     public void saveDocument(PDFDocument currentDocument) {
         if (currentDocument == null) {
             return;
+        }
+
+        // Check if file exists and show overwrite confirmation
+        File targetFile = currentDocument.getFile();
+        if (targetFile != null && targetFile.exists()) {
+            Alert confirmAlert = new Alert(Alert.AlertType.CONFIRMATION);
+            confirmAlert.setTitle("Confirm Overwrite");
+            confirmAlert.setHeaderText("File already exists");
+            confirmAlert.setContentText("The file '" + targetFile.getName() + "' already exists.\nDo you want to overwrite it?");
+
+            ButtonType overwrite = new ButtonType("Overwrite", ButtonBar.ButtonData.OK_DONE);
+            ButtonType cancel = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+            confirmAlert.getButtonTypes().setAll(overwrite, cancel);
+
+            if (themeManager != null) {
+                themeManager.applyThemeToScene(confirmAlert.getDialogPane().getScene());
+            }
+
+            var result = confirmAlert.showAndWait();
+            if (result.isEmpty() || result.get() != overwrite) {
+                // User cancelled the save operation
+                logger.info("Save operation cancelled by user");
+                return;
+            }
         }
 
         // Check if the document is encrypted

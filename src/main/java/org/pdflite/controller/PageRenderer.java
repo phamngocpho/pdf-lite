@@ -422,4 +422,13 @@ public class PageRenderer {
             }
         });
     }
+
+    /**
+     * Gets the context menu handler for setting callbacks.
+     *
+     * @return the context menu handler
+     */
+    public ContextMenuHandler getContextMenuHandler() {
+        return contextMenuHandler;
+    }
 }

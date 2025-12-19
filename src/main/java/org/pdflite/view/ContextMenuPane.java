@@ -249,22 +249,27 @@ public class ContextMenuPane extends StackPane {
         // Create rectangles for each region
         for (Rectangle2D region : regions) {
             // Increase height for better visibility
-            double increasedHeight = region.getHeight() * HIGHLIGHT_HEIGHT_MULTIPLIER;
-            double heightDiff = increasedHeight - region.getHeight();
-            
-            Rectangle highlightRect = new Rectangle(
-                    region.getX(),
-                    region.getY() - heightDiff / 2, // Center the increased height
-                    region.getWidth(),
-                    increasedHeight
-            );
-            highlightRect.setFill(HIGHLIGHT_FILL);
-            highlightRect.setMouseTransparent(true);
-            highlightRect.setManaged(false);
+            Rectangle highlightRect = getHighlightRect(region);
             highlightGroup.getChildren().add(highlightRect);
         }
 
         highlightGroup.setVisible(true);
+    }
+
+    private static Rectangle getHighlightRect(Rectangle2D region) {
+        double increasedHeight = region.getHeight() * HIGHLIGHT_HEIGHT_MULTIPLIER;
+        double heightDiff = increasedHeight - region.getHeight();
+
+        Rectangle highlightRect = new Rectangle(
+                region.getX(),
+                region.getY() - heightDiff / 2, // Center the increased height
+                region.getWidth(),
+                increasedHeight
+        );
+        highlightRect.setFill(HIGHLIGHT_FILL);
+        highlightRect.setMouseTransparent(true);
+        highlightRect.setManaged(false);
+        return highlightRect;
     }
 
     private void clearHighlightRegions() {
@@ -276,6 +281,7 @@ public class ContextMenuPane extends StackPane {
         contextMenu = new ContextMenu();
 
         MenuItem copyText = new MenuItem("Copy Text");
+        MenuItem editText = new MenuItem("Edit Text");
         MenuItem copyImage = new MenuItem("Copy Image");
         MenuItem separator = new MenuItem("──────────");
         MenuItem clearSelection = new MenuItem("Clear Selection");
@@ -287,6 +293,11 @@ public class ContextMenuPane extends StackPane {
             clearSelection();
         });
 
+        editText.setOnAction(e -> {
+            handler.handleEditText();
+            clearSelection();
+        });
+
         copyImage.setOnAction(e -> {
             handler.handleCopyImage();
             logger.info("Image copied");
@@ -294,7 +305,7 @@ public class ContextMenuPane extends StackPane {
 
         clearSelection.setOnAction(e -> clearSelection());
 
-        contextMenu.getItems().addAll(copyText, copyImage, clearSelection);
+        contextMenu.getItems().addAll(copyText, editText, copyImage, clearSelection);
     }
 
     private void updateContextMenuItems() {
@@ -302,7 +313,8 @@ public class ContextMenuPane extends StackPane {
         boolean hasImage = handler.hasImageAtPosition();
 
         contextMenu.getItems().get(0).setDisable(!hasText);  // Copy Text
-        contextMenu.getItems().get(1).setDisable(!hasImage); // Copy Image
+        contextMenu.getItems().get(1).setDisable(!hasText);  // Edit Text
+        contextMenu.getItems().get(2).setDisable(!hasImage); // Copy Image
 
         logger.debug("Context menu: text={}, image={}", hasText, hasImage);
     }
