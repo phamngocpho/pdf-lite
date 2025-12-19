@@ -9,23 +9,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.pdflite.manager.AnnotationManager;
-import org.pdflite.manager.DialogManager;
-import org.pdflite.manager.DocumentLifecycleManager;
-import org.pdflite.manager.DocumentOperationManager;
-import org.pdflite.manager.EncryptionManager;
-import org.pdflite.manager.FileManager;
-import org.pdflite.manager.FullscreenManager;
-import org.pdflite.manager.ListenerFactory;
-import org.pdflite.manager.PageInfoManager;
-import org.pdflite.manager.RecentFilesManager;
-import org.pdflite.manager.RecentFilesMenuManager;
-import org.pdflite.manager.RenderingManager;
-import org.pdflite.manager.SearchDialogManager;
-import org.pdflite.manager.SearchManager;
-import org.pdflite.manager.ThemeManager;
-import org.pdflite.manager.UIStateManager;
-import org.pdflite.manager.ZoomManager;
+import javafx.scene.control.*;
+import org.pdflite.manager.*;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
 import org.pdflite.service.PDFPrintService;
@@ -37,18 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.ColorPicker;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.Menu;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.Slider;
-import javafx.scene.control.TextField;
-import javafx.scene.control.TextFormatter;
-import javafx.scene.control.ToggleButton;
-import javafx.scene.control.ToggleGroup;
-import javafx.scene.control.ToolBar;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -71,6 +44,7 @@ import javafx.stage.Stage;
 public class MainController {
 
     private static final Logger logger = LoggerFactory.getLogger(MainController.class);
+    public MenuButton drawingToolsMenu;
 
     // ==================== FXML Injected UI Components ====================
 
@@ -101,6 +75,8 @@ public class MainController {
     @FXML
     private Slider strokeWidthSlider;
     @FXML
+    private Label strokeWidthLabel;
+    @FXML
     private ToggleGroup drawingToolsGroup;
     @FXML
     private ToggleButton btnDrawRect;
@@ -109,7 +85,21 @@ public class MainController {
     @FXML
     private ToggleButton btnDrawArrow;
     @FXML
-    private ToggleButton btnSelectText;
+    private Button undoButton;
+    @FXML
+    private javafx.scene.layout.HBox customTitleBar;
+    @FXML
+    private Label titleLabel;
+    @FXML
+    private javafx.scene.image.ImageView logoImageView;
+    @FXML
+    private Button minimizeButton;
+    @FXML
+    private Button maximizeButton;
+    @FXML
+    private Button closeButton;
+    @FXML
+    private javafx.scene.control.MenuItem toggleToolbarMenuItem;
 
 
     // ==================== Services and Managers ====================
@@ -141,6 +131,9 @@ public class MainController {
     private DocumentLifecycleManager documentLifecycleManager;
     private RecentFilesMenuManager recentFilesMenuManager;
     private org.pdflite.manager.ContentStreamManager contentStreamManager;
+    private TitleBarManager titleBarManager;
+    private ExportManager exportManager;
+    private ImageInsertionManager imageInsertionManager;
 
     // ==================== Document State ====================
 
@@ -169,12 +162,34 @@ public class MainController {
         // Initialize a recent files manager (needed by RecentFilesMenuManager)
         recentFilesManager = new RecentFilesManager();
 
+        // Initialize title bar manager
+        if (customTitleBar != null) {
+            titleBarManager = new TitleBarManager(
+                    customTitleBar, minimizeButton, maximizeButton, closeButton,
+                    this::performExit, this::handleMaximize
+            );
+            titleBarManager.initialize();
+        }
+
+        // Initialize window resize manager
+        WindowResizeManager resizeManager = new WindowResizeManager(rootPane);
+        resizeManager.initialize();
+
+        // Initialize export manager
+        exportManager = new ExportManager(rootPane, uiStateManager);
+
+        // Initialize image insertion manager (will be fully initialized after rendering manager is ready)
+        imageInsertionManager = new ImageInsertionManager(rootPane, uiStateManager, renderingManager, pageRenderer);
+
+        // Initialize drawing tool icon manager
+        DrawingToolIconManager drawingToolIconManager = new DrawingToolIconManager();
+
         // Initialize managers
         initializeManagers();
 
         rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
-                themeManager = new ThemeManager(newScene);
+                themeManager = new ThemeManager(newScene, logoImageView);
                 searchDialogManager.setThemeManager(themeManager);
 
                 // Cập nhật ThemeManager cho các Manager cần dùng nó
@@ -228,12 +243,6 @@ public class MainController {
                         if (pageRenderer != null && pagesContainer != null) {
                             pageRenderer.setSelectionModeActive(pagesContainer, true);
                         }
-                    } else if (selectedBtn == btnSelectText) {
-                        // Text selection tool
-                        if (pageRenderer != null && pagesContainer != null) {
-                            pageRenderer.setSelectionModeActive(pagesContainer, true);
-                        }
-                        uiStateManager.updateStatus("Tool: Text Selection");
                     } else {
                         // Drawing tool selected - disable text selection
                         if (pageRenderer != null && pagesContainer != null) {
@@ -243,10 +252,9 @@ public class MainController {
                     return;
                 }
                 
-                // Document is an open-use annotation manager
+                // Document is open - use annotation manager
                 annotationManager.handleToolSelection(
                     selectedBtn,
-                    btnSelectText,
                     btnDrawRect,
                     btnDrawCircle,
                     btnDrawArrow,
@@ -260,10 +268,15 @@ public class MainController {
                 );
             });
         }
-        if (btnSelectText != null) makeToggleButtonDeselectable(btnSelectText);
         if (btnDrawRect != null) makeToggleButtonDeselectable(btnDrawRect);
         if (btnDrawCircle != null) makeToggleButtonDeselectable(btnDrawCircle);
         if (btnDrawArrow != null) makeToggleButtonDeselectable(btnDrawArrow);
+
+        // Setup drawing tool icons
+        if (drawingToolIconManager != null) {
+            drawingToolIconManager.setupDrawingToolIcons(btnDrawRect, btnDrawCircle, btnDrawArrow);
+            drawingToolIconManager.setupUndoIcon(undoButton);
+        }
 
         if (colorPicker != null) {
             colorPicker.setValue(javafx.scene.paint.Color.BLACK);
@@ -271,7 +284,16 @@ public class MainController {
         }
 
         if (strokeWidthSlider != null) {
-            strokeWidthSlider.valueProperty().addListener((obs, oldVal, newVal) -> updateDrawingStyleForAllPages());
+            strokeWidthSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+                updateDrawingStyleForAllPages();
+                if (strokeWidthLabel != null) {
+                    strokeWidthLabel.setText(String.format("%.0f", newVal.doubleValue()));
+                }
+            });
+            // Initialize label with current value
+            if (strokeWidthLabel != null) {
+                strokeWidthLabel.setText(String.format("%.0f", strokeWidthSlider.getValue()));
+            }
         }
 
         uiStateManager.updateUIState(false);
@@ -514,136 +536,7 @@ public class MainController {
 
     @FXML
     private void handleExport() {
-        if (currentDocument == null) {
-            uiStateManager.showError("No PDF", "Please open a PDF file first.");
-            return;
-        }
-
-        try {
-            // Load the FXML file
-            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader();
-            loader.setLocation(getClass().getResource("/org/pdflite/export-dialog.fxml"));
-            javafx.scene.layout.VBox dialogRoot = loader.load();
-
-            // Get the controller and configure it
-            org.pdflite.dialog.ExportDialogController controller = loader.getController();
-            controller.setTotalPages(currentDocument.getTotalPages());
-
-            // Create and show the dialog
-            javafx.stage.Stage dialogStage = new javafx.stage.Stage();
-            dialogStage.setTitle("Export PDF");
-            dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
-            dialogStage.initOwner(rootPane.getScene().getWindow());
-            dialogStage.setScene(new javafx.scene.Scene(dialogRoot));
-            controller.setDialogStage(dialogStage);
-
-            dialogStage.showAndWait();
-
-            // If export was clicked, perform the export
-            if (controller.isExportClicked()) {
-                org.pdflite.dialog.ExportDialogController.ExportConfig config = controller.getConfig();
-                org.pdflite.service.PDFExportService exportService = new org.pdflite.service.PDFExportService();
-                
-                // Determine which pages to export
-                java.util.List<Integer> pageIndices = new java.util.ArrayList<>();
-                
-                switch (config.pageRange) {
-                    case CURRENT:
-                        pageIndices.add(currentDocument.getCurrentPage());
-                        break;
-                    case ALL:
-                        for (int i = 0; i < currentDocument.getTotalPages(); i++) {
-                            pageIndices.add(i);
-                        }
-                        break;
-                    case SPECIFIC:
-                        pageIndices = parsePageRange(config.specificPages, currentDocument.getTotalPages());
-                        break;
-                }
-                
-                if (config.exportToImage) {
-                    // Export to image
-                    org.pdflite.service.PDFExportService.ImageFormat format = 
-                        config.imageFormat.equals("PNG") ? 
-                        org.pdflite.service.PDFExportService.ImageFormat.PNG : 
-                        org.pdflite.service.PDFExportService.ImageFormat.JPG;
-                    
-                    if (pageIndices.size() == 1) {
-                        // Single page export
-                        File outputFile = new File(config.outputPath);
-                        exportService.exportPageToImage(currentDocument, pageIndices.get(0), 
-                            outputFile, format, config.dpi);
-                        uiStateManager.updateStatus("Page exported to: " + outputFile.getName());
-                    } else {
-                        // Multiple pages export
-                        File outputDir = new File(config.outputPath);
-                        String prefix = currentDocument.getFile() != null ? 
-                            currentDocument.getFile().getName().replaceFirst("[.][^.]+$", "") : "page";
-                        java.util.List<File> files = exportService.exportPagesToImages(
-                            currentDocument, pageIndices, outputDir, prefix, format, config.dpi);
-                        uiStateManager.updateStatus("Exported " + files.size() + " pages to: " + outputDir.getName());
-                    }
-                } else {
-                    // Export to text
-                    File outputFile = new File(config.outputPath);
-                    
-                    if (pageIndices.size() == currentDocument.getTotalPages()) {
-                        exportService.exportAllToText(currentDocument, outputFile);
-                    } else if (pageIndices.size() == 1) {
-                        int page = pageIndices.get(0) + 1; // Convert to 1-based
-                        exportService.exportToText(currentDocument, outputFile, page, page);
-                    } else {
-                        int startPage = pageIndices.get(0) + 1;
-                        int endPage = pageIndices.get(pageIndices.size() - 1) + 1;
-                        exportService.exportToText(currentDocument, outputFile, startPage, endPage);
-                    }
-                    
-                    uiStateManager.updateStatus("Text exported to: " + outputFile.getName());
-                }
-                
-                logger.info("Export completed successfully");
-            }
-        } catch (java.io.IOException e) {
-            logger.error("Error showing export dialog", e);
-            uiStateManager.showError("Error", "Could not open export dialog: " + e.getMessage());
-        } catch (Exception e) {
-            logger.error("Error exporting", e);
-            uiStateManager.showError("Error", "Could not export: " + e.getMessage());
-        }
-    }
-    
-    private java.util.List<Integer> parsePageRange(String rangeStr, int totalPages) {
-        java.util.List<Integer> pages = new java.util.ArrayList<>();
-        String[] ranges = rangeStr.split(",");
-        
-        for (String range : ranges) {
-            range = range.trim();
-            if (range.contains("-")) {
-                String[] parts = range.split("-");
-                try {
-                    int start = Integer.parseInt(parts[0].trim()) - 1;
-                    int end = Integer.parseInt(parts[1].trim()) - 1;
-                    for (int i = Math.max(0, start); i <= Math.min(totalPages - 1, end); i++) {
-                        if (!pages.contains(i)) {
-                            pages.add(i);
-                        }
-                    }
-                } catch (NumberFormatException e) {
-                    logger.warn("Invalid page range: {}", range);
-                }
-            } else {
-                try {
-                    int page = Integer.parseInt(range) - 1;
-                    if (page >= 0 && page < totalPages && !pages.contains(page)) {
-                        pages.add(page);
-                    }
-                } catch (NumberFormatException e) {
-                    logger.warn("Invalid page number: {}", range);
-                }
-            }
-        }
-        
-        return pages;
+        exportManager.openExportDialog(currentDocument);
     }
 
     @FXML
@@ -658,17 +551,87 @@ public class MainController {
     }
 
     public void performExit() {
-        if (currentDocument != null) {
-            fileManager.close(currentDocument);
+        // Quick cleanup and exit
+        try {
+            // Close document first (important to save state)
+            if (currentDocument != null) {
+                fileManager.close(currentDocument);
+            }
+            
+            // Try to shutdown executor gracefully with short timeout
+            if (!renderExecutor.isShutdown()) {
+                renderExecutor.shutdown();
+                // Don't wait, just force exit
+            }
+        } catch (Exception e) {
+            // Ignore errors during cleanup
         }
-
-        // Shutdown executor service to prevent the app from running in the background
-        if (!renderExecutor.isShutdown()) {
-            renderExecutor.shutdownNow();
-        }
-
-        Platform.exit();
+        
+        // Force exit immediately
         System.exit(0);
+    }
+
+    /**
+     * Notifies the controller that the window is maximized on startup.
+     * This updates the maximize button icon to show the restore icon.
+     */
+    public void notifyWindowMaximized() {
+        if (titleBarManager != null) {
+            titleBarManager.setMaximizedState(true);
+        }
+    }
+
+    // Custom Title Bar Handlers
+    @FXML
+    private void handleMinimize() {
+        if (titleBarManager != null) {
+            Stage stage = (Stage) rootPane.getScene().getWindow();
+            titleBarManager.handleMinimize(stage);
+        }
+    }
+
+    @FXML
+    private void handleMaximize() {
+        if (titleBarManager != null) {
+            Stage stage = (Stage) rootPane.getScene().getWindow();
+            titleBarManager.handleMaximize(stage);
+        }
+    }
+
+    @FXML
+    private void handleClose() {
+        if (titleBarManager != null) {
+            titleBarManager.handleClose();
+        } else {
+            performExit();
+        }
+    }
+
+    @FXML
+    private void handleToggleToolbar() {
+        if (toolbar == null) return;
+        
+        boolean isToolbarVisible = toolbar.isVisible();
+        
+        if (isToolbarVisible) {
+            // Hide toolbar
+            toolbar.setManaged(false);
+            toolbar.setVisible(false);
+            
+            // Update menu item text
+            if (toggleToolbarMenuItem != null) {
+                toggleToolbarMenuItem.setText("Show Toolbar");
+            }
+        } else {
+            // Show toolbar
+            toolbar.setManaged(true);
+            toolbar.setVisible(true);
+            
+            // Update menu item text
+            if (toggleToolbarMenuItem != null) {
+                toggleToolbarMenuItem.setText("Hide Toolbar");
+            }
+        }
     }
 
     @FXML
@@ -713,6 +676,7 @@ public class MainController {
             }
         }
     }
+
     // ==================== Zoom Operations ====================
 
     @FXML
@@ -792,6 +756,11 @@ public class MainController {
     }
 
     @FXML
+    private void setSystemTheme() {
+        themeManager.setSystemTheme();
+    }
+
+    @FXML
     private void setLightTheme() {
         themeManager.setLightTheme();
     }
@@ -800,6 +769,7 @@ public class MainController {
     private void setDarkTheme() {
         themeManager.setDarkTheme();
     }
+
 
     // ==================== Fullscreen Operations ====================
 
@@ -846,228 +816,22 @@ public class MainController {
 
     @FXML
     private void handleInsertImage() {
-        if (currentDocument == null) {
-            uiStateManager.showError("No PDF", "Please open a PDF file first.");
-            return;
-        }
-
-        try {
-            // Load the FXML file
-            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader();
-            loader.setLocation(getClass().getResource("/org/pdflite/image-placement-dialog.fxml"));
-            javafx.scene.layout.VBox dialogRoot = loader.load();
-
-            // Get the controller and configure it
-            org.pdflite.dialog.ImagePlacementDialogController controller = loader.getController();
-            
-            // Create ImageManager
-            org.pdflite.manager.ImageManager imageManager = new org.pdflite.manager.ImageManager(uiStateManager);
-            controller.setImageManager(imageManager);
-            controller.setTotalPages(currentDocument.getTotalPages());
-            controller.setDefaultPage(currentDocument.getCurrentPage() + 1);
-            
-            // Set page height for coordinate conversion
-            int currentPageIndex = currentDocument.getCurrentPage();
-            double pageHeight = currentDocument.getDocument().getPage(currentPageIndex).getMediaBox().getHeight();
-            controller.setPageHeight(pageHeight);
-
-            // Create and show the dialog
-            javafx.stage.Stage dialogStage = new javafx.stage.Stage();
-            dialogStage.setTitle("Insert Image");
-            dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
-            dialogStage.initOwner(rootPane.getScene().getWindow());
-            dialogStage.setScene(new javafx.scene.Scene(dialogRoot));
-            controller.setDialogStage(dialogStage);
-
-            dialogStage.showAndWait();
-
-            // If insert was clicked, place the image
-            if (controller.isInsertClicked()) {
-                org.pdflite.model.ImagePlacement placement = controller.getResultPlacement();
-                imageManager.placeImage(currentDocument.getDocument(), placement);
-                
-                // Record the edit operation
-                currentDocument.recordEdit(org.pdflite.model.ImageInsert.create(
-                    placement.pageIndex(), placement));
-                
-                // Clear ALL caches to force re-render from modified PDDocument
-                currentDocument.clearCache();  // Clear PDFDocument cache
-                pageRenderer.clearCache();      // Clear PageRenderer cache
-                pageRenderer.cancelAllPendingRenders();  // Cancel any pending renders
-                
-                // Refresh display to show the inserted image
-                renderingManager.renderAllPages();
-                
-                uiStateManager.updateStatus("Image inserted successfully - save document to persist changes");
-                logger.info("Image inserted on page {}", placement.pageIndex());
-            }
-        } catch (java.io.IOException e) {
-            logger.error("Error showing image placement dialog", e);
-            uiStateManager.showError("Error", "Could not open image placement dialog: " + e.getMessage());
-        } catch (Exception e) {
-            logger.error("Error inserting image", e);
-            uiStateManager.showError("Error", "Could not insert image: " + e.getMessage());
-        }
+        imageInsertionManager.openInsertImageDialog(currentDocument);
     }
 
     @FXML
     private void handleInsertStamp() {
-        if (currentDocument == null) {
-            uiStateManager.showError("No PDF", "Please open a PDF file first.");
-            return;
-        }
-
-        try {
-            // Load the FXML file
-            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader();
-            loader.setLocation(getClass().getResource("/org/pdflite/image-placement-dialog.fxml"));
-            javafx.scene.layout.VBox dialogRoot = loader.load();
-
-            // Get the controller and configure it
-            org.pdflite.dialog.ImagePlacementDialogController controller = loader.getController();
-            
-            // Create ImageManager
-            org.pdflite.manager.ImageManager imageManager = new org.pdflite.manager.ImageManager(uiStateManager);
-            controller.setImageManager(imageManager);
-            controller.setTotalPages(currentDocument.getTotalPages());
-            controller.setDefaultPage(currentDocument.getCurrentPage() + 1);
-            
-            // Set page height for coordinate conversion
-            int currentPageIndex = currentDocument.getCurrentPage();
-            double pageHeight = currentDocument.getDocument().getPage(currentPageIndex).getMediaBox().getHeight();
-            controller.setPageHeight(pageHeight);
-
-            // Create and show the dialog
-            javafx.stage.Stage dialogStage = new javafx.stage.Stage();
-            dialogStage.setTitle("Insert Stamp");
-            dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
-            dialogStage.initOwner(rootPane.getScene().getWindow());
-            dialogStage.setScene(new javafx.scene.Scene(dialogRoot));
-            controller.setDialogStage(dialogStage);
-
-            dialogStage.showAndWait();
-
-            // If insert was clicked, create the stamp
-            if (controller.isInsertClicked()) {
-                org.pdflite.model.ImagePlacement placement = controller.getResultPlacement();
-                
-                if (placement.isStamp()) {
-                    imageManager.createStampAnnotation(currentDocument.getDocument(), placement);
-                } else {
-                    // User unchecked the stamp option, place as regular image
-                    imageManager.placeImage(currentDocument.getDocument(), placement);
-                }
-                
-                // Record the edit operation
-                currentDocument.recordEdit(org.pdflite.model.ImageInsert.create(
-                    placement.pageIndex(), placement));
-                
-                // Clear ALL caches to force re-render from modified PDDocument
-                currentDocument.clearCache();  // Clear PDFDocument cache
-                pageRenderer.clearCache();      // Clear PageRenderer cache
-                pageRenderer.cancelAllPendingRenders();  // Cancel any pending renders
-                
-                // Refresh display to show the inserted stamp
-                renderingManager.renderAllPages();
-                
-                uiStateManager.updateStatus("Stamp inserted successfully - save document to persist changes");
-                logger.info("Stamp inserted on page {}", placement.pageIndex());
-            }
-        } catch (java.io.IOException e) {
-            logger.error("Error showing stamp placement dialog", e);
-            uiStateManager.showError("Error", "Could not open stamp placement dialog: " + e.getMessage());
-        } catch (Exception e) {
-            logger.error("Error inserting stamp", e);
-            uiStateManager.showError("Error", "Could not insert stamp: " + e.getMessage());
-        }
+        imageInsertionManager.openInsertStampDialog(currentDocument);
     }
 
     @FXML
     private void handleAddWatermark() {
-        if (currentDocument == null) {
-            uiStateManager.showError("No PDF", "Please open a PDF file first.");
-            return;
-        }
-
-        try {
-            // Load the FXML file
-            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader();
-            loader.setLocation(getClass().getResource("/org/pdflite/watermark-dialog.fxml"));
-            javafx.scene.layout.VBox dialogRoot = loader.load();
-
-            // Get the controller and configure it
-            org.pdflite.dialog.WatermarkDialogController controller = loader.getController();
-
-            // Create and show the dialog
-            javafx.stage.Stage dialogStage = new javafx.stage.Stage();
-            dialogStage.setTitle("Add Watermark");
-            dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
-            dialogStage.initOwner(rootPane.getScene().getWindow());
-            dialogStage.setScene(new javafx.scene.Scene(dialogRoot));
-            controller.setDialogStage(dialogStage);
-
-            dialogStage.showAndWait();
-
-            // If apply was clicked, add the watermark
-            if (controller.isApplyClicked()) {
-                org.pdflite.model.WatermarkConfig config = controller.getConfig();
-                org.pdflite.service.WatermarkService watermarkService = new org.pdflite.service.WatermarkService();
-                
-                watermarkService.applyWatermark(currentDocument, config);
-                
-                // Clear ALL caches to force re-render from modified PDDocument
-                currentDocument.clearCache();  // Clear PDFDocument cache
-                pageRenderer.clearCache();      // Clear PageRenderer cache
-                pageRenderer.cancelAllPendingRenders();  // Cancel any pending renders
-                
-                // Refresh display to show the watermark
-                renderingManager.renderAllPages();
-                
-                uiStateManager.updateStatus("Watermark applied successfully - save document to persist changes");
-                logger.info("Watermark applied to document");
-            }
-        } catch (java.io.IOException e) {
-            logger.error("Error showing watermark dialog", e);
-            uiStateManager.showError("Error", "Could not open watermark dialog: " + e.getMessage());
-        } catch (Exception e) {
-            logger.error("Error applying watermark", e);
-            uiStateManager.showError("Error", "Could not apply watermark: " + e.getMessage());
-        }
+        imageInsertionManager.openWatermarkDialog(currentDocument);
     }
 
     @FXML
     private void handleEditText() {
-        if (currentDocument == null) {
-            uiStateManager.showError("No PDF", "Please open a PDF file first.");
-            return;
-        }
-
-        uiStateManager.updateStatus("Text editing: This feature requires selecting text first. " +
-                "Note: PDF text editing is complex and may not work for all PDFs.");
-        
-        // Show info dialog explaining how to use text editing
-        javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION);
-        alert.setTitle("Text Editing");
-        alert.setHeaderText("How to Edit Text in PDF");
-        alert.setContentText(
-                """
-                        Text editing in PDF is a complex operation with limitations:
-                        
-                        1. Enable 'Text Selection' mode from the toolbar
-                        2. Click on the text you want to edit
-                        3. Right-click and select 'Edit Text' from context menu
-                        4. Edit the text in the dialog
-                        5. Click OK to apply changes
-                        
-                        Note: This feature is experimental and may not work for:
-                        - Scanned PDFs (images of text)
-                        - PDFs with complex formatting
-                        - Encrypted or protected PDFs
-                        
-                        For best results, use 'Insert Image' to add new content instead."""
-        );
-        alert.initOwner(rootPane.getScene().getWindow());
-        alert.showAndWait();
+        imageInsertionManager.showTextEditingInfo(currentDocument);
     }
 
     // ==================== PDF Encryption/Decryption ====================
