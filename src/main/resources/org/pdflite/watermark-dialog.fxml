@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.pdflite.dialog.WatermarkDialogController"
+      spacing="10" prefWidth="500" prefHeight="610">
+    <padding>
+        <Insets top="15" right="15" bottom="15" left="15"/>
+    </padding>
+
+    <fx:define>
+        <ToggleGroup fx:id="typeToggleGroup"/>
+        <ToggleGroup fx:id="pageRangeToggleGroup"/>
+    </fx:define>
+
+    <Label text="Add Watermark" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+    <Separator/>
+
+    <!-- Watermark Type -->
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Type:" prefWidth="100"/>
+        <RadioButton fx:id="textRadio" text="Text" toggleGroup="$typeToggleGroup" selected="true"/>
+        <RadioButton fx:id="imageRadio" text="Image" toggleGroup="$typeToggleGroup"/>
+    </HBox>
+
+    <Separator/>
+
+    <!-- Text Watermark Options -->
+    <VBox fx:id="textOptionsPane" spacing="10">
+        <Label text="Text Options" style="-fx-font-weight: bold;"/>
+        
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Text:" prefWidth="100"/>
+            <TextField fx:id="textField" HBox.hgrow="ALWAYS" promptText="Enter watermark text"/>
+        </HBox>
+        
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Font:" prefWidth="100"/>
+            <ComboBox fx:id="fontComboBox" prefWidth="150"/>
+            <Label text="Size:"/>
+            <Spinner fx:id="fontSizeSpinner" prefWidth="80" editable="true"/>
+        </HBox>
+        
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Color:" prefWidth="100"/>
+            <ColorPicker fx:id="colorPicker" prefWidth="150"/>
+        </HBox>
+    </VBox>
+
+    <!-- Image Watermark Options -->
+    <VBox fx:id="imageOptionsPane" spacing="10" visible="false" managed="false">
+        <Label text="Image Options" style="-fx-font-weight: bold;"/>
+        
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Image File:" prefWidth="100"/>
+            <TextField fx:id="imageFileField" editable="false" HBox.hgrow="ALWAYS"/>
+            <Button text="Browse..." onAction="#handleBrowseImage" prefWidth="80"/>
+        </HBox>
+        
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Scale:" prefWidth="100"/>
+            <Slider fx:id="scaleSlider" min="0.1" max="2.0" value="1.0" showTickLabels="true" 
+                    showTickMarks="true" majorTickUnit="0.5" minorTickCount="4" prefWidth="200"/>
+            <Label fx:id="scaleLabel" text="100%" prefWidth="50"/>
+        </HBox>
+    </VBox>
+
+    <Separator/>
+
+    <!-- Common Options -->
+    <Label text="Position &amp; Appearance" style="-fx-font-weight: bold;"/>
+    
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Position:" prefWidth="100"/>
+        <ComboBox fx:id="positionComboBox" prefWidth="150"/>
+    </HBox>
+    
+    <!-- Custom Position (shown when Custom is selected) -->
+    <HBox fx:id="customPositionPane" spacing="10" alignment="CENTER_LEFT" visible="false" managed="false">
+        <Label prefWidth="100"/>
+        <Label text="X:"/>
+        <TextField fx:id="customXField" prefWidth="80" promptText="0"/>
+        <Label text="Y:"/>
+        <TextField fx:id="customYField" prefWidth="80" promptText="0"/>
+    </HBox>
+    
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Opacity:" prefWidth="100"/>
+        <Slider fx:id="opacitySlider" max="1.0" value="0.3" showTickLabels="true"
+                showTickMarks="true" majorTickUnit="0.25" minorTickCount="4" prefWidth="200"/>
+        <Label fx:id="opacityLabel" text="30%" prefWidth="50"/>
+    </HBox>
+    
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Rotation:" prefWidth="100"/>
+        <Slider fx:id="rotationSlider" max="360" value="45" showTickLabels="true"
+                showTickMarks="true" majorTickUnit="90" minorTickCount="8" prefWidth="200"/>
+        <Label fx:id="rotationLabel" text="45°" prefWidth="50"/>
+    </HBox>
+
+    <Separator/>
+
+    <!-- Page Range -->
+    <Label text="Apply To" style="-fx-font-weight: bold;"/>
+    
+    <RadioButton fx:id="allPagesRadio" text="All pages" toggleGroup="$pageRangeToggleGroup" selected="true"/>
+    
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <RadioButton fx:id="specificPagesRadio" text="Specific pages:" toggleGroup="$pageRangeToggleGroup"/>
+        <TextField fx:id="pageRangeField" promptText="e.g., 1-3,5,7-9" prefWidth="150" disable="true"/>
+    </HBox>
+
+    <Region VBox.vgrow="ALWAYS"/>
+
+    <!-- Preview Button -->
+    <HBox spacing="10" alignment="CENTER">
+        <Button text="Preview" onAction="#handlePreview" prefWidth="100"/>
+    </HBox>
+
+    <Separator/>
+
+    <!-- Action Buttons -->
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button text="Cancel" onAction="#handleCancel" prefWidth="80"/>
+        <Button text="Apply" onAction="#handleApply" defaultButton="true" prefWidth="80"/>
+    </HBox>
+</VBox>

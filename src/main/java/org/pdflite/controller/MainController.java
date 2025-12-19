@@ -849,6 +849,59 @@ public class MainController {
     }
 
     @FXML
+    private void handleAddWatermark() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            return;
+        }
+
+        try {
+            // Load the FXML file
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader();
+            loader.setLocation(getClass().getResource("/org/pdflite/watermark-dialog.fxml"));
+            javafx.scene.layout.VBox dialogRoot = loader.load();
+
+            // Get the controller and configure it
+            org.pdflite.dialog.WatermarkDialogController controller = loader.getController();
+
+            // Create and show the dialog
+            javafx.stage.Stage dialogStage = new javafx.stage.Stage();
+            dialogStage.setTitle("Add Watermark");
+            dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            dialogStage.initOwner(rootPane.getScene().getWindow());
+            dialogStage.setScene(new javafx.scene.Scene(dialogRoot));
+            controller.setDialogStage(dialogStage);
+
+            dialogStage.showAndWait();
+
+            // If apply was clicked, add the watermark
+            if (controller.isApplyClicked()) {
+                org.pdflite.model.WatermarkConfig config = controller.getConfig();
+                org.pdflite.service.WatermarkService watermarkService = new org.pdflite.service.WatermarkService();
+                
+                watermarkService.applyWatermark(currentDocument, config);
+                
+                // Clear ALL caches to force re-render from modified PDDocument
+                currentDocument.clearCache();  // Clear PDFDocument cache
+                pageRenderer.clearCache();      // Clear PageRenderer cache
+                pageRenderer.cancelAllPendingRenders();  // Cancel any pending renders
+                
+                // Refresh display to show the watermark
+                renderingManager.renderAllPages();
+                
+                uiStateManager.updateStatus("Watermark applied successfully - save document to persist changes");
+                logger.info("Watermark applied to document");
+            }
+        } catch (java.io.IOException e) {
+            logger.error("Error showing watermark dialog", e);
+            uiStateManager.showError("Error", "Could not open watermark dialog: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Error applying watermark", e);
+            uiStateManager.showError("Error", "Could not apply watermark: " + e.getMessage());
+        }
+    }
+
+    @FXML
     private void handleEditText() {
         if (currentDocument == null) {
             uiStateManager.showError("No PDF", "Please open a PDF file first.");
