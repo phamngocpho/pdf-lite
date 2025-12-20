@@ -49,6 +49,7 @@
                     <MenuItem text="Save" onAction="#handleSave"/>
                     <MenuItem text="Save As..." onAction="#handleSaveAs"/>
                     <SeparatorMenuItem/>
+                    <MenuItem text="Optimize PDF..." onAction="#handleOptimizePDF" accelerator="Ctrl+Shift+O"/>
                     <MenuItem text="Document Properties..." onAction="#handleDocumentProperties" accelerator="Ctrl+D"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Exit" onAction="#handleExit"/>
