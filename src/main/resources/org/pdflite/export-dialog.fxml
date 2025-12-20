@@ -6,10 +6,7 @@
 
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.pdflite.dialog.ExportDialogController"
-      prefWidth="450" prefHeight="450" styleClass="export-dialog">
-
-    <!-- Custom Title Bar -->
-    <HBox fx:id="titleBar" styleClass="custom-title-bar"/>
+      prefWidth="450" prefHeight="450">
 
     <VBox spacing="10" VBox.vgrow="ALWAYS">
         <padding>

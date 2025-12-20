@@ -168,6 +168,9 @@ public class MainController {
     // Page Deletion Manager
     private PageDeletionManager pageDeletionManager;
     
+    // Page Duplication Manager
+    private PageDuplicationManager pageDuplicationManager;
+    
     // Metadata Manager
     private MetadataManager metadataManager;
 
@@ -246,6 +249,11 @@ public class MainController {
 
                 // Cập nhật ImageInsertionManager với ThemeManager
                 imageInsertionManager = new ImageInsertionManager(rootPane, uiStateManager, renderingManager, pageRenderer, themeManager);
+                
+                // Cập nhật ExportManager với ThemeManager
+                if (exportManager != null) {
+                    exportManager.setThemeManager(themeManager);
+                }
 
                 // Cập nhật ContextMenuHandler với ThemeManager
                 if (pageRenderer != null && pageRenderer.getContextMenuHandler() != null) {
@@ -456,6 +464,9 @@ public class MainController {
             pageInfoManager, 
             pageRenderer
         );
+        
+        // Page Duplication Manager
+        pageDuplicationManager = new PageDuplicationManager();
         
         // Metadata Manager
         metadataManager = new MetadataManager();
@@ -798,6 +809,53 @@ public class MainController {
     private void handleDeletePage() {
         if (pageDeletionManager != null) {
             pageDeletionManager.handleDeletePage(currentDocument);
+        }
+    }
+
+    @FXML
+    private void handleDuplicatePage() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No Document", "Please open a PDF file first.");
+            return;
+        }
+
+        try {
+            int currentPage = currentDocument.getCurrentPage();
+            int totalPages = currentDocument.getTotalPages();
+
+            // Show duplicate page dialog
+            org.pdflite.dialog.DuplicatePageDialog dialog = 
+                new org.pdflite.dialog.DuplicatePageDialog(currentPage, totalPages, themeManager);
+
+            if (dialog.showAndWait()) {
+                int sourcePageIndex = dialog.getSourcePageIndex();
+                int insertPosition = dialog.getInsertPosition();
+                int numberOfCopies = dialog.getNumberOfCopies();
+
+                // Duplicate the page
+                if (pageDuplicationManager.duplicatePage(currentDocument, sourcePageIndex, 
+                                                        insertPosition, numberOfCopies)) {
+                    // Clear caches and re-render
+                    currentDocument.clearCache();
+                    pageRenderer.clearCache();
+                    renderingManager.renderAllPages();
+
+                    // Update page info
+                    pageInfoManager.updatePageInfo(currentDocument);
+
+                    uiStateManager.updateStatus(
+                        String.format("Duplicated page %d (%d copies) - Don't forget to save!", 
+                                    sourcePageIndex + 1, numberOfCopies));
+                    logger.info("Page {} duplicated {} times at position {}", 
+                               sourcePageIndex + 1, numberOfCopies, insertPosition + 1);
+                } else {
+                    uiStateManager.showError("Duplication Failed", 
+                        "Failed to duplicate the page.");
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error duplicating page", e);
+            uiStateManager.showError("Error", "Failed to duplicate page: " + e.getMessage());
         }
     }
 

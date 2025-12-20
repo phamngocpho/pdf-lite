@@ -2,12 +2,10 @@ package org.pdflite.dialog;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import org.pdflite.util.DialogTitleBar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +22,6 @@ import java.io.File;
 public class ExportDialogController {
     private static final Logger logger = LoggerFactory.getLogger(ExportDialogController.class);
 
-    @FXML private HBox titleBar;
     @FXML private ToggleGroup exportTypeGroup;
     @FXML private RadioButton imageRadio;
     @FXML private RadioButton textRadio;
@@ -99,8 +96,7 @@ public class ExportDialogController {
 
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
-        DialogTitleBar dialogTitleBar = new DialogTitleBar("Export PDF", dialogStage);
-        titleBar.getChildren().setAll(dialogTitleBar.getTitleBar().getChildren());
+        // Title bar will be added by ExportManager wrapping the FXML content
     }
 
     public void setTotalPages(int totalPages) {

@@ -92,6 +92,7 @@
                     <MenuItem text="Show Permissions..." onAction="#handleShowPDFPermissions"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Delete Page" onAction="#handleDeletePage"/>
+                    <MenuItem text="Duplicate Page..." onAction="#handleDuplicatePage"/>
                 </Menu>
 
                 <Menu text="Help">
@@ -232,6 +233,7 @@
                         <MenuItem text="Show Permissions..." onAction="#handleShowPDFPermissions"/>
                         <SeparatorMenuItem/>
                         <MenuItem text="Delete Page" onAction="#handleDeletePage"/>
+                        <MenuItem text="Duplicate Page..." onAction="#handleDuplicatePage"/>
                     </items>
                 </MenuButton>
 
