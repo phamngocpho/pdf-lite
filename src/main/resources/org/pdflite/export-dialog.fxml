@@ -6,18 +6,20 @@
 
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.pdflite.dialog.ExportDialogController"
-      spacing="10" prefWidth="450" prefHeight="450">
-    <padding>
-        <Insets top="15" right="15" bottom="15" left="15"/>
-    </padding>
+      prefWidth="450" prefHeight="450" styleClass="export-dialog">
 
-    <fx:define>
-        <ToggleGroup fx:id="exportTypeGroup"/>
-        <ToggleGroup fx:id="pageRangeGroup"/>
-    </fx:define>
+    <!-- Custom Title Bar -->
+    <HBox fx:id="titleBar" styleClass="custom-title-bar"/>
 
-    <Label text="Export PDF" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
-    <Separator/>
+    <VBox spacing="10" VBox.vgrow="ALWAYS">
+        <padding>
+            <Insets top="15" right="15" bottom="15" left="15"/>
+        </padding>
+
+        <fx:define>
+            <ToggleGroup fx:id="exportTypeGroup"/>
+            <ToggleGroup fx:id="pageRangeGroup"/>
+        </fx:define>
 
     <!-- Export Type -->
     <HBox spacing="10" alignment="CENTER_LEFT">
@@ -74,13 +76,14 @@
         <Button fx:id="browseButton" text="Browse..." onAction="#handleBrowse" prefWidth="80"/>
     </HBox>
     
-    <Label fx:id="infoLabel" text="" style="-fx-text-fill: #0066cc; -fx-font-size: 11px;" wrapText="true"/>
+    <Label fx:id="infoLabel" style="-fx-text-fill: #0066cc; -fx-font-size: 11px;" wrapText="true"/>
 
     <Region VBox.vgrow="ALWAYS"/>
 
-    <!-- Action Buttons -->
-    <HBox spacing="10" alignment="CENTER_RIGHT">
-        <Button text="Cancel" onAction="#handleCancel" prefWidth="80"/>
-        <Button text="Export" onAction="#handleExport" defaultButton="true" prefWidth="80"/>
-    </HBox>
+        <!-- Action Buttons -->
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <Button text="Cancel" onAction="#handleCancel" prefWidth="80"/>
+            <Button text="Export" onAction="#handleExport" defaultButton="true" prefWidth="80"/>
+        </HBox>
+    </VBox>
 </VBox>

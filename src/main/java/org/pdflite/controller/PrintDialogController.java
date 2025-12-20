@@ -6,6 +6,7 @@ import javafx.scene.control.*;
 import javafx.stage.Stage;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFPrintService;
+import org.pdflite.util.DialogTitleBar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +22,8 @@ public class PrintDialogController {
 
     private static final Logger logger = LoggerFactory.getLogger(PrintDialogController.class);
 
+    @FXML
+    private javafx.scene.layout.HBox dialogTitleBar;
     @FXML
     private RadioButton rbAllPages;
     @FXML
@@ -85,6 +88,13 @@ public class PrintDialogController {
      */
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+        
+        // Create and add a custom title bar
+        String title = dialogStage.getTitle() != null ? dialogStage.getTitle() : "Print PDF";
+        DialogTitleBar titleBar = new org.pdflite.util.DialogTitleBar(title, dialogStage);
+        if (dialogTitleBar != null) {
+            dialogTitleBar.getChildren().setAll(titleBar.getTitleBar().getChildren());
+        }
     }
 
     /**

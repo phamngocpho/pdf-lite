@@ -15,8 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javafx.application.Platform;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
@@ -98,19 +96,15 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
             return null;
         }
 
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Delete Page");
-        confirm.setHeaderText("Delete current page?");
-        confirm.setContentText("This will remove page " + (pageIndex + 1) + " from the document.");
-        confirm.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
-
-        if (themeManager != null) {
-            themeManager.applyThemeToScene(confirm.getDialogPane().getScene());
-        }
+        boolean confirmed = org.pdflite.dialog.CustomConfirmDialog.show(
+            "Delete Page",
+            "Delete current page?",
+            "This will remove page " + (pageIndex + 1) + " from the document.",
+            themeManager
+        );
 
         final PDFDocument[] result = new PDFDocument[1];
-        confirm.showAndWait().ifPresent(response -> {
-            if (response == ButtonType.OK) {
+        if (confirmed) {
                 try {
                     // 1. Save necessary information
                     File currentFile = currentDocument.getFile();
@@ -151,7 +145,7 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
                     result[0] = fileManager.openFile(currentFile);
                     if (result[0] == null) {
                         uiStateManager.showError("Error", "Could not reopen the file after deletion.");
-                        return;
+                        return null;
                     }
 
                     // 9. Calculate new current page
@@ -210,8 +204,7 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
                     uiStateManager.showError("Delete Page Error", "Could not delete the page: " + ex.getMessage());
                     result[0] = null;
                 }
-            }
-        });
+        }
 
         return result[0];
     }
@@ -232,7 +225,7 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
                                        AtomicReference<VBox> pagesContainer, Set<Integer> loadingPages,
                                        PageRenderer pageRenderer, ScrollHandler scrollHandler,
                                        ScrollPane scrollPane) {
-        if (currentDocument == null || controller == null || !controller.isInsertClicked()) {
+        if (currentDocument == null || controller == null || controller.isInsertClicked()) {
             return null;
         }
 

@@ -4,14 +4,19 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane xmlns="http://javafx.com/javafx"
-            xmlns:fx="http://javafx.com/fxml"
-            fx:controller="org.pdflite.controller.SearchDialogController"
-            minWidth="600" minHeight="500"
-            stylesheets="@styles.css">
+<VBox xmlns="http://javafx.com/javafx"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="org.pdflite.controller.SearchDialogController"
+      minWidth="600" minHeight="500"
+      stylesheets="@styles.css"
+      styleClass="search-dialog">
 
-    <!-- Top: Search controls -->
-    <top>
+    <!-- Custom Title Bar -->
+    <HBox fx:id="titleBar" styleClass="custom-title-bar"/>
+
+    <BorderPane VBox.vgrow="ALWAYS">
+        <!-- Top: Search controls -->
+        <top>
         <VBox spacing="10" styleClass="dialog-header">
             <padding>
                 <Insets top="10" right="10" bottom="10" left="10"/>
@@ -23,6 +28,9 @@
                 <TextField fx:id="searchField"
                            promptText="Enter keyword to search..."
                            HBox.hgrow="ALWAYS"/>
+                <ProgressIndicator fx:id="progressIndicator"
+                                   maxWidth="20" maxHeight="20"
+                                   visible="false" managed="false"/>
                 <Button fx:id="searchButton"
                         text="Search"
                         onAction="#handleSearch"
@@ -30,8 +38,6 @@
                 <Button fx:id="cancelButton"
                         text="Cancel"
                         onAction="#handleCancel"/>
-                <ProgressIndicator fx:id="progressIndicator"
-                                   maxWidth="20" maxHeight="20"/>
             </HBox>
 
             <!-- Search options -->
@@ -78,4 +84,5 @@
             <Button fx:id="closeButton" text="Close" onAction="#handleClose"/>
         </HBox>
     </bottom>
-</BorderPane>
+    </BorderPane>
+</VBox>

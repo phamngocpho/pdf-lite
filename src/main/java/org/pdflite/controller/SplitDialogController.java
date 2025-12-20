@@ -12,6 +12,7 @@ import javafx.stage.Stage;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.pdflite.service.PDFService;
 import org.pdflite.service.PDFSplitService;
+import org.pdflite.util.DialogTitleBar;
 import org.pdflite.util.ThumbnailLoader;
 import org.pdflite.util.ZipUtility;
 import org.slf4j.Logger;
@@ -36,6 +37,8 @@ public class SplitDialogController {
 
     private static final Logger logger = LoggerFactory.getLogger(SplitDialogController.class);
 
+    @FXML
+    private javafx.scene.layout.HBox dialogTitleBar;
     @FXML
     private Label fileNameLabel;
     @FXML
@@ -130,6 +133,13 @@ public class SplitDialogController {
      */
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+        
+        // Create and add a custom title bar
+        String title = dialogStage.getTitle() != null ? dialogStage.getTitle() : "Split PDF File";
+        DialogTitleBar titleBar = new DialogTitleBar(title, dialogStage);
+        if (dialogTitleBar != null) {
+            dialogTitleBar.getChildren().setAll(titleBar.getTitleBar().getChildren());
+        }
         
         // Ensure FlowPane layout is calculated correctly after the dialog is shown
         // This fixes the issue where FlowPane doesn't calculate the correct column count initially

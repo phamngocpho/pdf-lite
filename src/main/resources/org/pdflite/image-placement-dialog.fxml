@@ -6,68 +6,72 @@
 
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.pdflite.dialog.ImagePlacementDialogController"
-      spacing="10" prefWidth="450" prefHeight="350">
-    <padding>
-        <Insets top="15" right="15" bottom="15" left="15"/>
-    </padding>
+      styleClass="image-placement-dialog"
+      prefWidth="450" prefHeight="350">
 
-    <Label text="Insert Image" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
+    <!-- Custom Title Bar will be added programmatically -->
+    <HBox fx:id="dialogTitleBar" styleClass="custom-title-bar" prefHeight="32" minHeight="32" maxHeight="32"/>
 
-    <Separator/>
+    <!-- Content -->
+    <VBox spacing="10" VBox.vgrow="ALWAYS">
+        <padding>
+            <Insets top="15" right="15" bottom="15" left="15"/>
+        </padding>
 
-    <!-- Image File Selection -->
-    <HBox spacing="10" alignment="CENTER_LEFT">
-        <Label text="Image File:" prefWidth="100"/>
-        <TextField fx:id="imageFileField" editable="false" HBox.hgrow="ALWAYS"/>
-        <Button text="Browse..." onAction="#handleBrowse" prefWidth="80"/>
-    </HBox>
+        <!-- Image File Selection -->
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Image File:" prefWidth="100"/>
+            <TextField fx:id="imageFileField" editable="false" HBox.hgrow="ALWAYS"/>
+            <Button text="Browse" onAction="#handleBrowse" prefWidth="80"/>
+        </HBox>
 
-    <!-- Image Preview Info -->
-    <HBox spacing="10" alignment="CENTER_LEFT">
-        <Label text="Dimensions:" prefWidth="100"/>
-        <Label fx:id="dimensionsLabel" text="N/A" style="-fx-text-fill: gray;"/>
-    </HBox>
+        <!-- Image Preview Info -->
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Dimensions:" prefWidth="100"/>
+            <Label fx:id="dimensionsLabel" text="N/A" style="-fx-text-fill: gray;"/>
+        </HBox>
 
-    <Separator/>
+        <Separator/>
 
-    <!-- Page Selection -->
-    <HBox spacing="10" alignment="CENTER_LEFT">
-        <Label text="Page:" prefWidth="100"/>
-        <Spinner fx:id="pageSpinner" editable="true" prefWidth="100"/>
-        <Label fx:id="totalPagesLabel" text="/ 0"/>
-    </HBox>
+        <!-- Page Selection -->
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Page:" prefWidth="100"/>
+            <Spinner fx:id="pageSpinner" editable="true" prefWidth="100"/>
+            <Label fx:id="totalPagesLabel" text="/ 0"/>
+        </HBox>
 
-    <!-- Position -->
-    <Label text="Position (in points):" style="-fx-font-weight: bold;"/>
-    <CheckBox fx:id="topLeftOriginCheckBox" text="Use top-left origin (Y=0 at top)" selected="true"/>
-    <HBox spacing="10" alignment="CENTER_LEFT">
-        <Label text="X:" prefWidth="50"/>
-        <TextField fx:id="xField" prefWidth="100" promptText="0"/>
-        <Label text="Y:" prefWidth="50"/>
-        <TextField fx:id="yField" prefWidth="100" promptText="0"/>
-    </HBox>
+        <!-- Position -->
+        <Label text="Position (in points):" style="-fx-font-weight: bold;"/>
+        <CheckBox fx:id="topLeftOriginCheckBox" text="Use top-left origin (Y=0 at top)" selected="true"/>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="X:" prefWidth="50"/>
+            <TextField fx:id="xField" prefWidth="100" promptText="0"/>
+            <Label text="Y:" prefWidth="50"/>
+            <TextField fx:id="yField" prefWidth="100" promptText="0"/>
+        </HBox>
 
-    <!-- Size -->
-    <Label text="Size (in points):" style="-fx-font-weight: bold;"/>
-    <HBox spacing="10" alignment="CENTER_LEFT">
-        <Label text="Width:" prefWidth="50"/>
-        <TextField fx:id="widthField" prefWidth="100" promptText="100"/>
-        <Label text="Height:" prefWidth="50"/>
-        <TextField fx:id="heightField" prefWidth="100" promptText="100"/>
-    </HBox>
+        <!-- Size -->
+        <Label text="Size (in points):" style="-fx-font-weight: bold;"/>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Width:" prefWidth="50"/>
+            <TextField fx:id="widthField" prefWidth="100" promptText="100"/>
+            <Label text="Height:" prefWidth="50"/>
+            <TextField fx:id="heightField" prefWidth="100" promptText="100"/>
+        </HBox>
 
-    <CheckBox fx:id="maintainAspectRatioCheckBox" text="Maintain aspect ratio" selected="true"/>
+        <CheckBox fx:id="maintainAspectRatioCheckBox" text="Maintain aspect ratio" selected="true"/>
 
-    <Separator/>
+        <Separator/>
 
-    <!-- Stamp Option -->
-    <CheckBox fx:id="isStampCheckBox" text="Insert as rubber stamp annotation"/>
+        <!-- Stamp Option -->
+        <CheckBox fx:id="isStampCheckBox" text="Insert as rubber stamp annotation"/>
 
-    <Region VBox.vgrow="ALWAYS"/>
+        <Region VBox.vgrow="ALWAYS"/>
 
-    <!-- Buttons -->
-    <HBox spacing="10" alignment="CENTER_RIGHT">
-        <Button text="Cancel" onAction="#handleCancel" prefWidth="80"/>
-        <Button text="Insert" onAction="#handleInsert" defaultButton="true" prefWidth="80"/>
-    </HBox>
+        <!-- Buttons -->
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <Button text="Cancel" onAction="#handleCancel" prefWidth="80"/>
+            <Button text="Insert" onAction="#handleInsert" defaultButton="true" prefWidth="80"/>
+        </HBox>
+    </VBox>
 </VBox>

@@ -6,59 +6,65 @@
 
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.pdflite.controller.PrintDialogController"
-      spacing="15" style="-fx-padding: 20;" minWidth="450" minHeight="350">
+      styleClass="print-dialog"
+      minWidth="450" minHeight="350">
 
-    <Label text="Print PDF Document" styleClass="dialog-title"/>
+    <!-- Custom Title Bar -->
+    <HBox fx:id="dialogTitleBar" styleClass="custom-title-bar" prefHeight="32" minHeight="32" maxHeight="32"/>
 
-    <!-- Printer Selection -->
-    <VBox spacing="8">
-        <Label text="Printer:" styleClass="dialog-label-strong"/>
-        <ComboBox fx:id="cbPrinters" prefWidth="400" promptText="Select a printer"/>
-    </VBox>
+    <!-- Content -->
+    <VBox spacing="15" VBox.vgrow="ALWAYS" style="-fx-padding: 20;">
 
-    <!-- Page Range Selection -->
-    <VBox spacing="10">
-        <Label text="Page Range:" styleClass="dialog-label-strong"/>
+        <!-- Printer Selection -->
+        <VBox spacing="8">
+            <Label text="Printer:" styleClass="dialog-label-strong"/>
+            <ComboBox fx:id="cbPrinters" prefWidth="400" promptText="Select a printer"/>
+        </VBox>
 
-        <RadioButton fx:id="rbAllPages" text="All pages">
+        <!-- Page Range Selection -->
+        <VBox spacing="10">
+            <Label text="Page Range:" styleClass="dialog-label-strong"/>
+
+            <RadioButton fx:id="rbAllPages" text="All pages">
+                <VBox.margin>
+                    <Insets left="10"/>
+                </VBox.margin>
+            </RadioButton>
+
+            <RadioButton fx:id="rbCurrentPage" text="Current page">
+                <VBox.margin>
+                    <Insets left="10"/>
+                </VBox.margin>
+            </RadioButton>
+
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <RadioButton fx:id="rbPageRange" text="Pages:"/>
+                <TextField fx:id="tfPageRange" promptText="e.g., 1-5, 7, 9-12" prefWidth="250"/>
+                <VBox.margin>
+                    <Insets left="10"/>
+                </VBox.margin>
+            </HBox>
+
+            <Label fx:id="lblTotalPages" text="Total pages: 0"
+                   styleClass="dialog-label-muted">
+                <VBox.margin>
+                    <Insets left="10"/>
+                </VBox.margin>
+            </Label>
+        </VBox>
+
+        <!-- Buttons -->
+        <HBox spacing="10" alignment="CENTER_RIGHT">
             <VBox.margin>
-                <Insets left="10"/>
+                <Insets top="10"/>
             </VBox.margin>
-        </RadioButton>
 
-        <RadioButton fx:id="rbCurrentPage" text="Current page">
-            <VBox.margin>
-                <Insets left="10"/>
-            </VBox.margin>
-        </RadioButton>
-
-        <HBox spacing="10" alignment="CENTER_LEFT">
-            <RadioButton fx:id="rbPageRange" text="Pages:"/>
-            <TextField fx:id="tfPageRange" promptText="e.g., 1-5, 7, 9-12" prefWidth="250"/>
-            <VBox.margin>
-                <Insets left="10"/>
-            </VBox.margin>
+            <Button fx:id="btnPrint" text="Print" onAction="#handlePrint"
+                    defaultButton="true" prefWidth="80"
+                    styleClass="primary-button"/>
+            <Button fx:id="btnCancel" text="Cancel" onAction="#handleCancel"
+                    cancelButton="true" prefWidth="80"/>
         </HBox>
 
-        <Label fx:id="lblTotalPages" text="Total pages: 0"
-               styleClass="dialog-label-muted">
-            <VBox.margin>
-                <Insets left="10"/>
-            </VBox.margin>
-        </Label>
     </VBox>
-
-    <!-- Buttons -->
-    <HBox spacing="10" alignment="CENTER_RIGHT">
-        <VBox.margin>
-            <Insets top="10"/>
-        </VBox.margin>
-
-        <Button fx:id="btnPrint" text="Print" onAction="#handlePrint"
-                defaultButton="true" prefWidth="80"
-                styleClass="primary-button"/>
-        <Button fx:id="btnCancel" text="Cancel" onAction="#handleCancel"
-                cancelButton="true" prefWidth="80"/>
-    </HBox>
-
 </VBox>
