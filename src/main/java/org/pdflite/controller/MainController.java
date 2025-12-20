@@ -167,6 +167,9 @@ public class MainController {
     
     // Page Deletion Manager
     private PageDeletionManager pageDeletionManager;
+    
+    // Metadata Manager
+    private MetadataManager metadataManager;
 
     // ==================== Document State ====================
 
@@ -453,6 +456,9 @@ public class MainController {
             pageInfoManager, 
             pageRenderer
         );
+        
+        // Metadata Manager
+        metadataManager = new MetadataManager();
 
         // Set text edit callback for context menu
         setupTextEditCallback();
@@ -992,6 +998,39 @@ public class MainController {
     @FXML
     private void handleAbout() {
         dialogManager.showAboutDialog();
+    }
+
+    // ==================== Document Properties ====================
+
+    @FXML
+    private void handleDocumentProperties() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No Document", "Please open a PDF file first.");
+            return;
+        }
+
+        try {
+            // Get current metadata
+            var currentMetadata = metadataManager.getMetadata(currentDocument);
+
+            // Show metadata dialog
+            org.pdflite.dialog.MetadataDialog dialog = new org.pdflite.dialog.MetadataDialog(
+                    currentMetadata, themeManager);
+
+            if (dialog.showAndWait()) {
+                // User clicked OK, update metadata
+                var updatedMetadata = dialog.getMetadata();
+                if (metadataManager.updateMetadata(currentDocument, updatedMetadata)) {
+                    uiStateManager.updateStatus("Document properties updated");
+                    logger.info("Document metadata updated successfully");
+                } else {
+                    uiStateManager.showError("Update Failed", "Failed to update document properties.");
+                }
+            }
+        } catch (Exception e) {
+            logger.error("Error opening document properties dialog", e);
+            uiStateManager.showError("Error", "Failed to open document properties: " + e.getMessage());
+        }
     }
 
     // ==================== Merge and Split Operations ====================
