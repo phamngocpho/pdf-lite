@@ -1,0 +1,165 @@
+package org.pdflite.manager;
+
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import org.pdflite.command.DeletePageCommand;
+import org.pdflite.model.PDFDocument;
+import org.pdflite.controller.PageRenderer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Manages page deletion operations with undo/redo support.
+ * Handles user confirmation, command execution, and UI updates.
+ */
+public class PageDeletionManager {
+    private static final Logger logger = LoggerFactory.getLogger(PageDeletionManager.class);
+    
+    private final UIStateManager uiStateManager;
+    private final UndoRedoManager undoRedoManager;
+    private final RenderingManager renderingManager;
+    private final PageInfoManager pageInfoManager;
+    private final PageRenderer pageRenderer;
+    
+    /**
+     * Creates a new PageDeletionManager.
+     * 
+     * @param uiStateManager the UI state manager
+     * @param undoRedoManager the undo/redo manager
+     * @param renderingManager the rendering manager
+     * @param pageInfoManager the page info manager
+     * @param pageRenderer the page renderer
+     */
+    public PageDeletionManager(UIStateManager uiStateManager, 
+                              UndoRedoManager undoRedoManager,
+                              RenderingManager renderingManager,
+                              PageInfoManager pageInfoManager,
+                              PageRenderer pageRenderer) {
+        this.uiStateManager = uiStateManager;
+        this.undoRedoManager = undoRedoManager;
+        this.renderingManager = renderingManager;
+        this.pageInfoManager = pageInfoManager;
+        this.pageRenderer = pageRenderer;
+        
+        logger.info("PageDeletionManager initialized");
+    }
+    
+    /**
+     * Handles the page deletion operation.
+     * Shows confirmation dialog, creates command, and executes it.
+     * 
+     * @param currentDocument the current PDF document
+     */
+    public void handleDeletePage(PDFDocument currentDocument) {
+        // Validate document
+        if (currentDocument == null) {
+            uiStateManager.showError("No Document", "Please open a PDF document first.");
+            return;
+        }
+        
+        // Check if we can delete
+        if (currentDocument.getTotalPages() <= 1) {
+            uiStateManager.showError("Cannot Delete", "Cannot delete the last page of the document.");
+            return;
+        }
+        
+        int currentPage = currentDocument.getCurrentPage();
+        
+        // Show confirmation dialog
+        if (!showConfirmationDialog(currentPage)) {
+            return;
+        }
+        
+        // Execute deletion
+        executeDeletePage(currentDocument, currentPage);
+    }
+    
+    /**
+     * Shows a confirmation dialog for page deletion.
+     * 
+     * @param pageNumber the page number to delete (0-based)
+     * @return true if user confirmed, false otherwise
+     */
+    private boolean showConfirmationDialog(int pageNumber) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Delete Page");
+        alert.setHeaderText("Delete Page " + (pageNumber + 1) + "?");
+        alert.setContentText("This action can be undone using Ctrl+Z.");
+        
+        return alert.showAndWait()
+                   .filter(response -> response == ButtonType.OK)
+                   .isPresent();
+    }
+    
+    /**
+     * Executes the page deletion command.
+     * 
+     * @param currentDocument the current PDF document
+     * @param pageNumber the page number to delete (0-based)
+     */
+    private void executeDeletePage(PDFDocument currentDocument, int pageNumber) {
+        try {
+            // Create delete page command with refresh callback
+            DeletePageCommand cmd = new DeletePageCommand(
+                currentDocument, 
+                pageNumber,
+                () -> refreshAfterDeletion(currentDocument)
+            );
+            
+            // Execute command through undo/redo manager
+            if (undoRedoManager != null) {
+                undoRedoManager.getCommandManager().executeCommand(cmd);
+                uiStateManager.updateStatus("Deleted page " + (pageNumber + 1));
+                logger.info("Deleted page {} from document", pageNumber + 1);
+            }
+            
+            // Adjust current page if needed
+            adjustCurrentPageAfterDeletion(currentDocument);
+            
+        } catch (Exception e) {
+            logger.error("Error deleting page {}", pageNumber + 1, e);
+            uiStateManager.showError("Delete Error", "Failed to delete page: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Refreshes the UI after page deletion.
+     * 
+     * @param currentDocument the current PDF document
+     */
+    private void refreshAfterDeletion(PDFDocument currentDocument) {
+        Platform.runLater(() -> {
+            // Clear cache and re-render
+            currentDocument.clearCache();
+            
+            if (pageRenderer != null) {
+                pageRenderer.clearCache();
+            }
+            
+            if (renderingManager != null) {
+                renderingManager.renderAllPages();
+            }
+            
+            // Update page info
+            if (pageInfoManager != null) {
+                pageInfoManager.updatePageInfo(currentDocument);
+            }
+            
+            logger.debug("UI refreshed after page deletion");
+        });
+    }
+    
+    /**
+     * Adjusts the current page index after deletion if necessary.
+     * 
+     * @param currentDocument the current PDF document
+     */
+    private void adjustCurrentPageAfterDeletion(PDFDocument currentDocument) {
+        if (currentDocument.getCurrentPage() >= currentDocument.getTotalPages()) {
+            int newPage = Math.max(0, currentDocument.getTotalPages() - 1);
+            currentDocument.setCurrentPage(newPage);
+            logger.debug("Adjusted current page to {} after deletion", newPage);
+        }
+    }
+}

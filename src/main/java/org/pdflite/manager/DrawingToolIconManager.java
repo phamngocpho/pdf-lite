@@ -19,6 +19,7 @@ public class DrawingToolIconManager {
     private static final String CIRCLE_PATH = "M480.17-132q-72.17 0-135.73-27.39-63.56-27.39-110.57-74.35-47.02-46.96-74.44-110.43Q132-407.65 132-479.83q0-72.17 27.39-135.73 27.39-63.56 74.35-110.57 46.96-47.02 110.43-74.44Q407.65-828 479.83-828q72.17 0 135.73 27.39 63.56 27.39 110.57 74.35 47.02 46.96 74.44 110.43Q828-552.35 828-480.17q0 72.17-27.39 135.73-27.39 63.56-74.35 110.57-46.96 47.02-110.43 74.44Q552.35-132 480.17-132Zm-.17-28q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z";
     private static final String ARROW_PATH = "m502-313 84-153H106v-28h480l-84-153 263 167-263 167Z";
     private static final String UNDO_PATH = "M301-252v-28h292q62 0 105-43.5T741-429q0-62-43-105t-105-43H266l123 123-20 20-157-157 157-157 20 20-123 123h327q73 0 124.5 51.5T769-429q0 73-51.5 125T593-252H301Z";
+    private static final String REDO_PATH = "M367-252q-73 0-124.5-52T191-429q0-73 51.5-124.5T367-605h327L571-728l20-20 157 157-157 157-20-20 123-123H367q-62 0-105 43t-43 105q0 62 43.5 105.5T367-280h292v28H367Z";
 
     private static final int ICON_SIZE = 20;
 
@@ -63,6 +64,23 @@ public class DrawingToolIconManager {
             logger.debug("Undo icon setup successfully");
         } catch (Exception e) {
             logger.error("Failed to create undo icon", e);
+        }
+    }
+    
+    /**
+     * Sets up redo button icon.
+     *
+     * @param redoButton the redo button
+     */
+    public void setupRedoIcon(javafx.scene.control.Button redoButton) {
+        try {
+            if (redoButton != null) {
+                setRegularButtonIcon(redoButton, REDO_PATH);
+            }
+
+            logger.debug("Redo icon setup successfully");
+        } catch (Exception e) {
+            logger.error("Failed to create redo icon", e);
         }
     }
 

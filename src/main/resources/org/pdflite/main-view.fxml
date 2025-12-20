@@ -202,6 +202,10 @@
                     <Button fx:id="undoButton" onAction="#handleUndo" prefWidth="35" prefHeight="35">
                         <tooltip><Tooltip text="Undo (Ctrl+Z)"/></tooltip>
                     </Button>
+                    
+                    <Button fx:id="redoButton" onAction="#handleRedo" prefWidth="35" prefHeight="35">
+                        <tooltip><Tooltip text="Redo (Ctrl+Y)"/></tooltip>
+                    </Button>
                 </HBox>
 
                 <Region prefWidth="20"/>

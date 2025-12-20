@@ -39,6 +39,8 @@ public class PageRenderer {
     private double currentZoom;
     private final ContextMenuHandler contextMenuHandler;
     private boolean isTextSelectionActive = true; // Default to true (like browsers)
+    private org.pdflite.command.CommandManager commandManager;
+    private java.util.function.Consumer<Integer> refreshAnnotationsCallback;
 
     /**
      * Creates a new PageRenderer with the specified service and executor.
@@ -117,6 +119,25 @@ public class PageRenderer {
      * Sets whether highlight mode is active.
      */
     public void setHighlightModeActive() {
+    }
+    
+    /**
+     * Sets the command manager for undo/redo support.
+     * 
+     * @param commandManager the command manager
+     */
+    public void setCommandManager(org.pdflite.command.CommandManager commandManager) {
+        this.commandManager = commandManager;
+        logger.debug("CommandManager set in PageRenderer");
+    }
+    
+    /**
+     * Sets the callback for refreshing annotations on a page.
+     * 
+     * @param callback consumer that takes page index and refreshes annotations
+     */
+    public void setRefreshAnnotationsCallback(java.util.function.Consumer<Integer> callback) {
+        this.refreshAnnotationsCallback = callback;
     }
 
     /**
@@ -278,6 +299,11 @@ public class PageRenderer {
 
         annotationLayer.setScale(currentZoom);
         annotationLayer.setPageIndex(pageIndex);
+        
+        // Set command manager for undo/redo support
+        if (commandManager != null) {
+            annotationLayer.setCommandManager(commandManager);
+        }
 
         if (currentDocument != null) {
             annotationLayer.setAnnotations(currentDocument.getAnnotationsForPage(pageIndex));
@@ -285,7 +311,18 @@ public class PageRenderer {
 
         annotationLayer.setOnAnnotationAdded(newAnn -> {
             if (currentDocument != null) {
-                currentDocument.addAnnotation(newAnn);
+                // Use command pattern for undo/redo support
+                if (commandManager != null) {
+                    org.pdflite.command.AddAnnotationCommand cmd = 
+                        new org.pdflite.command.AddAnnotationCommand(
+                            currentDocument, 
+                            newAnn, 
+                            refreshAnnotationsCallback); // Use callback for refresh
+                    commandManager.executeCommand(cmd);
+                } else {
+                    // Fallback: add directly if no command manager
+                    currentDocument.addAnnotation(newAnn);
+                }
                 logger.info("Vẽ xong hình trên trang {}", pageIndex);
             }
         });
