@@ -22,6 +22,7 @@ public class ExportManager {
     private final BorderPane rootPane;
     private final UIStateManager uiStateManager;
     private final PDFExportService exportService;
+    private ThemeManager themeManager;
 
     /**
      * Creates a new ExportManager.
@@ -33,6 +34,15 @@ public class ExportManager {
         this.rootPane = rootPane;
         this.uiStateManager = uiStateManager;
         this.exportService = new PDFExportService();
+    }
+
+    /**
+     * Sets the theme manager for dialog theming.
+     *
+     * @param themeManager the theme manager
+     */
+    public void setThemeManager(ThemeManager themeManager) {
+        this.themeManager = themeManager;
     }
 
     /**
@@ -50,11 +60,15 @@ public class ExportManager {
             // Load the FXML file
             javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader();
             loader.setLocation(getClass().getResource("/org/pdflite/export-dialog.fxml"));
-            javafx.scene.layout.VBox dialogRoot = loader.load();
+            javafx.scene.layout.VBox dialogContent = loader.load();
 
             // Get the controller and configure it
             org.pdflite.dialog.ExportDialogController controller = loader.getController();
             controller.setTotalPages(currentDocument.getTotalPages());
+
+            // Create main container with title bar
+            javafx.scene.layout.VBox mainContainer = new javafx.scene.layout.VBox();
+            mainContainer.getStyleClass().add("custom-confirm-dialog");
 
             // Create and show the dialog
             Stage dialogStage = new Stage();
@@ -63,9 +77,21 @@ public class ExportManager {
             dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
             dialogStage.initOwner(rootPane.getScene().getWindow());
             
-            javafx.scene.Scene scene = new javafx.scene.Scene(dialogRoot);
+            // Add title bar
+            org.pdflite.util.DialogTitleBar titleBar = new org.pdflite.util.DialogTitleBar("Export PDF", dialogStage);
+            mainContainer.getChildren().add(titleBar.getTitleBar());
+            
+            // Add dialog content
+            mainContainer.getChildren().add(dialogContent);
+            
+            javafx.scene.Scene scene = new javafx.scene.Scene(mainContainer);
             scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
             dialogStage.setScene(scene);
+            
+            // Apply theme
+            if (themeManager != null) {
+                themeManager.applyThemeToScene(scene);
+            }
             
             controller.setDialogStage(dialogStage);
 
