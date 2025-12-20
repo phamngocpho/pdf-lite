@@ -2,6 +2,7 @@ package org.pdflite.controller;
 
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
+import javafx.scene.paint.Color;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDFont;
@@ -58,6 +59,9 @@ public class ContextMenuHandler {
     
     // Callback for text editing
     private TextEditCallback textEditCallback;
+    
+    // Callback for highlight selection
+    private HighlightCallback highlightCallback;
 
     public ContextMenuHandler() {
         logger.info("ContextMenuHandler initialized!");
@@ -72,6 +76,13 @@ public class ContextMenuHandler {
     }
     
     /**
+     * Sets the callback for highlight operations.
+     */
+    public void setHighlightCallback(HighlightCallback callback) {
+        this.highlightCallback = callback;
+    }
+    
+    /**
      * Callback interface for text editing operations.
      */
     public interface TextEditCallback {
@@ -79,6 +90,13 @@ public class ContextMenuHandler {
                        float coverX, float coverY, float coverWidth, float coverHeight,
                        float textX, float textY, 
                        String newText, float fontSize, PDFont font);
+    }
+    
+    /**
+     * Callback interface for highlight operations.
+     */
+    public interface HighlightCallback {
+        void onHighlight(int pageIndex, List<Rectangle2D> highlightRegions, Color highlightColor);
     }
 
     /**
@@ -257,6 +275,41 @@ public class ContextMenuHandler {
         } else {
             logger.warn("No text to copy");
         }
+    }
+    
+    /**
+     * Handles highlight selection operation.
+     * Creates highlight annotations for the selected text regions.
+     */
+    public void handleHighlightSelection() {
+        if (currentSelection == null || !currentSelection.hasText()) {
+            logger.warn("No text to highlight");
+            return;
+        }
+        
+        if (highlightCallback == null) {
+            logger.warn("Highlight callback not set");
+            return;
+        }
+        
+        List<Rectangle2D> highlightRegions = currentSelection.getHighlightRegions();
+        if (highlightRegions == null || highlightRegions.isEmpty()) {
+            logger.warn("No highlight regions available");
+            return;
+        }
+        
+        // Get the highlight color from MainController via callback
+        // For now, use a default color (will be set by callback)
+        Color highlightColor = Color.YELLOW;
+        
+        logger.info("Creating {} highlight annotations for page {}", 
+                highlightRegions.size(), currentSelection.getPageIndex());
+        
+        // Call the callback to create highlights
+        highlightCallback.onHighlight(
+                currentSelection.getPageIndex(), 
+                highlightRegions, 
+                highlightColor);
     }
 
     /**

@@ -288,9 +288,10 @@ public class AnnotationLayer extends Canvas {
         double height = Math.abs(y2 - y1);
 
         if (width > 5 && height > 5) {
-            HighlightAnnotation annotation = new HighlightAnnotation(0, x, y, width, height, currentColor);
+            HighlightAnnotation annotation = new HighlightAnnotation(pageIndex, x, y, width, height, currentColor);
             annotations.add(annotation);
-            logger.debug("Added highlight annotation at ({}, {}) with size {}x{}", x, y, width, height);
+            logger.debug("Added highlight annotation at ({}, {}) with size {}x{} on page {}", 
+                    x, y, width, height, pageIndex);
         }
     }
 

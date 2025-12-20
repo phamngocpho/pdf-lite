@@ -59,6 +59,22 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
 
         uiStateManager.updateStatus("Drawing style updated");
     }
+    
+    /**
+     * Updates highlight color for all pages.
+     *
+     * @param color the highlight color
+     */
+    public void updateHighlightColorForAllPages(Color color) {
+        if (pagesContainer == null) return;
+
+        processAllAnnotationLayers(layer -> {
+            layer.setHighlightColor(color);
+            layer.redraw();
+        });
+
+        uiStateManager.updateStatus("Highlight color updated");
+    }
 
     /**
      * Makes a toggle button deselectable by clicking it again when selected.
