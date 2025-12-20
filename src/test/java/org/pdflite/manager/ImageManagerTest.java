@@ -50,7 +50,7 @@ public class ImageManagerTest {
         File imageFile = createTestImage(width, height, "test-image-" + seed + ".png");
 
         try {
-            UIStateManager uiStateManager = new UIStateManager(null, null, null, null, null);
+            UIStateManager uiStateManager = new UIStateManager(null, null, null, null, null, null);
             ImageManager imageManager = new ImageManager(uiStateManager);
 
             // Property: Image file should be valid
@@ -110,7 +110,7 @@ public class ImageManagerTest {
 
             try (document) {
                 document.addPage(new PDPage(PDRectangle.A4));
-                UIStateManager uiStateManager = new UIStateManager(null, null, null, null, null);
+                UIStateManager uiStateManager = new UIStateManager(null, null, null, null, null, null);
                 ImageManager imageManager = new ImageManager(uiStateManager);
 
                 // Property: Should be able to place image without errors
@@ -157,7 +157,7 @@ public class ImageManagerTest {
             document.addPage(page);
 
             try {
-                UIStateManager uiStateManager = new UIStateManager(null, null, null, null, null);
+                UIStateManager uiStateManager = new UIStateManager(null, null, null, null, null, null);
                 ImageManager imageManager = new ImageManager(uiStateManager);
 
                 int annotationsBefore = page.getAnnotations().size();
@@ -194,7 +194,7 @@ public class ImageManagerTest {
         double maxWidth = 200;
         double maxHeight = 200;
 
-        UIStateManager uiStateManager = new UIStateManager(null, null, null, null, null);
+        UIStateManager uiStateManager = new UIStateManager(null, null, null, null, null, null);
         ImageManager imageManager = new ImageManager(uiStateManager);
 
         // Calculate scaled dimensions
@@ -230,7 +230,7 @@ public class ImageManagerTest {
      */
     @Test
     public void testImageFileValidation() throws IOException {
-        UIStateManager uiStateManager = new UIStateManager(null, null, null, null, null);
+        UIStateManager uiStateManager = new UIStateManager(null, null, null, null, null, null);
         ImageManager imageManager = new ImageManager(uiStateManager);
 
         // Test with valid image
@@ -257,7 +257,7 @@ public class ImageManagerTest {
      */
     @Test
     public void testGetImageDimensions() throws IOException {
-        UIStateManager uiStateManager = new UIStateManager(null, null, null, null, null);
+        UIStateManager uiStateManager = new UIStateManager(null, null, null, null, null, null);
         ImageManager imageManager = new ImageManager(uiStateManager);
 
         File imageFile = createTestImage(200, 150, "dimensions-test.png");
@@ -276,7 +276,7 @@ public class ImageManagerTest {
      */
     @Test
     public void testGetSupportedFormats() {
-        UIStateManager uiStateManager = new UIStateManager(null, null, null, null, null);
+        UIStateManager uiStateManager = new UIStateManager(null, null, null, null, null, null);
         ImageManager imageManager = new ImageManager(uiStateManager);
 
         var formats = imageManager.getSupportedFormats();
@@ -325,7 +325,7 @@ public class ImageManagerTest {
      */
     @Test
     public void testScaledDimensionsEdgeCases() {
-        UIStateManager uiStateManager = new UIStateManager(null, null, null, null, null);
+        UIStateManager uiStateManager = new UIStateManager(null, null, null, null, null, null);
         ImageManager imageManager = new ImageManager(uiStateManager);
 
         // Test square image

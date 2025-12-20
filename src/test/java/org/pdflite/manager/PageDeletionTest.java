@@ -43,7 +43,7 @@ public class PageDeletionTest {
     @Before
     public void setUp() {
         pdfService = new PDFService();
-        fileManager = new FileManager(pdfService, null);
+        fileManager = new FileManager(pdfService, null, null);
     }
 
     /**
