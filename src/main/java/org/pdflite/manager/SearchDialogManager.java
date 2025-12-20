@@ -78,8 +78,10 @@ public class SearchDialogManager {
 
                 searchDialogStage = new Stage();
                 searchDialogStage.setTitle("Search in PDF");
+                searchDialogStage.initStyle(javafx.stage.StageStyle.TRANSPARENT);
 
                 Scene scene = new Scene(root);
+                scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
                 searchDialogStage.setScene(scene);
 
                 if (themeManager != null) {
@@ -87,6 +89,8 @@ public class SearchDialogManager {
                 }
 
                 searchDialogStage.initOwner(rootPane.getScene().getWindow());
+                
+                searchDialogController.setDialogStage(searchDialogStage);
 
                 searchDialogStage.setOnCloseRequest(e -> searchDialogController.cleanup());
             } else {

@@ -10,6 +10,7 @@ import javafx.scene.input.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.pdflite.service.PDFMergeService;
+import org.pdflite.util.DialogTitleBar;
 import org.pdflite.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,8 @@ public class MergeDialogController {
     private static final Logger logger = LoggerFactory.getLogger(MergeDialogController.class);
     private static final DataFormat SERIALIZED_MIME_TYPE = new DataFormat("application/x-java-serialized-object");
 
+    @FXML
+    private javafx.scene.layout.HBox dialogTitleBar;
     @FXML
     private TableView<PDFFileItem> filesTable;
     @FXML
@@ -102,6 +105,14 @@ public class MergeDialogController {
      */
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+        
+        // Create and add a custom title bar
+        String title = dialogStage.getTitle() != null ? dialogStage.getTitle() : "Merge PDF Files";
+        DialogTitleBar titleBar = new DialogTitleBar(title, dialogStage);
+        // Copy children from the title bar to dialogTitleBar HBox
+        if (dialogTitleBar != null) {
+            dialogTitleBar.getChildren().setAll(titleBar.getTitleBar().getChildren());
+        }
     }
 
     /**

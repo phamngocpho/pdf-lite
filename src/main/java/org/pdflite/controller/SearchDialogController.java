@@ -4,9 +4,11 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
+import org.pdflite.util.DialogTitleBar;
 import org.pdflite.util.SearchHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +23,8 @@ public class SearchDialogController {
 
     private static final Logger logger = LoggerFactory.getLogger(SearchDialogController.class);
 
+    @FXML
+    private HBox titleBar;
     @FXML
     private TextField searchField;
     @FXML
@@ -44,6 +48,7 @@ public class SearchDialogController {
     @FXML
     private ListView<SearchResult> resultsListView;
 
+    private DialogTitleBar dialogTitleBar;
     private PDFDocument pdfDocument;
     private SearchHandler searchHandler;
     private MainController mainController;
@@ -70,6 +75,7 @@ public class SearchDialogController {
         searchField.setOnAction(e -> handleSearch());
 
         progressIndicator.setVisible(false);
+        progressIndicator.setManaged(false);
         cancelButton.setDisable(true);
 
         logger.debug("SearchDialogController initialized");
@@ -138,6 +144,7 @@ public class SearchDialogController {
                 searchButton.setDisable(true);
                 cancelButton.setDisable(false);
                 progressIndicator.setVisible(true);
+                progressIndicator.setManaged(true);
                 prevResultButton.setDisable(true);
                 nextResultButton.setDisable(true);
             }
@@ -147,6 +154,7 @@ public class SearchDialogController {
                 searchButton.setDisable(false);
                 cancelButton.setDisable(true);
                 progressIndicator.setVisible(false);
+                progressIndicator.setManaged(false);
             }
 
             @Override
@@ -227,6 +235,16 @@ public class SearchDialogController {
     public void cleanup() {
         searchHandler.cleanup();
         logger.info("SearchDialogController cleanup completed");
+    }
+
+    /**
+     * Sets the dialog stage and initializes the custom title bar.
+     *
+     * @param stage the dialog stage
+     */
+    public void setDialogStage(Stage stage) {
+        dialogTitleBar = new DialogTitleBar("Search in PDF", stage);
+        titleBar.getChildren().setAll(dialogTitleBar.getTitleBar().getChildren());
     }
 
     private static class SearchResultCell extends ListCell<SearchResult> {

@@ -7,6 +7,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.pdflite.model.WatermarkConfig;
+import org.pdflite.util.DialogTitleBar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +23,9 @@ import java.io.File;
  */
 public class WatermarkDialogController {
     private static final Logger logger = LoggerFactory.getLogger(WatermarkDialogController.class);
+
+    @FXML
+    private HBox dialogTitleBar;
 
     @FXML
     private ToggleGroup typeToggleGroup;
@@ -158,6 +162,12 @@ public class WatermarkDialogController {
 
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+        
+        // Create and add custom title bar
+        String title = dialogStage.getTitle() != null ? dialogStage.getTitle() : "Add Watermark";
+        DialogTitleBar titleBar = new org.pdflite.util.DialogTitleBar(title, dialogStage);
+        // Copy children from title bar to dialogTitleBar HBox
+        dialogTitleBar.getChildren().setAll(titleBar.getTitleBar().getChildren());
     }
 
     public boolean isApplyClicked() {

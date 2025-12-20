@@ -59,9 +59,14 @@ public class ExportManager {
             // Create and show the dialog
             Stage dialogStage = new Stage();
             dialogStage.setTitle("Export PDF");
+            dialogStage.initStyle(javafx.stage.StageStyle.TRANSPARENT);
             dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
             dialogStage.initOwner(rootPane.getScene().getWindow());
-            dialogStage.setScene(new javafx.scene.Scene(dialogRoot));
+            
+            javafx.scene.Scene scene = new javafx.scene.Scene(dialogRoot);
+            scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+            dialogStage.setScene(scene);
+            
             controller.setDialogStage(dialogStage);
 
             dialogStage.showAndWait();

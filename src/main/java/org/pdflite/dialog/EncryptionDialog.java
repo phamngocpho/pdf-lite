@@ -1,15 +1,23 @@
 package org.pdflite.dialog;
 
 import javafx.geometry.Insets;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
+import org.pdflite.manager.ThemeManager;
+import org.pdflite.util.DialogTitleBar;
+
+import java.util.Optional;
 
 /**
  * Dialog for encrypting PDF files with password protection.
  */
-public class EncryptionDialog extends Dialog<EncryptionDialog.EncryptionResult> {
+public class EncryptionDialog {
 
     private final PasswordField ownerPasswordField;
     private final PasswordField ownerPasswordConfirmField;
@@ -19,18 +27,41 @@ public class EncryptionDialog extends Dialog<EncryptionDialog.EncryptionResult> 
     private final CheckBox allowModifyCheck;
     private final CheckBox allowCopyCheck;
     private final CheckBox allowAnnotationsCheck;
+    
+    private Stage dialogStage;
+    private EncryptionResult result;
 
     public EncryptionDialog() {
-        setTitle("Mã hóa PDF");
-        setHeaderText("Đặt mật khẩu bảo vệ cho file PDF");
+        ownerPasswordField = new PasswordField();
+        ownerPasswordConfirmField = new PasswordField();
+        userPasswordField = new PasswordField();
+        userPasswordConfirmField = new PasswordField();
+        allowPrintingCheck = new CheckBox("Cho phép in (Allow Printing)");
+        allowModifyCheck = new CheckBox("Cho phép chỉnh sửa nội dung (Allow Modify)");
+        allowCopyCheck = new CheckBox("Cho phép sao chép văn bản (Allow Copy)");
+        allowAnnotationsCheck = new CheckBox("Cho phép thêm chú thích (Allow Annotations)");
+    }
 
-        // Set the button types
-        ButtonType encryptButtonType = new ButtonType("Mã hóa", ButtonBar.ButtonData.OK_DONE);
-        getDialogPane().getButtonTypes().addAll(encryptButtonType, ButtonType.CANCEL);
-
-        // Create the form
+    public Optional<EncryptionResult> showAndWait(ThemeManager themeManager) {
+        dialogStage = new Stage();
+        dialogStage.initStyle(StageStyle.TRANSPARENT);
+        dialogStage.initModality(Modality.APPLICATION_MODAL);
+        dialogStage.setTitle("Mã hóa PDF");
+        
+        // Create main container
+        VBox mainContainer = new VBox();
+        mainContainer.getStyleClass().add("encryption-dialog");
+        
+        // Create custom title bar
+        DialogTitleBar titleBar = new DialogTitleBar("Mã hóa PDF", dialogStage);
+        mainContainer.getChildren().add(titleBar.getTitleBar());
+        
+        // Create content
         VBox vbox = new VBox(15);
         vbox.setPadding(new Insets(20));
+
+        Label headerLabel = new Label("Đặt mật khẩu bảo vệ cho file PDF");
+        headerLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: gray;");
 
         // Owner password section
         Label ownerLabel = new Label("Mật khẩu chủ sở hữu (Owner Password):");
@@ -43,11 +74,9 @@ public class EncryptionDialog extends Dialog<EncryptionDialog.EncryptionResult> 
         ownerGrid.setVgap(10);
         ownerGrid.setPadding(new Insets(5, 0, 0, 20));
 
-        ownerPasswordField = new PasswordField();
         ownerPasswordField.setPromptText("Nhập mật khẩu chủ");
         ownerPasswordField.setPrefWidth(250);
 
-        ownerPasswordConfirmField = new PasswordField();
         ownerPasswordConfirmField.setPromptText("Xác nhận mật khẩu");
         ownerPasswordConfirmField.setPrefWidth(250);
 
@@ -67,11 +96,9 @@ public class EncryptionDialog extends Dialog<EncryptionDialog.EncryptionResult> 
         userGrid.setVgap(10);
         userGrid.setPadding(new Insets(5, 0, 0, 20));
 
-        userPasswordField = new PasswordField();
         userPasswordField.setPromptText("Nhập mật khẩu người dùng (để trống nếu không cần)");
         userPasswordField.setPrefWidth(250);
 
-        userPasswordConfirmField = new PasswordField();
         userPasswordConfirmField.setPromptText("Xác nhận mật khẩu");
         userPasswordConfirmField.setPrefWidth(250);
 
@@ -87,16 +114,9 @@ public class EncryptionDialog extends Dialog<EncryptionDialog.EncryptionResult> 
         VBox permBox = new VBox(8);
         permBox.setPadding(new Insets(5, 0, 0, 20));
 
-        allowPrintingCheck = new CheckBox("Cho phép in (Allow Printing)");
         allowPrintingCheck.setSelected(true);
-
-        allowModifyCheck = new CheckBox("Cho phép chỉnh sửa nội dung (Allow Modify)");
         allowModifyCheck.setSelected(false);
-
-        allowCopyCheck = new CheckBox("Cho phép sao chép văn bản (Allow Copy)");
         allowCopyCheck.setSelected(false);
-
-        allowAnnotationsCheck = new CheckBox("Cho phép thêm chú thích (Allow Annotations)");
         allowAnnotationsCheck.setSelected(false);
 
         permBox.getChildren().addAll(
@@ -106,40 +126,22 @@ public class EncryptionDialog extends Dialog<EncryptionDialog.EncryptionResult> 
                 allowAnnotationsCheck
         );
 
-        // Add all sections to the main vbox
-        vbox.getChildren().addAll(
-                ownerLabel, ownerDesc, ownerGrid,
-                new Separator(),
-                userLabel, userDesc, userGrid,
-                new Separator(),
-                permLabel, permBox
-        );
-
-        getDialogPane().setContent(vbox);
-        // Set minimum size for Ubuntu/Linux compatibility
-        getDialogPane().setMinWidth(500);
-        getDialogPane().setMinHeight(550);
-
-        // Validation
-        javafx.scene.Node encryptButton = getDialogPane().lookupButton(encryptButtonType);
+        // Buttons
+        ButtonBar buttonBar = new ButtonBar();
+        buttonBar.setPadding(new Insets(10, 0, 0, 0));
+        
+        Button cancelButton = new Button("Hủy");
+        cancelButton.setPrefWidth(80);
+        cancelButton.setOnAction(e -> {
+            result = null;
+            dialogStage.close();
+        });
+        
+        Button encryptButton = new Button("Mã hóa");
+        encryptButton.setPrefWidth(80);
         encryptButton.setDisable(true);
-
-        // Enable encrypt button only if owner password is valid
-        ownerPasswordField.textProperty().addListener((obs, oldVal, newVal) -> validateForm(encryptButton));
-        ownerPasswordConfirmField.textProperty().addListener((obs, oldVal, newVal) -> validateForm(encryptButton));
-        userPasswordField.textProperty().addListener((obs, oldVal, newVal) -> validateForm(encryptButton));
-        userPasswordConfirmField.textProperty().addListener((obs, oldVal, newVal) -> validateForm(encryptButton));
-
-        // Request focus on the owner password field
-        javafx.application.Platform.runLater(ownerPasswordField::requestFocus);
-
-        // Convert result
-        setResultConverter(dialogButton -> {
-            if (dialogButton == encryptButtonType) {
-                if (!validatePasswords()) {
-                    return null;
-                }
-
+        encryptButton.setOnAction(e -> {
+            if (validatePasswords()) {
                 AccessPermission permissions = new AccessPermission();
                 permissions.setCanPrint(allowPrintingCheck.isSelected());
                 permissions.setCanModify(allowModifyCheck.isSelected());
@@ -147,17 +149,57 @@ public class EncryptionDialog extends Dialog<EncryptionDialog.EncryptionResult> 
                 permissions.setCanModifyAnnotations(allowAnnotationsCheck.isSelected());
 
                 String userPwd = userPasswordField.getText().trim();
-                return new EncryptionResult(
+                result = new EncryptionResult(
                         ownerPasswordField.getText(),
                         userPwd.isEmpty() ? ownerPasswordField.getText() : userPwd,
                         permissions
                 );
+                dialogStage.close();
             }
-            return null;
         });
+        
+        ButtonBar.setButtonData(cancelButton, ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonBar.setButtonData(encryptButton, ButtonBar.ButtonData.OK_DONE);
+        buttonBar.getButtons().addAll(cancelButton, encryptButton);
+
+        // Validation
+        ownerPasswordField.textProperty().addListener((obs, oldVal, newVal) -> validateForm(encryptButton));
+        ownerPasswordConfirmField.textProperty().addListener((obs, oldVal, newVal) -> validateForm(encryptButton));
+        userPasswordField.textProperty().addListener((obs, oldVal, newVal) -> validateForm(encryptButton));
+        userPasswordConfirmField.textProperty().addListener((obs, oldVal, newVal) -> validateForm(encryptButton));
+
+        // Add all sections to the main vbox
+        vbox.getChildren().addAll(
+                headerLabel,
+                ownerLabel, ownerDesc, ownerGrid,
+                new Separator(),
+                userLabel, userDesc, userGrid,
+                new Separator(),
+                permLabel, permBox,
+                buttonBar
+        );
+        
+        mainContainer.getChildren().add(vbox);
+
+        Scene scene = new Scene(mainContainer);
+        scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
+        dialogStage.setScene(scene);
+        dialogStage.setMinWidth(500);
+        dialogStage.setMinHeight(550);
+        
+        // Apply theme if available
+        if (themeManager != null) {
+            themeManager.applyThemeToScene(scene);
+        }
+
+        // Request focus on the owner password field
+        javafx.application.Platform.runLater(ownerPasswordField::requestFocus);
+
+        dialogStage.showAndWait();
+        return Optional.ofNullable(result);
     }
 
-    private void validateForm(javafx.scene.Node encryptButton) {
+    private void validateForm(Button encryptButton) {
         String ownerPwd = ownerPasswordField.getText();
         String ownerConfirm = ownerPasswordConfirmField.getText();
         String userPwd = userPasswordField.getText();
@@ -200,6 +242,10 @@ public class EncryptionDialog extends Dialog<EncryptionDialog.EncryptionResult> 
         alert.setContentText(message);
         alert.showAndWait();
     }
+    
+    public Stage getDialogStage() {
+        return dialogStage;
+    }
 
     /**
      * Result class containing encryption parameters.
@@ -207,4 +253,3 @@ public class EncryptionDialog extends Dialog<EncryptionDialog.EncryptionResult> 
     public record EncryptionResult(String ownerPassword, String userPassword, AccessPermission permissions) {
     }
 }
-

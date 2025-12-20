@@ -2,7 +2,9 @@ package org.pdflite.dialog;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.TextArea;
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
+import org.pdflite.util.DialogTitleBar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +22,9 @@ import org.slf4j.LoggerFactory;
  */
 public class TextEditDialogController {
     private static final Logger logger = LoggerFactory.getLogger(TextEditDialogController.class);
+
+    @FXML
+    private HBox dialogTitleBar;
 
     @FXML
     private TextArea originalTextArea;
@@ -46,6 +51,11 @@ public class TextEditDialogController {
      */
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+        
+        // Create and add custom title bar
+        DialogTitleBar titleBar = new DialogTitleBar("Edit Text", dialogStage);
+        // Copy children from title bar to dialogTitleBar HBox
+        dialogTitleBar.getChildren().setAll(titleBar.getTitleBar().getChildren());
     }
 
     /**

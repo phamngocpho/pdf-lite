@@ -385,6 +385,54 @@
     -fx-background-radius: 12;
 }
 
+/* Dialog with custom title bar */
+.text-edit-dialog,
+.image-placement-dialog,
+.watermark-dialog,
+.merge-dialog,
+.split-dialog,
+.extract-dialog,
+.print-dialog,
+.insert-dialog,
+.export-dialog,
+.search-dialog,
+.encryption-dialog,
+.custom-confirm-dialog,
+.custom-info-dialog {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+}
+
+/* Custom title bar for dialogs */
+.text-edit-dialog > .custom-title-bar,
+.image-placement-dialog > .custom-title-bar,
+.watermark-dialog > .custom-title-bar,
+.merge-dialog > .custom-title-bar,
+.split-dialog > .custom-title-bar,
+.extract-dialog > .custom-title-bar,
+.print-dialog > .custom-title-bar,
+.insert-dialog > .custom-title-bar,
+.export-dialog > .custom-title-bar,
+.search-dialog > .custom-title-bar,
+.encryption-dialog > .custom-title-bar,
+.custom-confirm-dialog > .custom-title-bar,
+.custom-info-dialog > .custom-title-bar {
+    -fx-background-color: #f5f5f5;
+    -fx-border-color: transparent transparent #d0d0d0 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-background-radius: 12 12 0 0;
+}
+
+/* Custom dialog content styles */
+.custom-info-dialog .info-content-label,
+.custom-confirm-dialog .label {
+    -fx-text-fill: #1a1a1a;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+
 .dialog-pane .header-panel {
     -fx-background-color: #ffffff;
     -fx-border-color: transparent;
@@ -731,4 +779,156 @@
 
 .main-toolbar .combo-box .list-cell:hover {
     -fx-background-color: #f5f5f5;
+}
+
+/* ==================== WATERMARK DIALOG ==================== */
+.watermark-dialog .slider {
+    -fx-pref-width: 200;
+}
+
+.watermark-dialog .color-picker {
+    -fx-background-color: #f5f5f5;
+    -fx-border-color: #d0d0d0;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.watermark-dialog .color-picker:hover {
+    -fx-border-color: #c0c0c0;
+}
+
+.watermark-dialog .color-picker .color-picker-label {
+    -fx-text-fill: #1a1a1a;
+}
+
+/* ==================== IMAGE PLACEMENT DIALOG ==================== */
+.image-placement-dialog .spinner {
+    -fx-background-color: #f5f5f5;
+    -fx-border-color: transparent;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.image-placement-dialog .spinner .text-field {
+    -fx-background-color: #f5f5f5;
+    -fx-text-fill: #1a1a1a;
+}
+
+.image-placement-dialog .spinner .increment-arrow-button,
+.image-placement-dialog .spinner .decrement-arrow-button {
+    -fx-background-color: #ebebeb;
+    -fx-border-color: transparent;
+}
+
+.image-placement-dialog .spinner .increment-arrow-button:hover,
+.image-placement-dialog .spinner .decrement-arrow-button:hover {
+    -fx-background-color: #e0e0e0;
+}
+
+/* ==================== TEXT EDIT DIALOG ==================== */
+.text-edit-dialog .text-area {
+    -fx-background-color: #f5f5f5;
+    -fx-text-fill: #1a1a1a;
+    -fx-border-color: transparent;
+    -fx-border-width: 2;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 8;
+}
+
+.text-edit-dialog .text-area:focused {
+    -fx-background-color: #ebebeb;
+    -fx-border-color: #007AFF;
+    -fx-border-width: 2;
+}
+
+.text-edit-dialog .text-area .content {
+    -fx-background-color: #f5f5f5;
+}
+
+.text-edit-dialog .text-area .scroll-pane {
+    -fx-background-color: #f5f5f5;
+}
+
+.text-edit-dialog .text-area .scroll-pane .viewport {
+    -fx-background-color: #f5f5f5;
+}
+
+/* ==================== SPINNER GENERAL ==================== */
+.spinner {
+    -fx-background-color: #f5f5f5;
+    -fx-border-color: transparent;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.spinner .text-field {
+    -fx-background-color: #f5f5f5;
+    -fx-text-fill: #1a1a1a;
+    -fx-border-color: transparent;
+}
+
+.spinner:focused .text-field {
+    -fx-background-color: #ebebeb;
+    -fx-border-color: #007AFF;
+    -fx-border-width: 2;
+}
+
+.spinner .increment-arrow-button,
+.spinner .decrement-arrow-button {
+    -fx-background-color: #ebebeb;
+    -fx-border-color: transparent;
+}
+
+.spinner .increment-arrow-button:hover,
+.spinner .decrement-arrow-button:hover {
+    -fx-background-color: #e0e0e0;
+}
+
+.spinner .increment-arrow-button .increment-arrow,
+.spinner .decrement-arrow-button .decrement-arrow {
+    -fx-background-color: #1a1a1a;
+}
+
+/* ==================== COLOR PICKER GENERAL ==================== */
+.color-picker {
+    -fx-background-color: #f5f5f5;
+    -fx-border-color: #d0d0d0;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.color-picker:hover {
+    -fx-border-color: #c0c0c0;
+}
+
+.color-picker .color-picker-label {
+    -fx-text-fill: #1a1a1a;
+}
+
+.color-picker .picker-color {
+    -fx-background-radius: 4;
+}
+
+.color-picker .picker-color .picker-color-rect {
+    -fx-background-radius: 4;
+}
+
+.color-picker-popup .color-palette {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e0e0e0;
+}
+
+.color-picker-popup .color-square {
+    -fx-background-color: #ffffff;
+}
+
+.color-picker-popup .hyperlink {
+    -fx-text-fill: #007AFF;
+}
+
+.color-picker-popup .hyperlink:hover {
+    -fx-text-fill: #0051D5;
 }

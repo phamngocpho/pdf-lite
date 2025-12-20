@@ -20,7 +20,6 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar;
 import javafx.scene.control.ButtonType;
-import javafx.scene.control.DialogPane;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -225,7 +224,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
     }
 
     /**
-     * Creates and configures a dialog stage with standard settings.
+     * Creates and configures a dialog stage with standard settings and custom title bar.
      *
      * @param root  The dialog root node
      * @param title The dialog title
@@ -234,10 +233,12 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
     public Stage createDialogStage(Parent root, String title) {
         Stage dialogStage = new Stage();
         dialogStage.setTitle(title);
+        dialogStage.initStyle(javafx.stage.StageStyle.TRANSPARENT); // Transparent for rounded corners
         dialogStage.initModality(Modality.APPLICATION_MODAL);
         dialogStage.initOwner(rootPane.getScene().getWindow());
 
         Scene dialogScene = new Scene(root);
+        dialogScene.setFill(javafx.scene.paint.Color.TRANSPARENT); // Transparent background
         dialogStage.setScene(dialogScene);
 
         if (themeManager != null) {
@@ -292,6 +293,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
             controller.setDefaultSize(currentMediaBox.getWidth(), currentMediaBox.getHeight());
 
             Stage dialogStage = createDialogStage(root, "Insert Blank Page");
+            controller.setDialogStage(dialogStage);
             dialogStage.showAndWait();
 
             return controller;
@@ -307,22 +309,17 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
      * Displays the About dialog.
      */
     public void showAboutDialog() {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("About PDF Lite");
-        alert.setHeaderText("PDF Lite - PDF Viewer & Editor");
-        alert.setContentText("""
+        org.pdflite.dialog.CustomInfoDialog.show(
+            "About PDF Lite",
+            "PDF Lite - PDF Viewer & Editor",
+            """
                 Version 1.0
                 
                 A lightweight PDF viewer with annotation features.
                 
-                Built with JavaFX and Apache PDFBox""");
-
-        DialogPane dialogPane = alert.getDialogPane();
-        if (themeManager != null) {
-            themeManager.applyThemeToScene(dialogPane.getScene());
-        }
-
-        alert.showAndWait();
+                Built with JavaFX and Apache PDFBox""",
+            themeManager
+        );
     }
 
     /**

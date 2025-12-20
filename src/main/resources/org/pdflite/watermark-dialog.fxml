@@ -6,27 +6,31 @@
 
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.pdflite.dialog.WatermarkDialogController"
-      spacing="10" prefWidth="500" prefHeight="610">
-    <padding>
-        <Insets top="15" right="15" bottom="15" left="15"/>
-    </padding>
+      styleClass="watermark-dialog"
+      prefWidth="500" prefHeight="610">
 
-    <fx:define>
-        <ToggleGroup fx:id="typeToggleGroup"/>
-        <ToggleGroup fx:id="pageRangeToggleGroup"/>
-    </fx:define>
+    <!-- Custom Title Bar will be added programmatically -->
+    <HBox fx:id="dialogTitleBar" styleClass="custom-title-bar" prefHeight="32" minHeight="32" maxHeight="32"/>
 
-    <Label text="Add Watermark" style="-fx-font-size: 16px; -fx-font-weight: bold;"/>
-    <Separator/>
+    <!-- Content -->
+    <VBox spacing="10" VBox.vgrow="ALWAYS">
+        <padding>
+            <Insets top="15" right="15" bottom="15" left="15"/>
+        </padding>
 
-    <!-- Watermark Type -->
-    <HBox spacing="10" alignment="CENTER_LEFT">
-        <Label text="Type:" prefWidth="100"/>
-        <RadioButton fx:id="textRadio" text="Text" toggleGroup="$typeToggleGroup" selected="true"/>
-        <RadioButton fx:id="imageRadio" text="Image" toggleGroup="$typeToggleGroup"/>
-    </HBox>
+        <fx:define>
+            <ToggleGroup fx:id="typeToggleGroup"/>
+            <ToggleGroup fx:id="pageRangeToggleGroup"/>
+        </fx:define>
 
-    <Separator/>
+        <!-- Watermark Type -->
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label text="Type:" prefWidth="100"/>
+            <RadioButton fx:id="textRadio" text="Text" toggleGroup="$typeToggleGroup" selected="true"/>
+            <RadioButton fx:id="imageRadio" text="Image" toggleGroup="$typeToggleGroup"/>
+        </HBox>
+
+        <Separator/>
 
     <!-- Text Watermark Options -->
     <VBox fx:id="textOptionsPane" spacing="10">
@@ -127,4 +131,5 @@
         <Button text="Cancel" onAction="#handleCancel" prefWidth="80"/>
         <Button text="Apply" onAction="#handleApply" defaultButton="true" prefWidth="80"/>
     </HBox>
+    </VBox>
 </VBox>

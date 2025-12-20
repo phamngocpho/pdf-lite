@@ -4,29 +4,34 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="org.pdflite.controller.MergeDialogController"
-            minWidth="700" minHeight="400">
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.pdflite.controller.MergeDialogController"
+      styleClass="merge-dialog"
+      minWidth="700" minHeight="400">
 
-    <!-- Top: Title and Instructions -->
-    <top>
-        <VBox spacing="10" styleClass="dialog-header">
-            <padding>
-                <Insets top="15" right="15" bottom="15" left="15"/>
-            </padding>
+    <!-- Custom Title Bar -->
+    <HBox fx:id="dialogTitleBar" styleClass="custom-title-bar" prefHeight="32" minHeight="32" maxHeight="32"/>
 
-            <Label text="Merge PDF Files" styleClass="dialog-title"/>
-            <Label text="Add multiple PDF files, reorder them by dragging, and merge into a single document."
-                   styleClass="dialog-label-muted" wrapText="true"/>
-        </VBox>
-    </top>
+    <!-- Content -->
+    <BorderPane VBox.vgrow="ALWAYS">
+        <!-- Top: Instructions -->
+        <top>
+            <VBox spacing="10" styleClass="dialog-header">
+                <padding>
+                    <Insets top="15" right="15" bottom="15" left="15"/>
+                </padding>
 
-    <!-- Center: File List Table -->
-    <center>
-        <VBox spacing="10">
-            <padding>
-                <Insets top="15" right="15" bottom="15" left="15"/>
-            </padding>
+                <Label text="Add multiple PDF files, reorder them by dragging, and merge into a single document."
+                       styleClass="dialog-label-muted" wrapText="true"/>
+            </VBox>
+        </top>
+
+        <!-- Center: File List Table -->
+        <center>
+            <VBox spacing="10">
+                <padding>
+                    <Insets top="15" right="15" bottom="15" left="15"/>
+                </padding>
 
             <!-- Toolbar -->
             <HBox spacing="10" alignment="CENTER_LEFT">
@@ -77,4 +82,5 @@
         </VBox>
     </bottom>
 
-</BorderPane>
+    </BorderPane>
+</VBox>

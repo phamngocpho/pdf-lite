@@ -4,25 +4,30 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="org.pdflite.controller.ExtractDialogController"
-            minWidth="800" minHeight="600">
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="org.pdflite.controller.ExtractDialogController"
+      styleClass="extract-dialog"
+      minWidth="800" minHeight="600">
 
-    <!-- Top: Title and File Info -->
-    <top>
-        <VBox spacing="10" styleClass="dialog-header">
-            <padding>
-                <Insets top="15" right="15" bottom="15" left="15"/>
-            </padding>
+    <!-- Custom Title Bar -->
+    <HBox fx:id="dialogTitleBar" styleClass="custom-title-bar" prefHeight="32" minHeight="32" maxHeight="32"/>
 
-            <Label text="Extract PDF Pages" styleClass="dialog-title"/>
-            <HBox spacing="10">
-                <Label text="File:" styleClass="dialog-label-strong"/>
-                <Label fx:id="fileNameLabel" text="No file selected" styleClass="dialog-label-muted"/>
-            </HBox>
-            <Label fx:id="totalPagesLabel" text="Total Pages: 0" styleClass="dialog-label-muted"/>
-        </VBox>
-    </top>
+    <!-- Content -->
+    <BorderPane VBox.vgrow="ALWAYS">
+        <!-- Top: File Info -->
+        <top>
+            <VBox spacing="10" styleClass="dialog-header">
+                <padding>
+                    <Insets top="15" right="15" bottom="15" left="15"/>
+                </padding>
+
+                <HBox spacing="10">
+                    <Label text="File:" styleClass="dialog-label-strong"/>
+                    <Label fx:id="fileNameLabel" text="No file selected" styleClass="dialog-label-muted"/>
+                </HBox>
+                <Label fx:id="totalPagesLabel" text="Total Pages: 0" styleClass="dialog-label-muted"/>
+            </VBox>
+        </top>
 
     <!-- Center: Preview and Options -->
     <center>
@@ -142,4 +147,5 @@
         </VBox>
     </bottom>
 
-</BorderPane>
+    </BorderPane>
+</VBox>

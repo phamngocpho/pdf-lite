@@ -182,8 +182,8 @@ public class MainController {
         exportManager = new ExportManager(rootPane, uiStateManager);
 
         // Initialize image insertion manager (will be fully initialized after rendering manager is ready)
-        imageInsertionManager = new ImageInsertionManager(rootPane, uiStateManager, renderingManager, pageRenderer);
-        
+        imageInsertionManager = new ImageInsertionManager(rootPane, uiStateManager, renderingManager, pageRenderer, null);
+      
         // Initialize highlight persistence manager
         highlightPersistenceManager = new HighlightPersistenceManager();
 
@@ -201,6 +201,14 @@ public class MainController {
                 // Cập nhật ThemeManager cho các Manager cần dùng nó
                 if (dialogManager != null) dialogManager = new DialogManager(rootPane, themeManager, uiStateManager);
                 if (encryptionManager != null) encryptionManager = new EncryptionManager(rootPane, pdfService, themeManager, uiStateManager);
+
+                // Cập nhật ImageInsertionManager với ThemeManager
+                imageInsertionManager = new ImageInsertionManager(rootPane, uiStateManager, renderingManager, pageRenderer, themeManager);
+
+                // Cập nhật ContextMenuHandler với ThemeManager
+                if (pageRenderer != null && pageRenderer.getContextMenuHandler() != null) {
+                    pageRenderer.getContextMenuHandler().setThemeManager(themeManager);
+                }
 
                 // Cập nhật DocumentOperationManager để nó có ThemeManager mới
                 documentOperationManager = new DocumentOperationManager(pdfService, renderingManager, zoomManager,
@@ -279,10 +287,8 @@ public class MainController {
         if (btnDrawArrow != null) makeToggleButtonDeselectable(btnDrawArrow);
 
         // Setup drawing tool icons
-        if (drawingToolIconManager != null) {
-            drawingToolIconManager.setupDrawingToolIcons(btnDrawRect, btnDrawCircle, btnDrawArrow);
-            drawingToolIconManager.setupUndoIcon(undoButton);
-        }
+        drawingToolIconManager.setupDrawingToolIcons(btnDrawRect, btnDrawCircle, btnDrawArrow);
+        drawingToolIconManager.setupUndoIcon(undoButton);
 
         if (colorPicker != null) {
             colorPicker.setValue(javafx.scene.paint.Color.BLACK);
@@ -1120,7 +1126,7 @@ public class MainController {
         }
 
         InsertDialogController controller = dialogManager.openInsertDialog(currentDocument);
-        if (controller == null || !controller.isInsertClicked()) {
+        if (controller == null || controller.isInsertClicked()) {
             return;
         }
 
