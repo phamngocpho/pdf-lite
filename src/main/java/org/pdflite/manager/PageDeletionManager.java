@@ -1,13 +1,14 @@
 package org.pdflite.manager;
 
 import javafx.application.Platform;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
 import org.pdflite.command.DeletePageCommand;
+import org.pdflite.dialog.CustomConfirmDialog;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.controller.PageRenderer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.function.Supplier;
 
 /**
  * Manages page deletion operations with undo/redo support.
@@ -21,6 +22,7 @@ public class PageDeletionManager {
     private final RenderingManager renderingManager;
     private final PageInfoManager pageInfoManager;
     private final PageRenderer pageRenderer;
+    private Supplier<ThemeManager> themeManagerSupplier;
     
     /**
      * Creates a new PageDeletionManager.
@@ -43,6 +45,15 @@ public class PageDeletionManager {
         this.pageRenderer = pageRenderer;
         
         logger.info("PageDeletionManager initialized");
+    }
+    
+    /**
+     * Sets the theme manager supplier.
+     * 
+     * @param themeManagerSupplier supplier that provides the current theme manager
+     */
+    public void setThemeManagerSupplier(Supplier<ThemeManager> themeManagerSupplier) {
+        this.themeManagerSupplier = themeManagerSupplier;
     }
     
     /**
@@ -82,14 +93,13 @@ public class PageDeletionManager {
      * @return true if user confirmed, false otherwise
      */
     private boolean showConfirmationDialog(int pageNumber) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Delete Page");
-        alert.setHeaderText("Delete Page " + (pageNumber + 1) + "?");
-        alert.setContentText("This action can be undone using Ctrl+Z.");
-        
-        return alert.showAndWait()
-                   .filter(response -> response == ButtonType.OK)
-                   .isPresent();
+        ThemeManager themeManager = themeManagerSupplier != null ? themeManagerSupplier.get() : null;
+        return CustomConfirmDialog.show(
+            "Delete Page",
+            "Delete Page " + (pageNumber + 1) + "?",
+            "This action can be undone using Ctrl+Z.",
+            themeManager
+        );
     }
     
     /**

@@ -7,6 +7,7 @@ import javafx.scene.layout.FlowPane;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.pdflite.dialog.CustomInfoDialog;
 import org.pdflite.service.PDFMergeService;
 import org.pdflite.service.PDFService;
 import org.pdflite.service.PDFSplitService;
@@ -74,6 +75,7 @@ public class ExtractDialogController {
     private final PDFService pdfService = new PDFService();
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private Stage dialogStage;
+    private org.pdflite.manager.ThemeManager themeManager;
 
     /**
      * Initializes the controller.
@@ -117,6 +119,13 @@ public class ExtractDialogController {
                 previewPane.layout();
             }
         }));
+    }
+
+    /**
+     * Sets the theme manager.
+     */
+    public void setThemeManager(org.pdflite.manager.ThemeManager themeManager) {
+        this.themeManager = themeManager;
     }
 
     /**
@@ -549,26 +558,24 @@ public class ExtractDialogController {
      * Shows an error dialog.
      */
     private void showError(String title, String message) {
-        Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle(title);
-            alert.setHeaderText(null);
-            alert.setContentText(message);
-            alert.showAndWait();
-        });
+        Platform.runLater(() -> CustomInfoDialog.show(
+            title,
+            "Error",
+            message,
+            themeManager
+        ));
     }
 
     /**
      * Shows an information dialog.
      */
     private void showInfo(String message) {
-        Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Extract Complete");
-            alert.setHeaderText(null);
-            alert.setContentText(message);
-            alert.showAndWait();
-        });
+        Platform.runLater(() -> CustomInfoDialog.show(
+            "Extract Complete",
+            "Success",
+            message,
+            themeManager
+        ));
     }
 
     /**

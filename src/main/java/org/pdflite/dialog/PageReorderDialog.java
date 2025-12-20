@@ -26,9 +26,6 @@ public class PageReorderDialog {
 
     private static final Logger logger = LoggerFactory.getLogger(PageReorderDialog.class);
 
-    private Stage dialogStage;
-    private PageReorderDialogController controller;
-
     /**
      * Shows the page reorder dialog for a PDF file.
      *
@@ -66,16 +63,16 @@ public class PageReorderDialog {
                     getClass().getResource("/org/pdflite/page-reorder-dialog.fxml")
             );
             Parent root = loader.load();
-            controller = loader.getController();
+            PageReorderDialogController controller = loader.getController();
 
             // Create stage
-            dialogStage = new Stage();
+            Stage dialogStage = new Stage();
             dialogStage.initStyle(StageStyle.TRANSPARENT);
             dialogStage.initModality(Modality.APPLICATION_MODAL);
             dialogStage.initOwner(owner);
             dialogStage.setTitle("Reorder Pages");
 
-            // Create scene
+            // Create the scene
             Scene scene = new Scene(root);
             scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
             dialogStage.setScene(scene);
@@ -87,6 +84,7 @@ public class PageReorderDialog {
 
             // Set controller properties
             controller.setDialogStage(dialogStage);
+            controller.setThemeManager(themeManager);
 
             if (document != null) {
                 controller.setSourceDocument(document, file);

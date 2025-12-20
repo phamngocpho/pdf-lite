@@ -81,17 +81,13 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
         if (currentDocument.getDocument().isEncrypted()) {
             AccessPermission permission = currentDocument.getDocument().getCurrentAccessPermission();
             if (permission != null && !permission.canExtractContent() && !permission.isOwnerPermission()) {
-                Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setTitle("Không có quyền");
-                alert.setHeaderText("Không thể tách PDF");
-                alert.setContentText("Bạn không có quyền trích xuất nội dung từ file PDF này.\n" +
-                        "Cần quyền Owner hoặc quyền Extract Content.");
-
-                if (themeManager != null) {
-                    themeManager.applyThemeToScene(alert.getDialogPane().getScene());
-                }
-
-                alert.showAndWait();
+                org.pdflite.dialog.CustomInfoDialog.show(
+                    "Không có quyền",
+                    "Không thể tách PDF",
+                    "Bạn không có quyền trích xuất nội dung từ file PDF này.\n" +
+                            "Cần quyền Owner hoặc quyền Extract Content.",
+                    themeManager
+                );
                 return;
             }
         }
@@ -105,6 +101,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
             Stage dialogStage = createDialogStage(root, "Split PDF File");
 
             controller.setDialogStage(dialogStage);
+            controller.setThemeManager(themeManager);
 
             // Use PDDocument for encrypted PDFs, File for regular PDFs
             if (currentDocument.getDocument().isEncrypted()) {
@@ -138,17 +135,13 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
         if (currentDocument.getDocument().isEncrypted()) {
             AccessPermission permission = currentDocument.getDocument().getCurrentAccessPermission();
             if (permission != null && !permission.canExtractContent() && !permission.isOwnerPermission()) {
-                Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setTitle("Không có quyền");
-                alert.setHeaderText("Không thể trích xuất trang");
-                alert.setContentText("Bạn không có quyền trích xuất nội dung từ file PDF này.\n" +
-                        "Cần quyền Owner hoặc quyền Extract Content.");
-
-                if (themeManager != null) {
-                    themeManager.applyThemeToScene(alert.getDialogPane().getScene());
-                }
-
-                alert.showAndWait();
+                org.pdflite.dialog.CustomInfoDialog.show(
+                    "Không có quyền",
+                    "Không thể trích xuất trang",
+                    "Bạn không có quyền trích xuất nội dung từ file PDF này.\n" +
+                            "Cần quyền Owner hoặc quyền Extract Content.",
+                    themeManager
+                );
                 return;
             }
         }
@@ -162,6 +155,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
             Stage dialogStage = createDialogStage(root, "Extract PDF Pages");
 
             controller.setDialogStage(dialogStage);
+            controller.setThemeManager(themeManager);
 
             // Use PDDocument for encrypted PDFs, File for regular PDFs
             if (currentDocument.getDocument().isEncrypted()) {
@@ -196,17 +190,13 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
         if (currentDocument.getDocument().isEncrypted()) {
             AccessPermission permission = currentDocument.getDocument().getCurrentAccessPermission();
             if (permission != null && !permission.canModify() && !permission.isOwnerPermission()) {
-                Alert alert = new Alert(Alert.AlertType.ERROR);
-                alert.setTitle("Không có quyền");
-                alert.setHeaderText("Không thể sắp xếp lại trang");
-                alert.setContentText("Bạn không có quyền chỉnh sửa file PDF này.\n" +
-                        "Cần quyền Owner hoặc quyền Modify.");
-
-                if (themeManager != null) {
-                    themeManager.applyThemeToScene(alert.getDialogPane().getScene());
-                }
-
-                alert.showAndWait();
+                org.pdflite.dialog.CustomInfoDialog.show(
+                    "Không có quyền",
+                    "Không thể sắp xếp lại trang",
+                    "Bạn không có quyền chỉnh sửa file PDF này.\n" +
+                            "Cần quyền Owner hoặc quyền Modify.",
+                    themeManager
+                );
                 return;
             }
         }

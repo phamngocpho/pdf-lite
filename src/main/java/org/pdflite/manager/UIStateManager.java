@@ -1,16 +1,17 @@
 package org.pdflite.manager;
 
-import javafx.application.Platform;
 import javafx.scene.control.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.function.Supplier;
 
 /**
  * Manages UI state for the PDF viewer.
  * Handles enabling/disabling controls and status messages.
  */
 public record UIStateManager(Label statusLabel, Button prevButton, Button nextButton, TextField pageNumberField,
-                             ComboBox<String> zoomComboBox) {
+                             ComboBox<String> zoomComboBox, Supplier<ThemeManager> themeManagerSupplier) {
     private static final Logger logger = LoggerFactory.getLogger(UIStateManager.class);
 
     /**
@@ -55,11 +56,13 @@ public record UIStateManager(Label statusLabel, Button prevButton, Button nextBu
      * @param message the error message
      */
     public void showError(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        ThemeManager themeManager = themeManagerSupplier != null ? themeManagerSupplier.get() : null;
+        org.pdflite.dialog.CustomInfoDialog.show(
+            title,
+            "Error",
+            message,
+            themeManager
+        );
         logger.error("Error: {} - {}", title, message);
     }
 }

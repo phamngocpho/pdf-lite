@@ -11,6 +11,7 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.pdflite.dialog.CustomInfoDialog;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFReorderService;
 import org.pdflite.service.PDFService;
@@ -67,6 +68,7 @@ public class PageReorderDialogController {
     private List<Integer> currentOrder;
     private List<Integer> originalOrder;
     private boolean reorderApplied = false;
+    private org.pdflite.manager.ThemeManager themeManager;
 
     private final PDFService pdfService = new PDFService();
     private final PDFReorderService reorderService = new PDFReorderService();
@@ -104,6 +106,13 @@ public class PageReorderDialogController {
                 previewPane.layout();
             }
         }));
+    }
+
+    /**
+     * Sets the theme manager.
+     */
+    public void setThemeManager(org.pdflite.manager.ThemeManager themeManager) {
+        this.themeManager = themeManager;
     }
 
     /**
@@ -427,26 +436,24 @@ public class PageReorderDialogController {
      * Shows an error dialog.
      */
     private void showError(String title, String message) {
-        Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle(title);
-            alert.setHeaderText(null);
-            alert.setContentText(message);
-            alert.showAndWait();
-        });
+        Platform.runLater(() -> CustomInfoDialog.show(
+            title,
+            "Error",
+            message,
+            themeManager
+        ));
     }
 
     /**
      * Shows an information dialog.
      */
     private void showInfo(String message) {
-        Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Page Reorder");
-            alert.setHeaderText(null);
-            alert.setContentText(message);
-            alert.showAndWait();
-        });
+        Platform.runLater(() -> CustomInfoDialog.show(
+            "Page Reorder",
+            "Success",
+            message,
+            themeManager
+        ));
     }
 
     /**

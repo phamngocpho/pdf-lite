@@ -5,6 +5,8 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
@@ -14,39 +16,37 @@ import org.pdflite.manager.ThemeManager;
 import org.pdflite.util.DialogTitleBar;
 
 /**
- * Custom confirmation dialog with custom title bar.
+ * Custom password dialog with custom title bar.
  */
-public class CustomConfirmDialog {
+public class CustomPasswordDialog {
     
     private Stage dialogStage;
-    private boolean confirmed = false;
+    private String password = null;
+    private PasswordField passwordField;
     
     /**
-     * Shows a confirmation dialog.
+     * Shows a password dialog.
      *
-     * @param title       the dialog title
-     * @param header      the header text
-     * @param content     the content text
      * @param themeManager the theme manager (can be null)
-     * @return true if user clicked OK, false otherwise
+     * @return the password entered, or null if cancelled
      */
-    public static boolean show(String title, String header, String content, ThemeManager themeManager) {
-        CustomConfirmDialog dialog = new CustomConfirmDialog();
-        return dialog.showAndWait(title, header, content, themeManager);
+    public static String show(ThemeManager themeManager) {
+        CustomPasswordDialog dialog = new CustomPasswordDialog();
+        return dialog.showAndWait(themeManager);
     }
     
-    private boolean showAndWait(String title, String header, String content, ThemeManager themeManager) {
+    private String showAndWait(ThemeManager themeManager) {
         dialogStage = new Stage();
         dialogStage.initStyle(StageStyle.TRANSPARENT);
         dialogStage.initModality(Modality.APPLICATION_MODAL);
-        dialogStage.setTitle(title);
+        dialogStage.setTitle("Mật khẩu PDF");
         
-        // Create main container with proper style class
+        // Create main container
         VBox mainContainer = new VBox();
         mainContainer.getStyleClass().add("custom-confirm-dialog");
         
         // Create custom title bar
-        DialogTitleBar titleBar = new DialogTitleBar(title, dialogStage);
+        DialogTitleBar titleBar = new DialogTitleBar("Mật khẩu PDF", dialogStage);
         mainContainer.getChildren().add(titleBar.getTitleBar());
         
         // Create content
@@ -55,17 +55,23 @@ public class CustomConfirmDialog {
         contentBox.setAlignment(Pos.TOP_LEFT);
         
         // Header label
-        if (header != null && !header.isEmpty()) {
-            Label headerLabel = new Label(header);
-            headerLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
-            contentBox.getChildren().add(headerLabel);
-        }
+        Label headerLabel = new Label("File PDF này được bảo vệ bởi mật khẩu");
+        headerLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+        contentBox.getChildren().add(headerLabel);
         
-        // Content label
-        Label contentLabel = new Label(content);
-        contentLabel.setWrapText(true);
-        contentLabel.setMaxWidth(400);
-        contentBox.getChildren().add(contentLabel);
+        // Password field
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        
+        passwordField = new PasswordField();
+        passwordField.setPromptText("Nhập mật khẩu");
+        passwordField.setPrefWidth(250);
+        
+        grid.add(new Label("Mật khẩu:"), 0, 0);
+        grid.add(passwordField, 1, 0);
+        
+        contentBox.getChildren().add(grid);
         
         // Buttons
         HBox buttonBox = new HBox(10);
@@ -75,17 +81,23 @@ public class CustomConfirmDialog {
         Button cancelButton = new Button("Cancel");
         cancelButton.setPrefWidth(80);
         cancelButton.setOnAction(e -> {
-            confirmed = false;
+            password = null;
             dialogStage.close();
         });
         
-        Button okButton = new Button("OK");
+        Button okButton = new Button("Mở");
         okButton.setPrefWidth(80);
         okButton.setDefaultButton(true);
+        okButton.setDisable(true);
         okButton.setOnAction(e -> {
-            confirmed = true;
+            password = passwordField.getText();
             dialogStage.close();
         });
+        
+        // Enable/disable OK button based on password field
+        passwordField.textProperty().addListener((obs, oldVal, newVal) -> 
+            okButton.setDisable(newVal == null || newVal.trim().isEmpty())
+        );
         
         buttonBox.getChildren().addAll(cancelButton, okButton);
         contentBox.getChildren().add(buttonBox);
@@ -99,12 +111,15 @@ public class CustomConfirmDialog {
         dialogStage.setMinWidth(450);
         dialogStage.setMinHeight(200);
         
-        // Apply theme BEFORE showing
+        // Apply theme
         if (themeManager != null) {
             themeManager.applyThemeToScene(scene);
         }
         
+        // Request focus on password field
+        javafx.application.Platform.runLater(passwordField::requestFocus);
+        
         dialogStage.showAndWait();
-        return confirmed;
+        return password;
     }
 }
