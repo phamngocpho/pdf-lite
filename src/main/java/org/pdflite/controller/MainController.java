@@ -10,6 +10,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javafx.scene.control.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import org.pdflite.manager.*;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
@@ -102,6 +104,12 @@ public class MainController {
     private Button closeButton;
     @FXML
     private javafx.scene.control.MenuItem toggleToolbarMenuItem;
+    @FXML
+    private RadioMenuItem systemThemeItem;
+    @FXML
+    private RadioMenuItem lightThemeItem;
+    @FXML
+    private RadioMenuItem darkThemeItem;
 
 
     // ==================== Services and Managers ====================
@@ -209,6 +217,9 @@ public class MainController {
                 if (pageRenderer != null && pageRenderer.getContextMenuHandler() != null) {
                     pageRenderer.getContextMenuHandler().setThemeManager(themeManager);
                 }
+                
+                // Update theme menu text with bullet points
+                updateThemeMenuText();
 
                 // Cập nhật DocumentOperationManager để nó có ThemeManager mới
                 documentOperationManager = new DocumentOperationManager(pdfService, renderingManager, zoomManager,
@@ -899,16 +910,34 @@ public class MainController {
     @FXML
     private void setSystemTheme() {
         themeManager.setSystemTheme();
+        updateThemeMenuGraphics();
     }
 
     @FXML
     private void setLightTheme() {
         themeManager.setLightTheme();
+        updateThemeMenuGraphics();
     }
 
     @FXML
     private void setDarkTheme() {
         themeManager.setDarkTheme();
+        updateThemeMenuGraphics();
+    }
+    
+    private void updateThemeMenuText() {
+        updateThemeMenuGraphics();
+    }
+    
+    private void updateThemeMenuGraphics() {
+        // Create bullet graphic for selected item
+        Circle bullet = new Circle(3);
+        bullet.setFill(Color.web("#0A84FF"));
+        
+        // Set graphics - bullet for selected, null for others
+        systemThemeItem.setGraphic(systemThemeItem.isSelected() ? new Circle(3, Color.web("#0A84FF")) : null);
+        lightThemeItem.setGraphic(lightThemeItem.isSelected() ? new Circle(3, Color.web("#0A84FF")) : null);
+        darkThemeItem.setGraphic(darkThemeItem.isSelected() ? new Circle(3, Color.web("#0A84FF")) : null);
     }
 
 

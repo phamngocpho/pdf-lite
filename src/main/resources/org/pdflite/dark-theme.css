@@ -1022,3 +1022,34 @@
 .color-picker-popup .hyperlink:hover {
     -fx-text-fill: #3d9eff;
 }
+
+
+
+
+
+
+/* ==================== RADIO MENU ITEM - CUSTOM BULLET ==================== */
+/* Completely hide the radio button and its container */
+.radio-menu-item > .left-container {
+    -fx-padding: 0;
+    -fx-pref-width: 0;
+    -fx-min-width: 0;
+    -fx-max-width: 0;
+    visibility: hidden;
+}
+
+.radio-menu-item > .left-container > .radio {
+    -fx-padding: 0;
+    -fx-pref-width: 0;
+    -fx-min-width: 0;
+    -fx-max-width: 0;
+    -fx-pref-height: 0;
+    -fx-min-height: 0;
+    -fx-max-height: 0;
+    visibility: hidden;
+}
+
+/* Style the graphic area where we put our custom bullet */
+.radio-menu-item > .graphic-container {
+    -fx-padding: 0 5 0 8;
+}
