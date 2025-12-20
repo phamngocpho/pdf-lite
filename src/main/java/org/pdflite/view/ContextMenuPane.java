@@ -1,20 +1,21 @@
 package org.pdflite.view;
 
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.MenuItem;
-import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.StackPane;
-import javafx.scene.shape.Rectangle;
-import javafx.scene.paint.Color;
-import javafx.scene.Group;
+import java.awt.geom.Rectangle2D;
+import java.util.List;
+
 import org.pdflite.controller.ContextMenuHandler;
 import org.pdflite.model.PDFDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.geom.Rectangle2D;
-import java.util.List;
+import javafx.scene.Group;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 
 public class ContextMenuPane extends StackPane {
     private static final Logger logger = LoggerFactory.getLogger(ContextMenuPane.class);
@@ -32,9 +33,15 @@ public class ContextMenuPane extends StackPane {
     private int clickCount = 0;
     private javafx.animation.Timeline clickTimer;
 
+    // Right-click tracking (for delete highlight)
+    private double lastContextMenuX;
+    private double lastContextMenuY;
+    private boolean hasHighlightUnderCursor;
+
     private static final Color HIGHLIGHT_FILL = Color.color(0.0, 0.47, 0.84, 0.3); // Similar to SmartPDFViewer
     private static final double MIN_SELECTION_SIZE = 5.0;
-    private static final double HIGHLIGHT_HEIGHT_MULTIPLIER = 1.3;
+    private static final double HIGHLIGHT_HEIGHT_MULTIPLIER = 1.35;
+    private static final double HIGHLIGHT_EXTRA_PADDING_PX = 2.0;
 
     public ContextMenuPane(ContextMenuHandler handler) {
         this.handler = handler;
@@ -67,6 +74,12 @@ public class ContextMenuPane extends StackPane {
             double x = event.getX();
             double y = event.getY();
 
+            lastContextMenuX = x;
+            lastContextMenuY = y;
+
+            // Check for highlight annotation under cursor
+            hasHighlightUnderCursor = hasHighlightAtPosition(x, y);
+
             //logger.debug("Context menu requested at ({:.1f}, {:.1f})", x, y);
 
             // Check for image at cursor
@@ -81,7 +94,7 @@ public class ContextMenuPane extends StackPane {
             boolean hasSelection = !highlightGroup.getChildren().isEmpty() && highlightGroup.isVisible();
 
             // Show the menu if it has text OR image
-            if (hasSelection || handler.hasImageAtPosition()) {
+            if (hasSelection || handler.hasImageAtPosition() || hasHighlightUnderCursor) {
                 updateContextMenuItems();
                 contextMenu.show(this, event.getScreenX(), event.getScreenY());
                 //logger.info("Context menu shown (hasText={}, hasImage={})",hasSelection, handler.hasImageAtPosition());
@@ -257,7 +270,7 @@ public class ContextMenuPane extends StackPane {
     }
 
     private static Rectangle getHighlightRect(Rectangle2D region) {
-        double increasedHeight = region.getHeight() * HIGHLIGHT_HEIGHT_MULTIPLIER;
+        double increasedHeight = (region.getHeight() * HIGHLIGHT_HEIGHT_MULTIPLIER) + HIGHLIGHT_EXTRA_PADDING_PX;
         double heightDiff = increasedHeight - region.getHeight();
 
         Rectangle highlightRect = new Rectangle(
@@ -283,6 +296,7 @@ public class ContextMenuPane extends StackPane {
         MenuItem copyText = new MenuItem("Copy Text");
         MenuItem editText = new MenuItem("Edit Text");
         MenuItem highlightSelection = new MenuItem("Highlight Selection");
+        MenuItem deleteHighlight = new MenuItem("Delete Highlight");
         MenuItem copyImage = new MenuItem("Copy Image");
         MenuItem separator = new MenuItem("──────────");
         MenuItem clearSelection = new MenuItem("Clear Selection");
@@ -304,6 +318,11 @@ public class ContextMenuPane extends StackPane {
             clearSelection();
         });
 
+        deleteHighlight.setOnAction(e -> {
+            handler.handleDeleteHighlight(currentPageIndex, lastContextMenuX, lastContextMenuY);
+            clearSelection();
+        });
+
         copyImage.setOnAction(e -> {
             handler.handleCopyImage();
             logger.info("Image copied");
@@ -311,7 +330,7 @@ public class ContextMenuPane extends StackPane {
 
         clearSelection.setOnAction(e -> clearSelection());
 
-        contextMenu.getItems().addAll(copyText, editText, highlightSelection, copyImage, clearSelection);
+        contextMenu.getItems().addAll(copyText, editText, highlightSelection, deleteHighlight, copyImage, clearSelection);
     }
 
     private void updateContextMenuItems() {
@@ -321,7 +340,8 @@ public class ContextMenuPane extends StackPane {
         contextMenu.getItems().get(0).setDisable(!hasText);  // Copy Text
         contextMenu.getItems().get(1).setDisable(!hasText);  // Edit Text
         contextMenu.getItems().get(2).setDisable(!hasText);  // Highlight Selection
-        contextMenu.getItems().get(3).setDisable(!hasImage); // Copy Image
+        contextMenu.getItems().get(3).setDisable(!hasHighlightUnderCursor); // Delete Highlight
+        contextMenu.getItems().get(4).setDisable(!hasImage); // Copy Image
 
         logger.debug("Context menu: text={}, image={}", hasText, hasImage);
     }
@@ -342,5 +362,22 @@ public class ContextMenuPane extends StackPane {
 
     public void clearSelection() {
         clearHighlightRegions();
+    }
+
+    private boolean hasHighlightAtPosition(double x, double y) {
+        if (currentDocument == null) {
+            return false;
+        }
+        List<org.pdflite.model.Annotation> pageAnnotations = currentDocument.getAnnotationsForPage(currentPageIndex);
+        for (org.pdflite.model.Annotation annotation : pageAnnotations) {
+            if (annotation instanceof org.pdflite.model.HighlightAnnotation highlight) {
+                double x2 = highlight.getX() + highlight.getWidth();
+                double y2 = highlight.getY() + highlight.getHeight();
+                if (x >= highlight.getX() && x <= x2 && y >= highlight.getY() && y <= y2) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

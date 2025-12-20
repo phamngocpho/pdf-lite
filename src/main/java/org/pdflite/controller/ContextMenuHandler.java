@@ -1,21 +1,5 @@
 package org.pdflite.controller;
 
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
-import javafx.scene.paint.Color;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.font.PDFont;
-import org.apache.pdfbox.pdmodel.font.PDType1Font;
-import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
-import org.apache.pdfbox.text.PDFTextStripperByArea;
-import org.pdflite.model.PDFDocument;
-import org.pdflite.manager.ThemeManager;
-import org.pdflite.util.CoordinateConverter;
-import org.pdflite.util.SmartTextSelector;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
@@ -23,10 +7,26 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDFont;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.pdfbox.text.PDFTextStripperByArea;
+import org.pdflite.manager.ThemeManager;
+import org.pdflite.model.ImageInfo;
+import org.pdflite.model.PDFDocument;
+import org.pdflite.util.CoordinateConverter;
+import org.pdflite.util.ImageExtractor;
+import org.pdflite.util.SmartTextSelector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
-import org.pdflite.model.ImageInfo;
-import org.pdflite.util.ImageExtractor;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.paint.Color;
 
 /**
  * Handles context menu operations with CORRECT coordinate mapping.
@@ -63,6 +63,9 @@ public class ContextMenuHandler {
     
     // Callback for highlight selection
     private HighlightCallback highlightCallback;
+
+    // Callback for deleting highlight
+    private DeleteHighlightCallback deleteHighlightCallback;
     // Theme manager for dialog styling
     private ThemeManager themeManager;
 
@@ -107,6 +110,20 @@ public class ContextMenuHandler {
      */
     public interface HighlightCallback {
         void onHighlight(int pageIndex, List<Rectangle2D> highlightRegions, Color highlightColor);
+    }
+
+    /**
+     * Callback interface for deleting highlight annotations.
+     */
+    public interface DeleteHighlightCallback {
+        void onDeleteHighlight(int pageIndex, double canvasX, double canvasY);
+    }
+
+    /**
+     * Sets the callback for deleting highlight annotations.
+     */
+    public void setDeleteHighlightCallback(DeleteHighlightCallback callback) {
+        this.deleteHighlightCallback = callback;
     }
 
     /**
@@ -323,6 +340,19 @@ public class ContextMenuHandler {
     }
 
     /**
+     * Handles delete highlight operation.
+     * This is invoked from the context menu when user right-clicks on an existing highlight.
+     */
+    public void handleDeleteHighlight(int pageIndex, double canvasX, double canvasY) {
+        if (deleteHighlightCallback == null) {
+            logger.warn("Delete highlight callback not set");
+            return;
+        }
+
+        deleteHighlightCallback.onDeleteHighlight(pageIndex, canvasX, canvasY);
+    }
+
+    /**
      * Opens the text edit dialog for the selected text.
      * Note: This adds new text on top of the old text (PDF text editing limitation).
      */
@@ -415,7 +445,7 @@ public class ContextMenuHandler {
                     
                     List<org.apache.pdfbox.text.TextPosition> positions = currentSelection.getTextPositions();
                     if (positions != null && !positions.isEmpty()) {
-                        org.apache.pdfbox.text.TextPosition firstPos = positions.getFirst();
+                        org.apache.pdfbox.text.TextPosition firstPos = positions.get(0);
                         try {
                             originalFont = firstPos.getFont();
                             fontSize = firstPos.getFontSizeInPt();

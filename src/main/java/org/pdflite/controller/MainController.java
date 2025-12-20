@@ -9,8 +9,29 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
-import javafx.scene.control.*;
-import org.pdflite.manager.*;
+import org.pdflite.manager.AnnotationManager;
+import org.pdflite.manager.DialogManager;
+import org.pdflite.manager.DocumentLifecycleManager;
+import org.pdflite.manager.DocumentOperationManager;
+import org.pdflite.manager.DrawingToolIconManager;
+import org.pdflite.manager.EncryptionManager;
+import org.pdflite.manager.ExportManager;
+import org.pdflite.manager.FileManager;
+import org.pdflite.manager.FullscreenManager;
+import org.pdflite.manager.HighlightPersistenceManager;
+import org.pdflite.manager.ImageInsertionManager;
+import org.pdflite.manager.ListenerFactory;
+import org.pdflite.manager.PageInfoManager;
+import org.pdflite.manager.RecentFilesManager;
+import org.pdflite.manager.RecentFilesMenuManager;
+import org.pdflite.manager.RenderingManager;
+import org.pdflite.manager.SearchDialogManager;
+import org.pdflite.manager.SearchManager;
+import org.pdflite.manager.ThemeManager;
+import org.pdflite.manager.TitleBarManager;
+import org.pdflite.manager.UIStateManager;
+import org.pdflite.manager.WindowResizeManager;
+import org.pdflite.manager.ZoomManager;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
 import org.pdflite.service.PDFPrintService;
@@ -20,8 +41,22 @@ import org.pdflite.util.NavigationHelper;
 import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
+import javafx.scene.control.ColorPicker;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Slider;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.ToolBar;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -377,6 +412,9 @@ public class MainController {
         
         // Set highlight callback for context menu
         setupHighlightCallback();
+
+        // Set delete highlight callback for context menu
+        setupDeleteHighlightCallback();
     }
 
     /**
@@ -475,6 +513,9 @@ public class MainController {
                 
                 logger.info("Creating {} highlights on page {} with color {}", 
                         highlightRegions.size(), pageIndex + 1, highlightColor);
+
+                // All rectangles produced from one selection share the same batch id
+                final String batchId = java.util.UUID.randomUUID().toString();
                 
                 // Create highlight annotations for each region
                 for (java.awt.geom.Rectangle2D region : highlightRegions) {
@@ -487,17 +528,25 @@ public class MainController {
                     double canvasX = region.getX() * finalScale;
                     double canvasY = region.getY() * finalScale;
                     double canvasWidth = region.getWidth() * finalScale;
-                    double canvasHeight = region.getHeight() * finalScale;
+
+                    // Expand height slightly so highlight isn't too tight to glyphs
+                    final double heightMultiplier = 1.35;
+                    final double extraPaddingPx = 2.0;
+                    double originalHeight = region.getHeight() * finalScale;
+                    double expandedHeight = (originalHeight * heightMultiplier) + extraPaddingPx;
+                    double canvasHeight = expandedHeight;
+                    double canvasYAdjusted = canvasY - ((expandedHeight - originalHeight) / 2.0);
                     
                     // Create highlight annotation
                     org.pdflite.model.HighlightAnnotation highlight = 
                         new org.pdflite.model.HighlightAnnotation(
                             pageIndex, 
                             canvasX, 
-                            canvasY, 
+                            canvasYAdjusted, 
                             canvasWidth, 
                             canvasHeight, 
-                            highlightColor);
+                            highlightColor,
+                            batchId);
                     
                     // Add to document
                     currentDocument.addAnnotation(highlight);
@@ -555,6 +604,83 @@ public class MainController {
 
         // Re-render all visible pages
         Platform.runLater(() -> renderingManager.renderAllPages());
+    }
+
+    /**
+     * Sets up the delete highlight callback for the context menu handler.
+     * This is invoked when the user right-clicks an existing highlight and chooses Delete.
+     */
+    private void setupDeleteHighlightCallback() {
+        pageRenderer.getContextMenuHandler().setDeleteHighlightCallback(
+            (pageIndex, canvasX, canvasY) -> {
+                try {
+                    if (currentDocument == null) {
+                        uiStateManager.updateStatus("No document loaded");
+                        return;
+                    }
+
+                    // Find topmost highlight at cursor (iterate in reverse add order)
+                    org.pdflite.model.HighlightAnnotation target = null;
+                    List<org.pdflite.model.Annotation> all = currentDocument.getAnnotations();
+                    for (int i = all.size() - 1; i >= 0; i--) {
+                        org.pdflite.model.Annotation annotation = all.get(i);
+                        if (annotation.getPageNumber() != pageIndex) {
+                            continue;
+                        }
+                        if (annotation instanceof org.pdflite.model.HighlightAnnotation highlight) {
+                            double x2 = highlight.getX() + highlight.getWidth();
+                            double y2 = highlight.getY() + highlight.getHeight();
+                            if (canvasX >= highlight.getX() && canvasX <= x2 && canvasY >= highlight.getY() && canvasY <= y2) {
+                                target = highlight;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (target == null) {
+                        uiStateManager.updateStatus("No highlight at cursor");
+                        return;
+                    }
+
+                    int removedCount = 0;
+                    String batchId = target.getBatchId();
+                    if (batchId != null && !batchId.isBlank()) {
+                        // Remove all highlight segments created in the same action (same page + same batchId)
+                        for (int i = all.size() - 1; i >= 0; i--) {
+                            org.pdflite.model.Annotation annotation = all.get(i);
+                            if (annotation.getPageNumber() != pageIndex) {
+                                continue;
+                            }
+                            if (annotation instanceof org.pdflite.model.HighlightAnnotation highlight) {
+                                if (batchId.equals(highlight.getBatchId())) {
+                                    all.remove(i);
+                                    removedCount++;
+                                }
+                            }
+                        }
+                    } else {
+                        boolean removed = all.remove(target);
+                        removedCount = removed ? 1 : 0;
+                    }
+
+                    if (removedCount <= 0) {
+                        uiStateManager.updateStatus("Failed to delete highlight");
+                        return;
+                    }
+
+                    currentDocument.setHasUnsavedEdits(true);
+
+                    if (annotationManager != null) {
+                        annotationManager.refreshPageAnnotations(pageIndex);
+                    }
+
+                    uiStateManager.updateStatus("Deleted " + removedCount + " highlight segment(s) - Save to persist changes");
+                } catch (Exception e) {
+                    logger.error("Error deleting highlight", e);
+                    uiStateManager.updateStatus("Error deleting highlight: " + e.getMessage());
+                }
+            }
+        );
     }
 
 

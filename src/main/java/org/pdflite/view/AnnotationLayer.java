@@ -1,26 +1,25 @@
 package org.pdflite.view;
 
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.input.MouseButton;
-import javafx.scene.paint.Color;
-import org.pdflite.model.Annotation;
-import org.pdflite.model.HighlightAnnotation;
-import org.pdflite.util.Constants;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.pdflite.model.ShapeAnnotation;
-import org.pdflite.model.RectangleAnnotation;
-import org.pdflite.model.CircleAnnotation;
-import org.pdflite.model.ArrowAnnotation;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import org.pdflite.model.Annotation;
+import org.pdflite.model.ArrowAnnotation;
+import org.pdflite.model.CircleAnnotation;
+import org.pdflite.model.HighlightAnnotation;
+import org.pdflite.model.RectangleAnnotation;
 import org.pdflite.model.SearchResult;
-
+import org.pdflite.model.ShapeAnnotation;
+import org.pdflite.util.Constants;
 import static org.pdflite.util.Constants.LOW_RENDER_SCALE;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.input.MouseButton;
+import javafx.scene.paint.Color;
 
 /**
  * Interactive canvas layer for drawing and managing annotations on PDF pages.
