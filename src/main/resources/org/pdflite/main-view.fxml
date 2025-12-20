@@ -11,6 +11,7 @@
 
     <fx:define>
         <ToggleGroup fx:id="drawingToolsGroup"/>
+        <ToggleGroup fx:id="themeGroup"/>
     </fx:define>
 
     <!-- Top: Custom Title Bar, Menu Bar and Toolbar -->
@@ -81,6 +82,7 @@
                     <MenuItem text="Merge PDFs..." onAction="#handleMergePDFs"/>
                     <MenuItem text="Split PDF..." onAction="#handleSplitPDF"/>
                     <MenuItem text="Extract Pages..." onAction="#handleExtractPages"/>
+                    <MenuItem text="Reorder Pages..." onAction="#handleReorderPages"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Encrypt PDF..." onAction="#handleEncryptPDF"/>
                     <MenuItem text="Remove Password..." onAction="#handleDecryptPDF"/>
@@ -93,10 +95,10 @@
                     <MenuItem text="About" onAction="#handleAbout"/>
                 </Menu>
                 <Menu text="Theme">
-                    <MenuItem text="System" onAction="#setSystemTheme"/>
+                    <RadioMenuItem fx:id="systemThemeItem" text="System" onAction="#setSystemTheme" selected="true" toggleGroup="$themeGroup"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Light" onAction="#setLightTheme"/>
-                    <MenuItem text="Dark" onAction="#setDarkTheme"/>
+                    <RadioMenuItem fx:id="lightThemeItem" text="Light" onAction="#setLightTheme" toggleGroup="$themeGroup"/>
+                    <RadioMenuItem fx:id="darkThemeItem" text="Dark" onAction="#setDarkTheme" toggleGroup="$themeGroup"/>
                 </Menu>
             </MenuBar>
 
@@ -220,6 +222,7 @@
                         <MenuItem text="Merge PDFs..." onAction="#handleMergePDFs"/>
                         <MenuItem text="Split PDF..." onAction="#handleSplitPDF"/>
                         <MenuItem text="Extract Pages..." onAction="#handleExtractPages"/>
+                        <MenuItem text="Reorder Pages..." onAction="#handleReorderPages"/>
                         <SeparatorMenuItem/>
                         <MenuItem text="Encrypt PDF..." onAction="#handleEncryptPDF"/>
                         <MenuItem text="Remove Password..." onAction="#handleDecryptPDF"/>
