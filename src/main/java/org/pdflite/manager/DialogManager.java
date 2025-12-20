@@ -9,6 +9,7 @@ import org.pdflite.controller.InsertDialogController;
 import org.pdflite.controller.MergeDialogController;
 import org.pdflite.controller.PrintDialogController;
 import org.pdflite.controller.SplitDialogController;
+import org.pdflite.dialog.PageReorderDialog;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFPrintService;
 import org.slf4j.Logger;
@@ -175,6 +176,52 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
         } catch (IOException e) {
             logger.error("Error opening extract dialog", e);
             uiStateManager.showError("Error", "Could not open extract dialog: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Opens the page reorder dialog.
+     *
+     * @param currentDocument the current PDF document
+     * @param onSuccess       callback to run when reorder is successful
+     */
+    public void openPageReorderDialog(PDFDocument currentDocument, Runnable onSuccess) {
+        if (currentDocument == null) {
+            uiStateManager.showError("No PDF Loaded",
+                    "Please open a PDF file first before reordering pages.");
+            return;
+        }
+
+        // Check permissions for encrypted PDFs
+        if (currentDocument.getDocument().isEncrypted()) {
+            AccessPermission permission = currentDocument.getDocument().getCurrentAccessPermission();
+            if (permission != null && !permission.canModify() && !permission.isOwnerPermission()) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Không có quyền");
+                alert.setHeaderText("Không thể sắp xếp lại trang");
+                alert.setContentText("Bạn không có quyền chỉnh sửa file PDF này.\n" +
+                        "Cần quyền Owner hoặc quyền Modify.");
+
+                if (themeManager != null) {
+                    themeManager.applyThemeToScene(alert.getDialogPane().getScene());
+                }
+
+                alert.showAndWait();
+                return;
+            }
+        }
+
+        try {
+            PageReorderDialog.show(
+                    (Stage) rootPane.getScene().getWindow(),
+                    currentDocument.getDocument(),
+                    currentDocument.getFile(),
+                    themeManager,
+                    onSuccess
+            );
+        } catch (Exception e) {
+            logger.error("Error opening page reorder dialog", e);
+            uiStateManager.showError("Error", "Could not open page reorder dialog: " + e.getMessage());
         }
     }
 

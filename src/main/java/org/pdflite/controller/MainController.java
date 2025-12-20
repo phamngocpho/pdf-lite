@@ -9,30 +9,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.pdflite.manager.AnnotationManager;
-import org.pdflite.manager.DialogManager;
-import org.pdflite.manager.DocumentLifecycleManager;
-import org.pdflite.manager.DocumentOperationManager;
-import org.pdflite.manager.DrawingToolIconManager;
-import org.pdflite.manager.EncryptionManager;
-import org.pdflite.manager.ExportManager;
-import org.pdflite.manager.FileManager;
-import org.pdflite.manager.FullscreenManager;
-import org.pdflite.manager.HighlightManager;
-import org.pdflite.manager.HighlightPersistenceManager;
-import org.pdflite.manager.ImageInsertionManager;
-import org.pdflite.manager.ListenerFactory;
-import org.pdflite.manager.PageInfoManager;
-import org.pdflite.manager.RecentFilesManager;
-import org.pdflite.manager.RecentFilesMenuManager;
-import org.pdflite.manager.RenderingManager;
-import org.pdflite.manager.SearchDialogManager;
-import org.pdflite.manager.SearchManager;
-import org.pdflite.manager.ThemeManager;
-import org.pdflite.manager.TitleBarManager;
-import org.pdflite.manager.UIStateManager;
-import org.pdflite.manager.WindowResizeManager;
-import org.pdflite.manager.ZoomManager;
+import javafx.scene.control.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import org.pdflite.manager.*;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
 import org.pdflite.service.PDFPrintService;
@@ -125,6 +105,8 @@ public class MainController {
     @FXML
     private Button undoButton;
     @FXML
+    private Button redoButton;
+    @FXML
     private javafx.scene.layout.HBox customTitleBar;
     @FXML
     private Label titleLabel;
@@ -138,6 +120,12 @@ public class MainController {
     private Button closeButton;
     @FXML
     private javafx.scene.control.MenuItem toggleToolbarMenuItem;
+    @FXML
+    private RadioMenuItem systemThemeItem;
+    @FXML
+    private RadioMenuItem lightThemeItem;
+    @FXML
+    private RadioMenuItem darkThemeItem;
 
 
     // ==================== Services and Managers ====================
@@ -174,6 +162,12 @@ public class MainController {
     private ImageInsertionManager imageInsertionManager;
     private HighlightPersistenceManager highlightPersistenceManager;
     private HighlightManager highlightManager;
+
+    // Undo/Redo Manager
+    private UndoRedoManager undoRedoManager;
+    
+    // Page Deletion Manager
+    private PageDeletionManager pageDeletionManager;
 
     // ==================== Document State ====================
 
@@ -224,6 +218,15 @@ public class MainController {
         // Initialize highlight persistence manager
         highlightPersistenceManager = new HighlightPersistenceManager();
 
+        // Initialize undo/redo manager
+        undoRedoManager = new UndoRedoManager(uiStateManager);
+        undoRedoManager.setButtons(undoButton, redoButton);
+        
+        // Set command manager in page renderer
+        if (pageRenderer != null) {
+            pageRenderer.setCommandManager(undoRedoManager.getCommandManager());
+        }
+
         // Initialize drawing tool icon manager
         DrawingToolIconManager drawingToolIconManager = new DrawingToolIconManager();
 
@@ -246,6 +249,9 @@ public class MainController {
                 if (pageRenderer != null && pageRenderer.getContextMenuHandler() != null) {
                     pageRenderer.getContextMenuHandler().setThemeManager(themeManager);
                 }
+                
+                // Update theme menu text with bullet points
+                updateThemeMenuText();
 
                 // Cập nhật DocumentOperationManager để nó có ThemeManager mới
                 documentOperationManager = new DocumentOperationManager(pdfService, renderingManager, zoomManager,
@@ -326,6 +332,7 @@ public class MainController {
         // Setup drawing tool icons
         drawingToolIconManager.setupDrawingToolIcons(btnDrawRect, btnDrawCircle, btnDrawArrow);
         drawingToolIconManager.setupUndoIcon(undoButton);
+        drawingToolIconManager.setupRedoIcon(redoButton);
 
         if (colorPicker != null) {
             colorPicker.setValue(javafx.scene.paint.Color.BLACK);
@@ -351,6 +358,31 @@ public class MainController {
         }
 
         uiStateManager.updateUIState(false);
+        
+        // Setup keyboard shortcuts for undo/redo
+        rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
+            if (oldScene != null) {
+                oldScene.removeEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, this::handleKeyboardShortcuts);
+            }
+            if (newScene != null) {
+                newScene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, this::handleKeyboardShortcuts);
+            }
+        });
+    }
+    
+    /**
+     * Handles keyboard shortcuts for undo/redo operations.
+     */
+    private void handleKeyboardShortcuts(javafx.scene.input.KeyEvent event) {
+        if (event.isControlDown()) {
+            if (event.getCode() == javafx.scene.input.KeyCode.Z) {
+                handleUndo();
+                event.consume();
+            } else if (event.getCode() == javafx.scene.input.KeyCode.Y) {
+                handleRedo();
+                event.consume();
+            }
+        }
     }
 
     /**
@@ -408,6 +440,15 @@ public class MainController {
 
         // Content Stream Manager
         contentStreamManager = new org.pdflite.manager.ContentStreamManager();
+        
+        // Page Deletion Manager (needs undoRedoManager, renderingManager, pageInfoManager, pageRenderer)
+        pageDeletionManager = new PageDeletionManager(
+            uiStateManager, 
+            undoRedoManager, 
+            renderingManager, 
+            pageInfoManager, 
+            pageRenderer
+        );
 
         // Set text edit callback for context menu
         setupTextEditCallback();
@@ -561,6 +602,15 @@ public class MainController {
             }
             
             annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
+            
+            // Set refresh callback for PageRenderer to use in commands
+            if (pageRenderer != null) {
+                pageRenderer.setRefreshAnnotationsCallback(pageIndex -> {
+                    if (annotationManager != null) {
+                        annotationManager.refreshPageAnnotations(pageIndex);
+                    }
+                });
+            }
             
             // Update zoom manager with current document
             if (zoomManager != null) {
@@ -736,44 +786,8 @@ public class MainController {
 
     @FXML
     private void handleDeletePage() {
-        if (currentDocument == null) {
-            return;
-        }
-
-        int current = currentDocument.getCurrentPage();
-        AtomicReference<VBox> pagesContainerRef =
-                new AtomicReference<>(pagesContainer);
-        AtomicReference<PageRenderer> pageRendererRef =
-                new AtomicReference<>(pageRenderer);
-        AtomicReference<ScrollHandler> scrollHandlerRef =
-                new AtomicReference<>(scrollHandler);
-        AtomicReference<RenderingManager> renderingManagerRef =
-                new AtomicReference<>(renderingManager);
-
-        PDFDocument newDocument = documentOperationManager.deletePage(currentDocument, current,
-                renderExecutor, loadingPages, contentPane, scrollPane, pagesContainerRef,
-                pageRendererRef, scrollHandlerRef, renderingManagerRef);
-
-        if (newDocument != null) {
-            currentDocument = newDocument;
-            pagesContainer = pagesContainerRef.get();
-            pageRenderer = pageRendererRef.get();
-            scrollHandler = scrollHandlerRef.get();
-            renderingManager = renderingManagerRef.get();
-
-            // Recreate annotation manager with a new document
-            if (pagesContainer != null) {
-                annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
-            }
-        } else {
-            // Recovery: try to reopen an original file
-            try {
-                if (currentDocument != null && currentDocument.getFile() != null) {
-                    openPDFFile(currentDocument.getFile());
-                }
-            } catch (Exception recovery) {
-                logger.error("Failed to recover after delete error", recovery);
-            }
+        if (pageDeletionManager != null) {
+            pageDeletionManager.handleDeletePage(currentDocument);
         }
     }
 
@@ -858,16 +872,34 @@ public class MainController {
     @FXML
     private void setSystemTheme() {
         themeManager.setSystemTheme();
+        updateThemeMenuGraphics();
     }
 
     @FXML
     private void setLightTheme() {
         themeManager.setLightTheme();
+        updateThemeMenuGraphics();
     }
 
     @FXML
     private void setDarkTheme() {
         themeManager.setDarkTheme();
+        updateThemeMenuGraphics();
+    }
+    
+    private void updateThemeMenuText() {
+        updateThemeMenuGraphics();
+    }
+    
+    private void updateThemeMenuGraphics() {
+        // Create bullet graphic for selected item
+        Circle bullet = new Circle(3);
+        bullet.setFill(Color.web("#0A84FF"));
+        
+        // Set graphics - bullet for selected, null for others
+        systemThemeItem.setGraphic(systemThemeItem.isSelected() ? new Circle(3, Color.web("#0A84FF")) : null);
+        lightThemeItem.setGraphic(lightThemeItem.isSelected() ? new Circle(3, Color.web("#0A84FF")) : null);
+        darkThemeItem.setGraphic(darkThemeItem.isSelected() ? new Circle(3, Color.web("#0A84FF")) : null);
     }
 
 
@@ -987,6 +1019,26 @@ public class MainController {
         dialogManager.openExtractDialog(currentDocument);
     }
 
+    @FXML
+    private void handleReorderPages() {
+        dialogManager.openPageReorderDialog(currentDocument, () -> {
+            // Callback: Refresh view after successful reorder
+            Platform.runLater(() -> {
+                // Clear all caches to force re-render with new page order
+                currentDocument.clearCache();
+                pageRenderer.clearCache();
+                
+                // Re-render all pages
+                renderingManager.renderAllPages();
+                
+                // Update status
+                uiStateManager.updateStatus("Pages reordered - Don't forget to save!");
+                
+                logger.info("View refreshed after page reorder");
+            });
+        });
+    }
+
 
     public BorderPane getRootPane() {
         return rootPane;
@@ -1071,8 +1123,15 @@ public class MainController {
 
     @FXML
     private void handleUndo() {
-        if (annotationManager != null) {
-            annotationManager.handleUndo();
+        if (undoRedoManager != null) {
+            undoRedoManager.handleUndo();
+        }
+    }
+    
+    @FXML
+    private void handleRedo() {
+        if (undoRedoManager != null) {
+            undoRedoManager.handleRedo();
         }
     }
 
