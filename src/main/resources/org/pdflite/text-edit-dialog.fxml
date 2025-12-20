@@ -6,22 +6,28 @@
 
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="org.pdflite.dialog.TextEditDialogController"
-      spacing="10" prefWidth="400" prefHeight="200">
-    <padding>
-        <Insets top="10" right="10" bottom="10" left="10"/>
-    </padding>
+      styleClass="text-edit-dialog"
+      prefWidth="400" prefHeight="200">
 
-    <Label text="Edit Text" style="-fx-font-size: 14px; -fx-font-weight: bold;"/>
+    <!-- Custom Title Bar will be added programmatically -->
+    <HBox fx:id="dialogTitleBar" styleClass="custom-title-bar" prefHeight="32" minHeight="32" maxHeight="32"/>
 
-    <Label text="Original Text:" style="-fx-font-size: 12px;"/>
-    <TextArea fx:id="originalTextArea" editable="false" wrapText="true" prefRowCount="2"
-              style="-fx-opacity: 0.7;"/>
+    <!-- Content -->
+    <VBox spacing="10" VBox.vgrow="ALWAYS">
+        <padding>
+            <Insets top="10" right="10" bottom="10" left="10"/>
+        </padding>
 
-    <Label text="New Text:" style="-fx-font-size: 12px;"/>
-    <TextArea fx:id="newTextArea" wrapText="true" prefRowCount="3"/>
+        <Label text="Original Text:" style="-fx-font-size: 12px;"/>
+        <TextArea fx:id="originalTextArea" editable="false" wrapText="true" prefRowCount="2"
+                  style="-fx-opacity: 0.7;"/>
 
-    <HBox spacing="10" alignment="CENTER_RIGHT">
-        <Button text="Cancel" onAction="#handleCancel" prefWidth="80"/>
-        <Button text="OK" onAction="#handleOK" defaultButton="true" prefWidth="80"/>
-    </HBox>
+        <Label text="New Text:" style="-fx-font-size: 12px;"/>
+        <TextArea fx:id="newTextArea" wrapText="true" prefRowCount="3" VBox.vgrow="ALWAYS"/>
+
+        <HBox spacing="10" alignment="CENTER_RIGHT">
+            <Button text="Cancel" onAction="#handleCancel" prefWidth="80"/>
+            <Button text="OK" onAction="#handleOK" defaultButton="true" prefWidth="80"/>
+        </HBox>
+    </VBox>
 </VBox>

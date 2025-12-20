@@ -10,6 +10,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.pdflite.service.PDFMergeService;
 import org.pdflite.service.PDFService;
 import org.pdflite.service.PDFSplitService;
+import org.pdflite.util.DialogTitleBar;
 import org.pdflite.util.ThumbnailLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,8 @@ public class ExtractDialogController {
 
     private static final Logger logger = LoggerFactory.getLogger(ExtractDialogController.class);
 
+    @FXML
+    private javafx.scene.layout.HBox dialogTitleBar;
     @FXML
     private Label fileNameLabel;
     @FXML
@@ -94,6 +97,13 @@ public class ExtractDialogController {
      */
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+        
+        // Create and add a custom title bar
+        String title = dialogStage.getTitle() != null ? dialogStage.getTitle() : "Extract PDF Pages";
+        DialogTitleBar titleBar = new DialogTitleBar(title, dialogStage);
+        if (dialogTitleBar != null) {
+            dialogTitleBar.getChildren().setAll(titleBar.getTitleBar().getChildren());
+        }
         
         // Ensure FlowPane layout is calculated correctly after the dialog is shown
         // This fixes the issue where FlowPane doesn't calculate the correct column count initially

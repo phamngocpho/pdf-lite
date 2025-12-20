@@ -9,6 +9,7 @@ import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.apache.pdfbox.text.PDFTextStripperByArea;
 import org.pdflite.model.PDFDocument;
+import org.pdflite.manager.ThemeManager;
 import org.pdflite.util.CoordinateConverter;
 import org.pdflite.util.SmartTextSelector;
 import org.slf4j.Logger;
@@ -58,10 +59,20 @@ public class ContextMenuHandler {
     
     // Callback for text editing
     private TextEditCallback textEditCallback;
+    
+    // Theme manager for dialog styling
+    private ThemeManager themeManager;
 
     public ContextMenuHandler() {
         logger.info("ContextMenuHandler initialized!");
         this.smartTextSelector = new SmartTextSelector();
+    }
+    
+    /**
+     * Sets the theme manager for dialog styling.
+     */
+    public void setThemeManager(ThemeManager themeManager) {
+        this.themeManager = themeManager;
     }
     
     /**
@@ -284,9 +295,17 @@ public class ContextMenuHandler {
 
             // Create and show the dialog
             javafx.stage.Stage dialogStage = new javafx.stage.Stage();
-            dialogStage.setTitle("Edit Text");
+            dialogStage.initStyle(javafx.stage.StageStyle.TRANSPARENT); // Transparent for rounded corners
             dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
-            dialogStage.setScene(new javafx.scene.Scene(dialogRoot));
+            javafx.scene.Scene dialogScene = new javafx.scene.Scene(dialogRoot);
+            dialogScene.setFill(javafx.scene.paint.Color.TRANSPARENT); // Transparent background
+            
+            // Apply current theme to dialog
+            if (themeManager != null) {
+                themeManager.applyThemeToScene(dialogScene);
+            }
+            
+            dialogStage.setScene(dialogScene);
             controller.setDialogStage(dialogStage);
 
             dialogStage.showAndWait();
@@ -321,28 +340,25 @@ public class ContextMenuHandler {
                     }
                     
                     // These are in Java coordinates (top-left origin)
-                    float xJava = (float) minX;
+                    float textX = (float) minX;
                     float yJava = (float) minY;
-                    float width = (float) (maxX - minX);
+                    float coverWidth = (float) (maxX - minX);
                     float height = (float) (maxY - minY);
                     
                     // Convert to PDF User Space coordinates (bottom-left origin)
                     // For the covering rectangle. We need the bottom-left corner
                     // to Extend upward for diacritics and downward for descenders
-                    float coverX = xJava;
                     float coverY = currentPageHeight - yJava - height - 3.0f;  // Extend down 3 points
-                    float coverWidth = width;
                     float coverHeight = height + 9.0f;  // Extend up 6 points plus down 3 points = total 9
                     
                     // For text placement, we need the baseline position
                     // Since coverY was extended down by 3 points, add 3 to compensate and keep text position
                     // Then add the original offset (12% of height)
-                    float textX = xJava;
                     float textY = coverY + 3.0f + (height * 0.05f);
                     
                     // Extract font and font size from the first TextPosition
                     PDFont originalFont = null;
-                    PDFont font = null;
+                    PDFont font;
                     float fontSize = 12.0f; // Default fallback
                     
                     List<org.apache.pdfbox.text.TextPosition> positions = currentSelection.getTextPositions();
@@ -371,14 +387,14 @@ public class ContextMenuHandler {
                     logger.info("TEXT REPLACEMENT:");
                     logger.info("  Page height: {}", currentPageHeight);
                     logger.info("  Selection rect (Java coords): x={}, y={}, width={}, height={}",
-                            xJava, yJava, width, height);
+                            textX, yJava, coverWidth, height);
                     logger.info("  Cover rect (User Space): x={}, y={}, width={}, height={}",
-                            coverX, coverY, coverWidth, coverHeight);
+                            textX, coverY, coverWidth, coverHeight);
                     logger.info("  Text position (User Space): x={}, y={}", textX, textY);
                     logger.info("  Font: {}, Size: {}", font.getName(), fontSize);
                     
-                    textEditCallback.onTextEdit(currentSelection.pageIndex, 
-                                               coverX, coverY, coverWidth, coverHeight,
+                    textEditCallback.onTextEdit(currentSelection.pageIndex,
+                            textX, coverY, coverWidth, coverHeight,
                                                textX, textY,
                                                newText, fontSize, font);
                 } else {

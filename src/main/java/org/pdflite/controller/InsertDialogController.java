@@ -2,10 +2,14 @@ package org.pdflite.controller;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
+import org.pdflite.util.DialogTitleBar;
 
 public class InsertDialogController {
 
+    public Button btnCancel;
+    @FXML private HBox titleBar;
     @FXML private ComboBox<String> pageSizeCombo;
     @FXML private TextField widthField, heightField;
     @FXML private RadioButton rbPortrait, rbLandscape;
@@ -13,6 +17,7 @@ public class InsertDialogController {
     @FXML private Spinner<Integer> countSpinner;
     @FXML private Button btnInsert;
 
+    private DialogTitleBar dialogTitleBar;
     private boolean insertClicked = false;
     private float defaultWidth = 595; // A4 default
     private float defaultHeight = 842; // A4 default
@@ -85,7 +90,7 @@ public class InsertDialogController {
         ((Stage) btnInsert.getScene().getWindow()).close();
     }
 
-    public boolean isInsertClicked() { return insertClicked; }
+    public boolean isInsertClicked() { return !insertClicked; }
 
     public float getWidth() {
         try {
@@ -118,5 +123,15 @@ public class InsertDialogController {
      */
     public String getSelectedPageSize() {
         return pageSizeCombo.getValue();
+    }
+
+    /**
+     * Sets the dialog stage and initializes the custom title bar.
+     *
+     * @param stage the dialog stage
+     */
+    public void setDialogStage(Stage stage) {
+        dialogTitleBar = new DialogTitleBar("Insert Blank Page", stage);
+        titleBar.getChildren().setAll(dialogTitleBar.getTitleBar().getChildren());
     }
 }

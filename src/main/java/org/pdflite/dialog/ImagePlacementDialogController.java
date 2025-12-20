@@ -2,10 +2,12 @@ package org.pdflite.dialog;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.pdflite.manager.ImageManager;
 import org.pdflite.model.ImagePlacement;
+import org.pdflite.util.DialogTitleBar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +27,9 @@ import java.io.File;
  */
 public class ImagePlacementDialogController {
     private static final Logger logger = LoggerFactory.getLogger(ImagePlacementDialogController.class);
+
+    @FXML
+    private HBox dialogTitleBar;
 
     @FXML
     private TextField imageFileField;
@@ -95,6 +100,12 @@ public class ImagePlacementDialogController {
      */
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
+        
+        // Create and add a custom title bar
+        String title = dialogStage.getTitle() != null ? dialogStage.getTitle() : "Insert Image";
+        DialogTitleBar titleBar = new DialogTitleBar(title, dialogStage);
+        // Copy children from the title bar to dialogTitleBar HBox
+        dialogTitleBar.getChildren().setAll(titleBar.getTitleBar().getChildren());
     }
 
     /**
@@ -152,7 +163,7 @@ public class ImagePlacementDialogController {
     /**
      * Returns the resulting image placement.
      *
-     * @return the image placement, or null if cancelled
+     * @return the image placement, or null if canceled
      */
     public ImagePlacement getResultPlacement() {
         return resultPlacement;
