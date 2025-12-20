@@ -56,6 +56,7 @@ public class AnnotationLayer extends Canvas {
     private Annotation tempAnnotation;
     private double currentLineWidth = 2.0;
     private Consumer<Annotation> onAnnotationAdded;
+    private org.pdflite.command.CommandManager commandManager;
 
     /**
      * List of annotations currently on this layer.
@@ -141,6 +142,15 @@ public class AnnotationLayer extends Canvas {
 
     public void setOnAnnotationAdded(Consumer<Annotation> callback) {
         this.onAnnotationAdded = callback;
+    }
+    
+    /**
+     * Sets the command manager for undo/redo support.
+     * 
+     * @param commandManager the command manager
+     */
+    public void setCommandManager(org.pdflite.command.CommandManager commandManager) {
+        this.commandManager = commandManager;
     }
 
     public void setLineWidth(double width) {
@@ -244,9 +254,14 @@ public class AnnotationLayer extends Canvas {
                 if (currentMode == AnnotationMode.HIGHLIGHT) {
                     addHighlight(startX, startY, event.getX(), event.getY());
                 } else if (tempAnnotation != null) {
-                    annotations.add(tempAnnotation); // Lưu vào danh sách
+                    // Don't add to local list - let the callback/command handle it
+                    // annotations.add(tempAnnotation);
+                    
                     if (onAnnotationAdded != null) {
                         onAnnotationAdded.accept(tempAnnotation);
+                    } else {
+                        // Fallback: add directly if no callback
+                        annotations.add(tempAnnotation);
                     }
                 }
 
@@ -289,7 +304,18 @@ public class AnnotationLayer extends Canvas {
 
         if (width > 5 && height > 5) {
             HighlightAnnotation annotation = new HighlightAnnotation(pageIndex, x, y, width, height, currentColor);
-            annotations.add(annotation);
+            
+            // Don't add to local list - let the callback/command handle it
+            // annotations.add(annotation);
+            
+            // Call the callback to use command pattern for undo/redo
+            if (onAnnotationAdded != null) {
+                onAnnotationAdded.accept(annotation);
+            } else {
+                // Fallback: add directly if no callback
+                annotations.add(annotation);
+            }
+            
             logger.debug("Added highlight annotation at ({}, {}) with size {}x{} on page {}", 
                     x, y, width, height, pageIndex);
         }
