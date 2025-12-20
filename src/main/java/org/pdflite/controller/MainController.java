@@ -1033,6 +1033,80 @@ public class MainController {
         }
     }
 
+    @FXML
+    private void handleOptimizePDF() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No Document", "Please open a PDF file first.");
+            return;
+        }
+
+        try {
+            // Get actual file size
+            long fileSize;
+            if (currentDocument.getFile() != null && currentDocument.getFile().exists()) {
+                fileSize = currentDocument.getFile().length();
+            } else {
+                // Fallback: estimate based on document structure
+                fileSize = (long) currentDocument.getDocument().getNumberOfPages() * 1024 * 100;
+            }
+            
+            // Create a compression manager
+            org.pdflite.manager.CompressionManager compressionManager = 
+                new org.pdflite.manager.CompressionManager();
+            
+            // Estimate compression for MEDIUM level (default selection)
+            int estimatedReduction = compressionManager.estimateCompression(
+                currentDocument, 
+                org.pdflite.manager.CompressionManager.CompressionLevel.MEDIUM
+            );
+
+            // Show compression dialog
+            org.pdflite.dialog.CompressionDialog dialog = 
+                new org.pdflite.dialog.CompressionDialog(fileSize, estimatedReduction, themeManager, 
+                    currentDocument, compressionManager);
+
+            if (dialog.showAndWait()) {
+                // User clicked Optimize
+                var level = dialog.getSelectedLevel();
+                
+                // Create background task
+                javafx.concurrent.Task<Boolean> compressionTask = new javafx.concurrent.Task<>() {
+                    @Override
+                    protected Boolean call() {
+                        return compressionManager.compressPDF(currentDocument, level);
+                    }
+                };
+                
+                // Run with progress dialog
+                org.pdflite.util.ProgressDialog.runWithProgress(
+                    compressionTask,
+                    "Optimizing",
+                    "Optimizing PDF...",
+                    result -> {
+                        if (result) {
+                            // Re-render all pages to show compressed version
+                            renderingManager.renderAllPages();
+                            
+                            uiStateManager.updateStatus("PDF optimized - Don't forget to save!");
+                            logger.info("PDF compressed with {} level", level);
+                        } else {
+                            uiStateManager.showError("Optimization Failed", 
+                                "No images found to compress or optimization failed.");
+                        }
+                    },
+                    ex -> {
+                        logger.error("Error during compression", ex);
+                        uiStateManager.showError("Error", "Failed to optimize PDF: " + ex.getMessage());
+                    },
+                    themeManager
+                );
+            }
+        } catch (Exception e) {
+            logger.error("Error optimizing PDF", e);
+            uiStateManager.showError("Error", "Failed to optimize PDF: " + e.getMessage());
+        }
+    }
+
     // ==================== Merge and Split Operations ====================
 
     @FXML
