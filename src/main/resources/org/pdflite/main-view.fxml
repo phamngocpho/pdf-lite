@@ -164,10 +164,19 @@
                                         
                                         <Separator styleClass="drawing-tools-separator"/>
                                         
-                                        <!-- Color Section -->
+                                        <!-- Drawing Color Section -->
                                         <VBox spacing="8">
-                                            <Label text="Color" styleClass="drawing-tools-section-label"/>
+                                            <Label text="Drawing Color" styleClass="drawing-tools-section-label"/>
                                             <ColorPicker fx:id="colorPicker" prefWidth="178" prefHeight="32" maxWidth="178"
+                                                         style="-fx-color-label-visible: true;"/>
+                                        </VBox>
+                                        
+                                        <Separator styleClass="drawing-tools-separator"/>
+                                        
+                                        <!-- Highlight Color Section -->
+                                        <VBox spacing="8">
+                                            <Label text="Highlight Color" styleClass="drawing-tools-section-label"/>
+                                            <ColorPicker fx:id="highlightColorPicker" prefWidth="178" prefHeight="32" maxWidth="178"
                                                          style="-fx-color-label-visible: true;"/>
                                         </VBox>
                                         

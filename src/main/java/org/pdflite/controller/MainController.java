@@ -73,6 +73,8 @@ public class MainController {
     @FXML
     private ColorPicker colorPicker;
     @FXML
+    private ColorPicker highlightColorPicker;
+    @FXML
     private Slider strokeWidthSlider;
     @FXML
     private Label strokeWidthLabel;
@@ -134,6 +136,7 @@ public class MainController {
     private TitleBarManager titleBarManager;
     private ExportManager exportManager;
     private ImageInsertionManager imageInsertionManager;
+    private HighlightPersistenceManager highlightPersistenceManager;
 
     // ==================== Document State ====================
 
@@ -180,6 +183,9 @@ public class MainController {
 
         // Initialize image insertion manager (will be fully initialized after rendering manager is ready)
         imageInsertionManager = new ImageInsertionManager(rootPane, uiStateManager, renderingManager, pageRenderer, null);
+      
+        // Initialize highlight persistence manager
+        highlightPersistenceManager = new HighlightPersistenceManager();
 
         // Initialize drawing tool icon manager
         DrawingToolIconManager drawingToolIconManager = new DrawingToolIconManager();
@@ -288,6 +294,11 @@ public class MainController {
             colorPicker.setValue(javafx.scene.paint.Color.BLACK);
             colorPicker.setOnAction(e -> updateDrawingStyleForAllPages());
         }
+        
+        if (highlightColorPicker != null) {
+            highlightColorPicker.setValue(javafx.scene.paint.Color.YELLOW);
+            highlightColorPicker.setOnAction(e -> updateHighlightColorForAllPages());
+        }
 
         if (strokeWidthSlider != null) {
             strokeWidthSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
@@ -363,6 +374,9 @@ public class MainController {
 
         // Set text edit callback for context menu
         setupTextEditCallback();
+        
+        // Set highlight callback for context menu
+        setupHighlightCallback();
     }
 
     /**
@@ -438,6 +452,91 @@ public class MainController {
         
         logger.info("Text edit callback configured successfully");
     }
+    
+    /**
+     * Sets up the highlight callback for the context menu handler.
+     * This callback is invoked when the user highlights text from the context menu.
+     */
+    private void setupHighlightCallback() {
+        pageRenderer.getContextMenuHandler().setHighlightCallback(
+            (pageIndex, highlightRegions, defaultColor) -> {
+            try {
+                // Get current document
+                if (currentDocument == null) {
+                    uiStateManager.updateStatus("No document loaded");
+                    logger.warn("Cannot highlight: no document loaded");
+                    return;
+                }
+                
+                // Get the highlight color from the color picker
+                javafx.scene.paint.Color highlightColor = getHighlightColor();
+                
+                double zoom = getCurrentZoom();
+                
+                logger.info("Creating {} highlights on page {} with color {}", 
+                        highlightRegions.size(), pageIndex + 1, highlightColor);
+                
+                // Create highlight annotations for each region
+                for (java.awt.geom.Rectangle2D region : highlightRegions) {
+                    // highlightRegions are in PDF coordinates (from SmartTextSelector)
+                    // Need to convert to canvas coordinates for AnnotationLayer
+                    
+                    // Convert PDF coordinates to canvas coordinates
+                    double finalScale = zoom * org.pdflite.util.Constants.LOW_RENDER_SCALE;
+                    
+                    double canvasX = region.getX() * finalScale;
+                    double canvasY = region.getY() * finalScale;
+                    double canvasWidth = region.getWidth() * finalScale;
+                    double canvasHeight = region.getHeight() * finalScale;
+                    
+                    // Create highlight annotation
+                    org.pdflite.model.HighlightAnnotation highlight = 
+                        new org.pdflite.model.HighlightAnnotation(
+                            pageIndex, 
+                            canvasX, 
+                            canvasY, 
+                            canvasWidth, 
+                            canvasHeight, 
+                            highlightColor);
+                    
+                    // Add to document
+                    currentDocument.addAnnotation(highlight);
+                    
+                    logger.debug("Added highlight: page={}, pdfX={}, pdfY={}, canvasX={}, canvasY={}, w={}, h={}", 
+                            pageIndex, region.getX(), region.getY(), canvasX, canvasY, canvasWidth, canvasHeight);
+                }
+                
+                // Mark document as modified
+                currentDocument.setHasUnsavedEdits(true);
+                
+                // Refresh the page to show the highlights
+                if (annotationManager != null) {
+                    annotationManager.refreshPageAnnotations(pageIndex);
+                }
+                
+                // Update status
+                uiStateManager.updateStatus(
+                    String.format("Added %d highlight(s) - Save to persist changes", 
+                        highlightRegions.size()));
+                
+            } catch (Exception e) {
+                logger.error("Error creating highlights", e);
+                uiStateManager.updateStatus("Error creating highlights: " + e.getMessage());
+                
+                // Show error dialog
+                Platform.runLater(() -> {
+                    javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
+                            javafx.scene.control.Alert.AlertType.ERROR);
+                    alert.setTitle("Highlight Error");
+                    alert.setHeaderText("Failed to create highlights");
+                    alert.setContentText(e.getMessage());
+                    alert.showAndWait();
+                });
+            }
+        });
+        
+        logger.info("Highlight callback configured successfully");
+    }
 
     /**
      * Refreshes the current page rendering to show changes.
@@ -484,6 +583,24 @@ public class MainController {
 
         // Initialize the annotation manager when the document is opened
         if (currentDocument != null && pagesContainer != null) {
+            // Load existing highlights from PDF
+            if (highlightPersistenceManager != null) {
+                try {
+                    List<org.pdflite.model.HighlightAnnotation> loadedHighlights = 
+                        highlightPersistenceManager.loadHighlightsFromPDF(
+                            currentDocument.getDocument());
+                    
+                    // Add loaded highlights to document
+                    for (org.pdflite.model.HighlightAnnotation highlight : loadedHighlights) {
+                        currentDocument.addAnnotation(highlight);
+                    }
+                    
+                    logger.info("Loaded {} highlights from PDF", loadedHighlights.size());
+                } catch (Exception e) {
+                    logger.error("Error loading highlights from PDF", e);
+                }
+            }
+            
             annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
             
             // Update zoom manager with current document
@@ -516,6 +633,24 @@ public class MainController {
 
     @FXML
     private void handleSave() {
+        if (currentDocument == null) {
+            return;
+        }
+        
+        // Save highlights to PDF before saving document
+        if (highlightPersistenceManager != null) {
+            try {
+                highlightPersistenceManager.saveHighlightsToPDF(
+                    currentDocument.getDocument(), 
+                    currentDocument.getAnnotations());
+                logger.info("Highlights saved to PDF");
+            } catch (Exception e) {
+                logger.error("Error saving highlights to PDF", e);
+                uiStateManager.showError("Save Error", 
+                    "Failed to save highlights: " + e.getMessage());
+            }
+        }
+        
         documentLifecycleManager.saveDocument(currentDocument);
     }
 
@@ -957,6 +1092,16 @@ public class MainController {
         if (annotationManager != null && colorPicker != null && strokeWidthSlider != null) {
             annotationManager.updateDrawingStyleForAllPages(colorPicker.getValue(), strokeWidthSlider.getValue());
         }
+    }
+    
+    private void updateHighlightColorForAllPages() {
+        if (annotationManager != null && highlightColorPicker != null) {
+            annotationManager.updateHighlightColorForAllPages(highlightColorPicker.getValue());
+        }
+    }
+    
+    public javafx.scene.paint.Color getHighlightColor() {
+        return highlightColorPicker != null ? highlightColorPicker.getValue() : javafx.scene.paint.Color.YELLOW;
     }
 
     private void makeToggleButtonDeselectable(ToggleButton btn) {
