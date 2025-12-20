@@ -161,7 +161,6 @@ public class MainController {
     private ExportManager exportManager;
     private ImageInsertionManager imageInsertionManager;
     private HighlightPersistenceManager highlightPersistenceManager;
-    private HighlightManager highlightManager;
 
     // Undo/Redo Manager
     private UndoRedoManager undoRedoManager;
@@ -248,6 +247,11 @@ public class MainController {
                 // Cập nhật ContextMenuHandler với ThemeManager
                 if (pageRenderer != null && pageRenderer.getContextMenuHandler() != null) {
                     pageRenderer.getContextMenuHandler().setThemeManager(themeManager);
+                }
+                
+                // Set theme manager supplier for PageDeletionManager
+                if (pageDeletionManager != null) {
+                    pageDeletionManager.setThemeManagerSupplier(() -> themeManager);
                 }
                 
                 // Update theme menu text with bullet points
@@ -390,7 +394,7 @@ public class MainController {
      */
     private void initializeManagers() {
         // UI State Manager (needed by other managers)
-        uiStateManager = new UIStateManager(statusLabel, prevButton, nextButton, pageNumberField, zoomComboBox);
+        uiStateManager = new UIStateManager(statusLabel, prevButton, nextButton, pageNumberField, zoomComboBox, () -> themeManager);
 
         // Create ZoomManager first (without listener)
         zoomManager = new ZoomManager(pdfService, null);
@@ -406,7 +410,7 @@ public class MainController {
         zoomManager.setZoomChangeListener(zoomChangeListener);
 
         // File Manager
-        fileManager = new FileManager(pdfService, ListenerFactory.createFileOperationListener(uiStateManager));
+        fileManager = new FileManager(pdfService, ListenerFactory.createFileOperationListener(uiStateManager), () -> themeManager);
 
         // Fullscreen Manager
         fullscreenManager = new FullscreenManager(rootPane, toolbar, ListenerFactory.createFullscreenListener(uiStateManager));
@@ -454,12 +458,12 @@ public class MainController {
         setupTextEditCallback();
 
         // Highlight handling lives in HighlightManager (keeps MainController smaller)
-        highlightManager = new HighlightManager(
-            highlightColorPicker,
-            uiStateManager,
-            () -> currentDocument,
-            this::getCurrentZoom,
-            () -> annotationManager
+        HighlightManager highlightManager = new HighlightManager(
+                highlightColorPicker,
+                uiStateManager,
+                () -> currentDocument,
+                this::getCurrentZoom,
+                () -> annotationManager
         );
         highlightManager.setupHighlightCallback(pageRenderer);
         highlightManager.setupDeleteHighlightCallback(pageRenderer);

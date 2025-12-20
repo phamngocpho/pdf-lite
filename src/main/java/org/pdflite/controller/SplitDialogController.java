@@ -10,6 +10,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.pdflite.dialog.CustomInfoDialog;
 import org.pdflite.service.PDFService;
 import org.pdflite.service.PDFSplitService;
 import org.pdflite.util.DialogTitleBar;
@@ -86,6 +87,7 @@ public class SplitDialogController {
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
     private final ObservableList<String> rangesList = FXCollections.observableArrayList();
     private Stage dialogStage;
+    private org.pdflite.manager.ThemeManager themeManager;
 
     /**
      * Initializes the controller.
@@ -153,6 +155,13 @@ public class SplitDialogController {
                 previewPane.layout();
             }
         }));
+    }
+
+    /**
+     * Sets the theme manager.
+     */
+    public void setThemeManager(org.pdflite.manager.ThemeManager themeManager) {
+        this.themeManager = themeManager;
     }
 
     /**
@@ -597,13 +606,12 @@ public class SplitDialogController {
      * Shows an error dialog.
      */
     private void showError(String title, String message) {
-        Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle(title);
-            alert.setHeaderText(null);
-            alert.setContentText(message);
-            alert.showAndWait();
-        });
+        Platform.runLater(() -> CustomInfoDialog.show(
+            title,
+            "Error",
+            message,
+            themeManager
+        ));
     }
 
     /**
@@ -611,11 +619,12 @@ public class SplitDialogController {
      */
     private void showInfo(String message) {
         Platform.runLater(() -> {
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Split Complete");
-            alert.setHeaderText(null);
-            alert.setContentText(message);
-            alert.showAndWait();
+            CustomInfoDialog.show(
+                "Split Complete",
+                "Success",
+                message,
+                themeManager
+            );
         });
     }
 

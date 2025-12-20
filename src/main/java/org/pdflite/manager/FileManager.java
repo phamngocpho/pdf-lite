@@ -1,9 +1,8 @@
 package org.pdflite.manager;
 
-import javafx.scene.control.Alert;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import org.pdflite.dialog.PasswordDialog;
+import org.pdflite.dialog.CustomPasswordDialog;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
 import org.pdflite.util.Constants;
@@ -13,12 +12,14 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.function.Supplier;
 
 /**
  * Manages file operations for PDF documents.
  * Handles opening, saving, and deleting pages.
  */
-public record FileManager(PDFService pdfService, FileOperationListener fileOperationListener) {
+public record FileManager(PDFService pdfService, FileOperationListener fileOperationListener, 
+                          Supplier<ThemeManager> themeManagerSupplier) {
     private static final Logger logger = LoggerFactory.getLogger(FileManager.class);
 
     /**
@@ -108,8 +109,8 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
             // Check if the file is encrypted
             if (pdfService.isPDFEncrypted(file)) {
                 // Show the password dialog
-                PasswordDialog passwordDialog = new PasswordDialog();
-                String password = passwordDialog.showAndGetPassword();
+                ThemeManager themeManager = themeManagerSupplier != null ? themeManagerSupplier.get() : null;
+                String password = CustomPasswordDialog.show(themeManager);
 
                 if (password == null) {
                     // User cancelled
@@ -121,11 +122,12 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
                     document = pdfService.openPDF(file, password);
                 } catch (IOException passwordError) {
                     // Wrong password or other error
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Lỗi mở file");
-                    alert.setHeaderText("Không thể mở file PDF");
-                    alert.setContentText("Mật khẩu không đúng hoặc file bị lỗi.");
-                    alert.showAndWait();
+                    org.pdflite.dialog.CustomInfoDialog.show(
+                        "Lỗi mở file",
+                        "Không thể mở file PDF",
+                        "Mật khẩu không đúng hoặc file bị lỗi.",
+                        themeManager
+                    );
                     throw passwordError;
                 }
             } else {
