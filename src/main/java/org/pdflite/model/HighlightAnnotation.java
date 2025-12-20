@@ -21,6 +21,12 @@ import javafx.scene.paint.Color;
  */
 public class HighlightAnnotation extends Annotation {
     /**
+     * Groups multiple highlight rectangles created in a single user action
+     * (e.g., highlighting multiple lines of text).
+     */
+    private final String batchId;
+
+    /**
      * The width of the highlight rectangle.
      */
     private final double width;
@@ -49,10 +55,24 @@ public class HighlightAnnotation extends Annotation {
      * @param color      the color to use for the highlight
      */
     public HighlightAnnotation(int pageNumber, double x, double y, double width, double height, Color color) {
+        this(pageNumber, x, y, width, height, color, null);
+    }
+
+    /**
+     * Creates a new highlight annotation with an optional batch id.
+     *
+     * @param batchId identifier shared by highlight segments created in one action; may be null
+     */
+    public HighlightAnnotation(int pageNumber, double x, double y, double width, double height, Color color, String batchId) {
         super(pageNumber, x, y, "HIGHLIGHT");
         this.width = width;
         this.height = height;
         this.color = color;
+        this.batchId = batchId;
+    }
+
+    public String getBatchId() {
+        return batchId;
     }
 
     /**

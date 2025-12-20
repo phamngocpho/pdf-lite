@@ -22,8 +22,22 @@ import org.pdflite.util.NavigationHelper;
 import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
+import javafx.scene.control.ColorPicker;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuButton;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Slider;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.ToolBar;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -147,6 +161,7 @@ public class MainController {
     private ExportManager exportManager;
     private ImageInsertionManager imageInsertionManager;
     private HighlightPersistenceManager highlightPersistenceManager;
+    private HighlightManager highlightManager;
 
     // Undo/Redo Manager
     private UndoRedoManager undoRedoManager;
@@ -437,9 +452,17 @@ public class MainController {
 
         // Set text edit callback for context menu
         setupTextEditCallback();
-        
-        // Set highlight callback for context menu
-        setupHighlightCallback();
+
+        // Highlight handling lives in HighlightManager (keeps MainController smaller)
+        highlightManager = new HighlightManager(
+            highlightColorPicker,
+            uiStateManager,
+            () -> currentDocument,
+            this::getCurrentZoom,
+            () -> annotationManager
+        );
+        highlightManager.setupHighlightCallback(pageRenderer);
+        highlightManager.setupDeleteHighlightCallback(pageRenderer);
     }
 
     /**
@@ -517,91 +540,6 @@ public class MainController {
     }
     
     /**
-     * Sets up the highlight callback for the context menu handler.
-     * This callback is invoked when the user highlights text from the context menu.
-     */
-    private void setupHighlightCallback() {
-        pageRenderer.getContextMenuHandler().setHighlightCallback(
-            (pageIndex, highlightRegions, defaultColor) -> {
-            try {
-                // Get current document
-                if (currentDocument == null) {
-                    uiStateManager.updateStatus("No document loaded");
-                    logger.warn("Cannot highlight: no document loaded");
-                    return;
-                }
-                
-                // Get the highlight color from the color picker
-                javafx.scene.paint.Color highlightColor = getHighlightColor();
-                
-                double zoom = getCurrentZoom();
-                
-                logger.info("Creating {} highlights on page {} with color {}", 
-                        highlightRegions.size(), pageIndex + 1, highlightColor);
-                
-                // Create highlight annotations for each region
-                for (java.awt.geom.Rectangle2D region : highlightRegions) {
-                    // highlightRegions are in PDF coordinates (from SmartTextSelector)
-                    // Need to convert to canvas coordinates for AnnotationLayer
-                    
-                    // Convert PDF coordinates to canvas coordinates
-                    double finalScale = zoom * org.pdflite.util.Constants.LOW_RENDER_SCALE;
-                    
-                    double canvasX = region.getX() * finalScale;
-                    double canvasY = region.getY() * finalScale;
-                    double canvasWidth = region.getWidth() * finalScale;
-                    double canvasHeight = region.getHeight() * finalScale;
-                    
-                    // Create highlight annotation
-                    org.pdflite.model.HighlightAnnotation highlight = 
-                        new org.pdflite.model.HighlightAnnotation(
-                            pageIndex, 
-                            canvasX, 
-                            canvasY, 
-                            canvasWidth, 
-                            canvasHeight, 
-                            highlightColor);
-                    
-                    // Add to document
-                    currentDocument.addAnnotation(highlight);
-                    
-                    logger.debug("Added highlight: page={}, pdfX={}, pdfY={}, canvasX={}, canvasY={}, w={}, h={}", 
-                            pageIndex, region.getX(), region.getY(), canvasX, canvasY, canvasWidth, canvasHeight);
-                }
-                
-                // Mark document as modified
-                currentDocument.setHasUnsavedEdits(true);
-                
-                // Refresh the page to show the highlights
-                if (annotationManager != null) {
-                    annotationManager.refreshPageAnnotations(pageIndex);
-                }
-                
-                // Update status
-                uiStateManager.updateStatus(
-                    String.format("Added %d highlight(s) - Save to persist changes", 
-                        highlightRegions.size()));
-                
-            } catch (Exception e) {
-                logger.error("Error creating highlights", e);
-                uiStateManager.updateStatus("Error creating highlights: " + e.getMessage());
-                
-                // Show error dialog
-                Platform.runLater(() -> {
-                    javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
-                            javafx.scene.control.Alert.AlertType.ERROR);
-                    alert.setTitle("Highlight Error");
-                    alert.setHeaderText("Failed to create highlights");
-                    alert.setContentText(e.getMessage());
-                    alert.showAndWait();
-                });
-            }
-        });
-        
-        logger.info("Highlight callback configured successfully");
-    }
-
-    /**
      * Refreshes the current page rendering to show changes.
      */
     private void refreshCurrentPage() {
@@ -619,7 +557,6 @@ public class MainController {
         // Re-render all visible pages
         Platform.runLater(() -> renderingManager.renderAllPages());
     }
-
 
     // ==================== File Operations ====================
 
