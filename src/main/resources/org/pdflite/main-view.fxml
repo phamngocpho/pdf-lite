@@ -82,6 +82,7 @@
                     <MenuItem text="Merge PDFs..." onAction="#handleMergePDFs"/>
                     <MenuItem text="Split PDF..." onAction="#handleSplitPDF"/>
                     <MenuItem text="Extract Pages..." onAction="#handleExtractPages"/>
+                    <MenuItem text="Reorder Pages..." onAction="#handleReorderPages"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Encrypt PDF..." onAction="#handleEncryptPDF"/>
                     <MenuItem text="Remove Password..." onAction="#handleDecryptPDF"/>
@@ -217,6 +218,7 @@
                         <MenuItem text="Merge PDFs..." onAction="#handleMergePDFs"/>
                         <MenuItem text="Split PDF..." onAction="#handleSplitPDF"/>
                         <MenuItem text="Extract Pages..." onAction="#handleExtractPages"/>
+                        <MenuItem text="Reorder Pages..." onAction="#handleReorderPages"/>
                         <SeparatorMenuItem/>
                         <MenuItem text="Encrypt PDF..." onAction="#handleEncryptPDF"/>
                         <MenuItem text="Remove Password..." onAction="#handleDecryptPDF"/>

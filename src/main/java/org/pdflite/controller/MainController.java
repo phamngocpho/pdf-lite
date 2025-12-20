@@ -1057,6 +1057,26 @@ public class MainController {
         dialogManager.openExtractDialog(currentDocument);
     }
 
+    @FXML
+    private void handleReorderPages() {
+        dialogManager.openPageReorderDialog(currentDocument, () -> {
+            // Callback: Refresh view after successful reorder
+            Platform.runLater(() -> {
+                // Clear all caches to force re-render with new page order
+                currentDocument.clearCache();
+                pageRenderer.clearCache();
+                
+                // Re-render all pages
+                renderingManager.renderAllPages();
+                
+                // Update status
+                uiStateManager.updateStatus("Pages reordered - Don't forget to save!");
+                
+                logger.info("View refreshed after page reorder");
+            });
+        });
+    }
+
 
     public BorderPane getRootPane() {
         return rootPane;
