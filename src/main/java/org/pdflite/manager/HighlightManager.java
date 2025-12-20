@@ -38,7 +38,6 @@ public class HighlightManager {
      *
      * @param highlightColorPicker the color picker for highlight color selection
      * @param uiStateManager the UI state manager
-     * @param annotationManager the annotation manager (can be null initially)
      */
     public HighlightManager(ColorPicker highlightColorPicker, 
                            UIStateManager uiStateManager,
