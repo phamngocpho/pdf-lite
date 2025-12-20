@@ -1,8 +1,10 @@
 package org.pdflite.manager;
 
-import javafx.scene.control.ColorPicker;
-import javafx.scene.paint.Color;
-import org.pdflite.controller.ContextMenuHandler;
+import java.awt.geom.Rectangle2D;
+import java.util.List;
+import java.util.function.DoubleSupplier;
+import java.util.function.Supplier;
+
 import org.pdflite.controller.PageRenderer;
 import org.pdflite.model.Annotation;
 import org.pdflite.model.HighlightAnnotation;
@@ -10,8 +12,8 @@ import org.pdflite.model.PDFDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.geom.Rectangle2D;
-import java.util.List;
+import javafx.scene.control.ColorPicker;
+import javafx.scene.paint.Color;
 
 /**
  * Manages highlight operations including color selection, creation, and persistence.
@@ -23,10 +25,13 @@ public class HighlightManager {
     private final ColorPicker highlightColorPicker;
     private final HighlightPersistenceManager persistenceManager;
     private final UIStateManager uiStateManager;
-    private final AnnotationManager annotationManager;
-    
-    private PDFDocument currentDocument;
-    private double currentZoom = 1.0;
+
+    private final Supplier<PDFDocument> documentSupplier;
+    private final DoubleSupplier zoomSupplier;
+    private final Supplier<AnnotationManager> annotationManagerSupplier;
+
+    private static final double HIGHLIGHT_HEIGHT_MULTIPLIER = 1.35;
+    private static final double HIGHLIGHT_EXTRA_PADDING_PX = 2.0;
     
     /**
      * Creates a new HighlightManager.
@@ -37,10 +42,14 @@ public class HighlightManager {
      */
     public HighlightManager(ColorPicker highlightColorPicker, 
                            UIStateManager uiStateManager,
-                           AnnotationManager annotationManager) {
+                           Supplier<PDFDocument> documentSupplier,
+                           DoubleSupplier zoomSupplier,
+                           Supplier<AnnotationManager> annotationManagerSupplier) {
         this.highlightColorPicker = highlightColorPicker;
         this.uiStateManager = uiStateManager;
-        this.annotationManager = annotationManager;
+        this.documentSupplier = documentSupplier;
+        this.zoomSupplier = zoomSupplier;
+        this.annotationManagerSupplier = annotationManagerSupplier;
         this.persistenceManager = new HighlightPersistenceManager();
         
         initializeColorPicker();
@@ -69,6 +78,7 @@ public class HighlightManager {
         pageRenderer.getContextMenuHandler().setHighlightCallback(
             (pageIndex, highlightRegions, defaultColor) -> {
                 try {
+                    PDFDocument currentDocument = documentSupplier.get();
                     if (currentDocument == null) {
                         uiStateManager.updateStatus("No document loaded");
                         logger.warn("Cannot highlight: no document loaded");
@@ -77,9 +87,13 @@ public class HighlightManager {
                     
                     // Get the highlight color from the color picker
                     Color highlightColor = getHighlightColor();
+
+                        double zoom = zoomSupplier.getAsDouble();
                     
                     logger.info("Creating {} highlights on page {} with color {}", 
                             highlightRegions.size(), pageIndex + 1, highlightColor);
+
+                        final String batchId = java.util.UUID.randomUUID().toString();
                     
                     // Create highlight annotations for each region
                     for (Rectangle2D region : highlightRegions) {
@@ -87,21 +101,26 @@ public class HighlightManager {
                         // Need to convert to canvas coordinates for AnnotationLayer
                         
                         // Convert PDF coordinates to canvas coordinates
-                        double finalScale = currentZoom * org.pdflite.util.Constants.LOW_RENDER_SCALE;
+                        double finalScale = zoom * org.pdflite.util.Constants.LOW_RENDER_SCALE;
                         
                         double canvasX = region.getX() * finalScale;
                         double canvasY = region.getY() * finalScale;
                         double canvasWidth = region.getWidth() * finalScale;
-                        double canvasHeight = region.getHeight() * finalScale;
+
+                        double originalHeight = region.getHeight() * finalScale;
+                        double expandedHeight = (originalHeight * HIGHLIGHT_HEIGHT_MULTIPLIER) + HIGHLIGHT_EXTRA_PADDING_PX;
+                        double canvasHeight = expandedHeight;
+                        double canvasYAdjusted = canvasY - ((expandedHeight - originalHeight) / 2.0);
                         
                         // Create highlight annotation
                         HighlightAnnotation highlight = new HighlightAnnotation(
                             pageIndex, 
                             canvasX, 
-                            canvasY, 
+                            canvasYAdjusted, 
                             canvasWidth, 
                             canvasHeight, 
-                            highlightColor);
+                            highlightColor,
+                            batchId);
                         
                         // Add to document
                         currentDocument.addAnnotation(highlight);
@@ -114,6 +133,7 @@ public class HighlightManager {
                     currentDocument.setHasUnsavedEdits(true);
                     
                     // Refresh the page to show the highlights
+                    AnnotationManager annotationManager = annotationManagerSupplier.get();
                     if (annotationManager != null) {
                         annotationManager.refreshPageAnnotations(pageIndex);
                     }
@@ -141,11 +161,90 @@ public class HighlightManager {
         
         logger.info("Highlight callback configured successfully");
     }
+
+    /**
+     * Sets up the delete highlight callback for the context menu handler.
+     * Deletes all segments created in the same highlight action (batch) when possible.
+     */
+    public void setupDeleteHighlightCallback(PageRenderer pageRenderer) {
+        pageRenderer.getContextMenuHandler().setDeleteHighlightCallback(
+            (pageIndex, canvasX, canvasY) -> {
+                try {
+                    PDFDocument currentDocument = documentSupplier.get();
+                    if (currentDocument == null) {
+                        uiStateManager.updateStatus("No document loaded");
+                        return;
+                    }
+
+                    // Find topmost highlight at cursor (reverse order)
+                    HighlightAnnotation target = null;
+                    List<Annotation> all = currentDocument.getAnnotations();
+                    for (int i = all.size() - 1; i >= 0; i--) {
+                        Annotation annotation = all.get(i);
+                        if (annotation.getPageNumber() != pageIndex) {
+                            continue;
+                        }
+                        if (annotation instanceof HighlightAnnotation highlight) {
+                            double x2 = highlight.getX() + highlight.getWidth();
+                            double y2 = highlight.getY() + highlight.getHeight();
+                            if (canvasX >= highlight.getX() && canvasX <= x2 && canvasY >= highlight.getY() && canvasY <= y2) {
+                                target = highlight;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (target == null) {
+                        uiStateManager.updateStatus("No highlight at cursor");
+                        return;
+                    }
+
+                    int removedCount = 0;
+                    String batchId = target.getBatchId();
+                    if (batchId != null && !batchId.isBlank()) {
+                        for (int i = all.size() - 1; i >= 0; i--) {
+                            Annotation annotation = all.get(i);
+                            if (annotation.getPageNumber() != pageIndex) {
+                                continue;
+                            }
+                            if (annotation instanceof HighlightAnnotation highlight) {
+                                if (batchId.equals(highlight.getBatchId())) {
+                                    all.remove(i);
+                                    removedCount++;
+                                }
+                            }
+                        }
+                    } else {
+                        boolean removed = all.remove(target);
+                        removedCount = removed ? 1 : 0;
+                    }
+
+                    if (removedCount <= 0) {
+                        uiStateManager.updateStatus("Failed to delete highlight");
+                        return;
+                    }
+
+                    currentDocument.setHasUnsavedEdits(true);
+
+                    AnnotationManager annotationManager = annotationManagerSupplier.get();
+                    if (annotationManager != null) {
+                        annotationManager.refreshPageAnnotations(pageIndex);
+                    }
+
+                    uiStateManager.updateStatus("Deleted " + removedCount + " highlight segment(s) - Save to persist changes");
+                } catch (Exception e) {
+                    logger.error("Error deleting highlight", e);
+                    uiStateManager.updateStatus("Error deleting highlight: " + e.getMessage());
+                }
+            }
+        );
+    }
     
     /**
      * Updates highlight color for all pages.
      */
     private void updateHighlightColorForAllPages() {
+        AnnotationManager annotationManager = annotationManagerSupplier.get();
         if (annotationManager != null && highlightColorPicker != null) {
             annotationManager.updateHighlightColorForAllPages(highlightColorPicker.getValue());
         }
@@ -167,19 +266,7 @@ public class HighlightManager {
      * @param document the PDF document
      * @param zoom the current zoom level
      */
-    public void setDocument(PDFDocument document, double zoom) {
-        this.currentDocument = document;
-        this.currentZoom = zoom;
-    }
-    
-    /**
-     * Sets the current zoom level.
-     *
-     * @param zoom the zoom level
-     */
-    public void setZoom(double zoom) {
-        this.currentZoom = zoom;
-    }
+    // Document and zoom come from suppliers (MainController).
     
     /**
      * Loads existing highlights from the PDF document.

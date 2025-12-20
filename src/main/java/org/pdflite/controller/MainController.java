@@ -18,6 +18,7 @@ import org.pdflite.manager.EncryptionManager;
 import org.pdflite.manager.ExportManager;
 import org.pdflite.manager.FileManager;
 import org.pdflite.manager.FullscreenManager;
+import org.pdflite.manager.HighlightManager;
 import org.pdflite.manager.HighlightPersistenceManager;
 import org.pdflite.manager.ImageInsertionManager;
 import org.pdflite.manager.ListenerFactory;
@@ -172,6 +173,7 @@ public class MainController {
     private ExportManager exportManager;
     private ImageInsertionManager imageInsertionManager;
     private HighlightPersistenceManager highlightPersistenceManager;
+    private HighlightManager highlightManager;
 
     // ==================== Document State ====================
 
@@ -409,12 +411,17 @@ public class MainController {
 
         // Set text edit callback for context menu
         setupTextEditCallback();
-        
-        // Set highlight callback for context menu
-        setupHighlightCallback();
 
-        // Set delete highlight callback for context menu
-        setupDeleteHighlightCallback();
+        // Highlight handling lives in HighlightManager (keeps MainController smaller)
+        highlightManager = new HighlightManager(
+            highlightColorPicker,
+            uiStateManager,
+            () -> currentDocument,
+            this::getCurrentZoom,
+            () -> annotationManager
+        );
+        highlightManager.setupHighlightCallback(pageRenderer);
+        highlightManager.setupDeleteHighlightCallback(pageRenderer);
     }
 
     /**
@@ -492,102 +499,6 @@ public class MainController {
     }
     
     /**
-     * Sets up the highlight callback for the context menu handler.
-     * This callback is invoked when the user highlights text from the context menu.
-     */
-    private void setupHighlightCallback() {
-        pageRenderer.getContextMenuHandler().setHighlightCallback(
-            (pageIndex, highlightRegions, defaultColor) -> {
-            try {
-                // Get current document
-                if (currentDocument == null) {
-                    uiStateManager.updateStatus("No document loaded");
-                    logger.warn("Cannot highlight: no document loaded");
-                    return;
-                }
-                
-                // Get the highlight color from the color picker
-                javafx.scene.paint.Color highlightColor = getHighlightColor();
-                
-                double zoom = getCurrentZoom();
-                
-                logger.info("Creating {} highlights on page {} with color {}", 
-                        highlightRegions.size(), pageIndex + 1, highlightColor);
-
-                // All rectangles produced from one selection share the same batch id
-                final String batchId = java.util.UUID.randomUUID().toString();
-                
-                // Create highlight annotations for each region
-                for (java.awt.geom.Rectangle2D region : highlightRegions) {
-                    // highlightRegions are in PDF coordinates (from SmartTextSelector)
-                    // Need to convert to canvas coordinates for AnnotationLayer
-                    
-                    // Convert PDF coordinates to canvas coordinates
-                    double finalScale = zoom * org.pdflite.util.Constants.LOW_RENDER_SCALE;
-                    
-                    double canvasX = region.getX() * finalScale;
-                    double canvasY = region.getY() * finalScale;
-                    double canvasWidth = region.getWidth() * finalScale;
-
-                    // Expand height slightly so highlight isn't too tight to glyphs
-                    final double heightMultiplier = 1.35;
-                    final double extraPaddingPx = 2.0;
-                    double originalHeight = region.getHeight() * finalScale;
-                    double expandedHeight = (originalHeight * heightMultiplier) + extraPaddingPx;
-                    double canvasHeight = expandedHeight;
-                    double canvasYAdjusted = canvasY - ((expandedHeight - originalHeight) / 2.0);
-                    
-                    // Create highlight annotation
-                    org.pdflite.model.HighlightAnnotation highlight = 
-                        new org.pdflite.model.HighlightAnnotation(
-                            pageIndex, 
-                            canvasX, 
-                            canvasYAdjusted, 
-                            canvasWidth, 
-                            canvasHeight, 
-                            highlightColor,
-                            batchId);
-                    
-                    // Add to document
-                    currentDocument.addAnnotation(highlight);
-                    
-                    logger.debug("Added highlight: page={}, pdfX={}, pdfY={}, canvasX={}, canvasY={}, w={}, h={}", 
-                            pageIndex, region.getX(), region.getY(), canvasX, canvasY, canvasWidth, canvasHeight);
-                }
-                
-                // Mark document as modified
-                currentDocument.setHasUnsavedEdits(true);
-                
-                // Refresh the page to show the highlights
-                if (annotationManager != null) {
-                    annotationManager.refreshPageAnnotations(pageIndex);
-                }
-                
-                // Update status
-                uiStateManager.updateStatus(
-                    String.format("Added %d highlight(s) - Save to persist changes", 
-                        highlightRegions.size()));
-                
-            } catch (Exception e) {
-                logger.error("Error creating highlights", e);
-                uiStateManager.updateStatus("Error creating highlights: " + e.getMessage());
-                
-                // Show error dialog
-                Platform.runLater(() -> {
-                    javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
-                            javafx.scene.control.Alert.AlertType.ERROR);
-                    alert.setTitle("Highlight Error");
-                    alert.setHeaderText("Failed to create highlights");
-                    alert.setContentText(e.getMessage());
-                    alert.showAndWait();
-                });
-            }
-        });
-        
-        logger.info("Highlight callback configured successfully");
-    }
-
-    /**
      * Refreshes the current page rendering to show changes.
      */
     private void refreshCurrentPage() {
@@ -605,84 +516,6 @@ public class MainController {
         // Re-render all visible pages
         Platform.runLater(() -> renderingManager.renderAllPages());
     }
-
-    /**
-     * Sets up the delete highlight callback for the context menu handler.
-     * This is invoked when the user right-clicks an existing highlight and chooses Delete.
-     */
-    private void setupDeleteHighlightCallback() {
-        pageRenderer.getContextMenuHandler().setDeleteHighlightCallback(
-            (pageIndex, canvasX, canvasY) -> {
-                try {
-                    if (currentDocument == null) {
-                        uiStateManager.updateStatus("No document loaded");
-                        return;
-                    }
-
-                    // Find topmost highlight at cursor (iterate in reverse add order)
-                    org.pdflite.model.HighlightAnnotation target = null;
-                    List<org.pdflite.model.Annotation> all = currentDocument.getAnnotations();
-                    for (int i = all.size() - 1; i >= 0; i--) {
-                        org.pdflite.model.Annotation annotation = all.get(i);
-                        if (annotation.getPageNumber() != pageIndex) {
-                            continue;
-                        }
-                        if (annotation instanceof org.pdflite.model.HighlightAnnotation highlight) {
-                            double x2 = highlight.getX() + highlight.getWidth();
-                            double y2 = highlight.getY() + highlight.getHeight();
-                            if (canvasX >= highlight.getX() && canvasX <= x2 && canvasY >= highlight.getY() && canvasY <= y2) {
-                                target = highlight;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (target == null) {
-                        uiStateManager.updateStatus("No highlight at cursor");
-                        return;
-                    }
-
-                    int removedCount = 0;
-                    String batchId = target.getBatchId();
-                    if (batchId != null && !batchId.isBlank()) {
-                        // Remove all highlight segments created in the same action (same page + same batchId)
-                        for (int i = all.size() - 1; i >= 0; i--) {
-                            org.pdflite.model.Annotation annotation = all.get(i);
-                            if (annotation.getPageNumber() != pageIndex) {
-                                continue;
-                            }
-                            if (annotation instanceof org.pdflite.model.HighlightAnnotation highlight) {
-                                if (batchId.equals(highlight.getBatchId())) {
-                                    all.remove(i);
-                                    removedCount++;
-                                }
-                            }
-                        }
-                    } else {
-                        boolean removed = all.remove(target);
-                        removedCount = removed ? 1 : 0;
-                    }
-
-                    if (removedCount <= 0) {
-                        uiStateManager.updateStatus("Failed to delete highlight");
-                        return;
-                    }
-
-                    currentDocument.setHasUnsavedEdits(true);
-
-                    if (annotationManager != null) {
-                        annotationManager.refreshPageAnnotations(pageIndex);
-                    }
-
-                    uiStateManager.updateStatus("Deleted " + removedCount + " highlight segment(s) - Save to persist changes");
-                } catch (Exception e) {
-                    logger.error("Error deleting highlight", e);
-                    uiStateManager.updateStatus("Error deleting highlight: " + e.getMessage());
-                }
-            }
-        );
-    }
-
 
     // ==================== File Operations ====================
 
