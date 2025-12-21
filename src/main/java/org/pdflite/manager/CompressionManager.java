@@ -121,8 +121,8 @@ public class CompressionManager {
     private PDImageXObject compressImage(PDImageXObject image, CompressionLevel level, PDDocument document)
             throws IOException {
 
-        // Skip if image is already small
-        if (image.getWidth() < 100 || image.getHeight() < 100) {
+        // Skip very small images (not worth compressing)
+        if (image.getWidth() < 50 || image.getHeight() < 50) {
             return null;
         }
 
@@ -170,16 +170,13 @@ public class CompressionManager {
         // Create new PDImageXObject from compressed data
         byte[] compressedData = baos.toByteArray();
 
-        // Only use compressed version if it's actually smaller
-        if (compressedData.length < image.getStream().getLength()) {
-            return PDImageXObject.createFromByteArray(
-                    document,
-                    compressedData,
-                    "compressed"
-            );
-        }
-
-        return null;
+        // Always return compressed version for images >= 50px
+        // The compression is beneficial for larger images
+        return PDImageXObject.createFromByteArray(
+                document,
+                compressedData,
+                "compressed"
+        );
     }
 
     /**
