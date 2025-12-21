@@ -19,6 +19,8 @@
         </padding>
 
         <Label text="Original Text:" style="-fx-font-size: 12px;"/>
+        <Label text="(Text extraction may be inaccurate with some fonts)" 
+               style="-fx-font-size: 10px; -fx-text-fill: gray; -fx-padding: 0 0 2 0;"/>
         <TextArea fx:id="originalTextArea" editable="false" wrapText="true" prefRowCount="2"
                   style="-fx-opacity: 0.7;"/>
 

@@ -2,8 +2,11 @@ package org.pdflite.manager;
 
 import javafx.scene.Scene;
 import javafx.scene.control.DialogPane;
+import javafx.scene.control.RadioMenuItem;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +36,11 @@ public class ThemeManager {
     private final ImageView logoImageView;
     private String currentTheme; // CSS path hiện tại
     private ThemeMode themeMode; // Mode hiện tại
+    
+    // Theme menu items (optional)
+    private RadioMenuItem systemThemeItem;
+    private RadioMenuItem lightThemeItem;
+    private RadioMenuItem darkThemeItem;
 
     public ThemeManager(Scene mainScene, ImageView logoImageView) {
         this.mainScene = mainScene;
@@ -68,6 +76,7 @@ public class ThemeManager {
         currentTheme = LIGHT_THEME;
         applyThemeInternal(mainScene, currentTheme);
         savePreference();
+        updateThemeMenuGraphics();
         logger.info("Theme set to: Light");
     }
 
@@ -79,6 +88,7 @@ public class ThemeManager {
         currentTheme = DARK_THEME;
         applyThemeInternal(mainScene, currentTheme);
         savePreference();
+        updateThemeMenuGraphics();
         logger.info("Theme set to: Dark");
     }
 
@@ -90,6 +100,7 @@ public class ThemeManager {
         currentTheme = detectSystemTheme();
         applyThemeInternal(mainScene, currentTheme);
         savePreference();
+        updateThemeMenuGraphics();
         logger.info("Theme set to: System (detected: {})", currentTheme.contains("dark") ? "Dark" : "Light");
     }
 
@@ -278,5 +289,38 @@ public class ThemeManager {
 
     public String getCurrentThemeCssPath() {
         return currentTheme;
+    }
+    
+    /**
+     * Sets the theme menu items for automatic updates.
+     */
+    public void setThemeMenuItems(RadioMenuItem systemThemeItem, 
+                                 RadioMenuItem lightThemeItem, 
+                                 RadioMenuItem darkThemeItem) {
+        this.systemThemeItem = systemThemeItem;
+        this.lightThemeItem = lightThemeItem;
+        this.darkThemeItem = darkThemeItem;
+        
+        // Initial update
+        updateThemeMenuGraphics();
+    }
+    
+    /**
+     * Updates theme menu graphics with bullet indicators.
+     */
+    public void updateThemeMenuGraphics() {
+        if (systemThemeItem == null || lightThemeItem == null || darkThemeItem == null) {
+            return;
+        }
+        
+        // Create bullet graphic for selected item
+        Circle systemBullet = systemThemeItem.isSelected() ? new Circle(3, Color.web("#0A84FF")) : null;
+        Circle lightBullet = lightThemeItem.isSelected() ? new Circle(3, Color.web("#0A84FF")) : null;
+        Circle darkBullet = darkThemeItem.isSelected() ? new Circle(3, Color.web("#0A84FF")) : null;
+        
+        // Set graphics - bullet for selected, null for others
+        systemThemeItem.setGraphic(systemBullet);
+        lightThemeItem.setGraphic(lightBullet);
+        darkThemeItem.setGraphic(darkBullet);
     }
 }

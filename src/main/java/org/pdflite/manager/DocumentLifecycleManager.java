@@ -127,23 +127,10 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
             return;
         }
 
-        // Check if file exists and show overwrite confirmation
+        // No need to confirm overwrite when saving the currently open file
+        // The overwrite confirmation is only needed for "Save As" operation
         File targetFile = currentDocument.getFile();
-        if (targetFile != null && targetFile.exists()) {
-            boolean confirmed = org.pdflite.dialog.CustomConfirmDialog.show(
-                "Confirm Overwrite",
-                "File already exists",
-                "The file '" + targetFile.getName() + "' already exists.\nDo you want to overwrite it?",
-                themeManager
-            );
-
-            if (!confirmed) {
-                // User cancelled the save operation
-                logger.info("Save operation cancelled by user");
-                return;
-            }
-        }
-
+        
         // Check if the document is encrypted
         if (currentDocument.getDocument().isEncrypted()) {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
