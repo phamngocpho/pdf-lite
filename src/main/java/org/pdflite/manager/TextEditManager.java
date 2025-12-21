@@ -57,7 +57,7 @@ public record TextEditManager(UIStateManager uiStateManager, ContentStreamManage
                 logger.info("Document marked as modified");
 
                 // Refresh the page rendering to show the new text
-                refreshCurrentPage(currentDocument);
+                refreshCurrentPage(currentDocument, pageIndex);
 
                 // Update status
                 uiStateManager.updateStatus("Text replaced successfully - Save to persist changes");
@@ -79,20 +79,25 @@ public record TextEditManager(UIStateManager uiStateManager, ContentStreamManage
     /**
      * Refreshes the current page rendering to show changes.
      */
-    private void refreshCurrentPage(PDFDocument document) {
+    private void refreshCurrentPage(PDFDocument document, int pageIndex) {
         if (document == null) {
             return;
         }
 
-        logger.info("Refreshing current page rendering");
+        logger.info("Refreshing page {} rendering after text edit", pageIndex + 1);
 
-        // Clear caches to force re-render
+        // Clear document cache
         document.clearCache();
 
-        // Re-render all visible pages
+        // Clear PageRenderer cache and re-render all pages
+        // Note: renderAllPages() only renders visible pages, others are placeholders
         Platform.runLater(() -> {
             if (renderingManager != null) {
+                renderingManager.clearPageRendererCache();
                 renderingManager.renderAllPages();
+                logger.info("Cleared cache and re-rendered pages after text edit");
+            } else {
+                logger.warn("RenderingManager is null, cannot refresh page");
             }
         });
 
