@@ -46,7 +46,7 @@ public class BookmarkInputDialog {
 
         // Create main container with proper style class
         VBox mainContainer = new VBox();
-        mainContainer.getStyleClass().add("custom-input-dialog");
+        mainContainer.getStyleClass().add("bookmark-input-dialog");
 
         // Create custom title bar
         DialogTitleBar titleBar = new DialogTitleBar(title, dialogStage);
