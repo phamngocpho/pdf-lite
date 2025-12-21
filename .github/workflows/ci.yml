@@ -35,16 +35,23 @@ jobs:
       if: runner.os != 'Windows'
       run: chmod +x ./mvnw
     
+    - name: Setup Xvfb (Linux only)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb libgl1-mesa-glx libgtk-3-0
+    
     - name: Run Tests (Windows)
       if: runner.os == 'Windows'
       run: ./mvnw.cmd test
     
-    - name: Run Tests (Unix)
-      if: runner.os != 'Windows'
-      run: |
-        echo "Starting tests on Linux..."
-        ./mvnw test -Djava.awt.headless=true -Dtestfx.robot=glass -Dtestfx.headless=true -Dprism.order=sw -B
-        echo "Tests completed!"
+    - name: Run Tests (Linux with Xvfb)
+      if: runner.os == 'Linux'
+      run: xvfb-run -a ./mvnw test -B
+    
+    - name: Run Tests (macOS)
+      if: runner.os == 'macOS'
+      run: ./mvnw test -B
     
     - name: Build (Windows)
       if: runner.os == 'Windows'
