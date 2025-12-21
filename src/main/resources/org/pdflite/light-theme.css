@@ -399,7 +399,8 @@
 .encryption-dialog,
 .custom-confirm-dialog,
 .custom-info-dialog,
-.bookmark-input-dialog {
+.bookmark-input-dialog,
+.custom-comment-dialog {
     -fx-background-color: #ffffff;
     -fx-background-radius: 12;
     -fx-border-radius: 12;
@@ -419,7 +420,8 @@
 .encryption-dialog > .custom-title-bar,
 .custom-confirm-dialog > .custom-title-bar,
 .custom-info-dialog > .custom-title-bar,
-.bookmark-input-dialog > .custom-title-bar {
+.bookmark-input-dialog > .custom-title-bar,
+.custom-comment-dialog > .custom-title-bar {
     -fx-background-color: #f5f5f5;
     -fx-border-color: transparent transparent #d0d0d0 transparent;
     -fx-border-width: 0 0 1 0;
