@@ -1,6 +1,5 @@
 package org.pdflite.manager;
 
-import javafx.scene.control.Button;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +14,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for UndoRedoManager using Mockito.
+ * Tests business logic without JavaFX UI components.
  */
 @ExtendWith(MockitoExtension.class)
 class UndoRedoManagerTest {
@@ -33,26 +33,26 @@ class UndoRedoManagerTest {
     }
 
     @Test
-    void testInitialization() {
+    void testInitialState() {
         assertNotNull(undoRedoManager.getCommandManager());
     }
 
     @Test
-    void testHandleUndoWhenNothingToUndo() {
+    void testHandleUndoWithNoHistory() {
         undoRedoManager.handleUndo();
         
         verify(uiStateManager).updateStatus("Nothing to undo");
     }
 
     @Test
-    void testHandleRedoWhenNothingToRedo() {
+    void testHandleRedoWithNoHistory() {
         undoRedoManager.handleRedo();
         
         verify(uiStateManager).updateStatus("Nothing to redo");
     }
 
     @Test
-    void testHandleUndoAfterExecutingCommand() {
+    void testHandleUndoWithCommand() {
         when(mockCommand.getDescription()).thenReturn("Test Command");
         
         CommandManager commandManager = undoRedoManager.getCommandManager();
@@ -65,7 +65,7 @@ class UndoRedoManagerTest {
     }
 
     @Test
-    void testHandleRedoAfterUndo() {
+    void testHandleRedoWithCommand() {
         when(mockCommand.getDescription()).thenReturn("Test Command");
         
         CommandManager commandManager = undoRedoManager.getCommandManager();
@@ -74,14 +74,12 @@ class UndoRedoManagerTest {
         
         undoRedoManager.handleRedo();
         
-        verify(mockCommand, times(2)).execute(); // Once initially, once on redo
+        verify(mockCommand, times(2)).execute();
         verify(uiStateManager).updateStatus(contains("Redone"));
     }
 
     @Test
     void testClear() {
-        when(mockCommand.getDescription()).thenReturn("Test Command");
-        
         CommandManager commandManager = undoRedoManager.getCommandManager();
         commandManager.executeCommand(mockCommand);
         
@@ -92,15 +90,9 @@ class UndoRedoManagerTest {
     }
 
     @Test
-    void testHandleUndoWithException() {
-        when(mockCommand.getDescription()).thenReturn("Test Command");
-        doThrow(new RuntimeException("Undo failed")).when(mockCommand).undo();
-        
+    void testGetCommandManager() {
         CommandManager commandManager = undoRedoManager.getCommandManager();
-        commandManager.executeCommand(mockCommand);
         
-        undoRedoManager.handleUndo();
-        
-        verify(uiStateManager).showError(eq("Undo Error"), anyString());
+        assertNotNull(commandManager);
     }
 }

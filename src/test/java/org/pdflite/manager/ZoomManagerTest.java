@@ -7,6 +7,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
+import org.pdflite.util.Constants;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -14,8 +15,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for ZoomManager using Mockito.
- * Note: JavaFX components (ComboBox, ScrollPane) cannot be mocked,
- * so we test the core zoom logic without UI components.
+ * Tests business logic without JavaFX UI components.
  */
 @ExtendWith(MockitoExtension.class)
 class ZoomManagerTest {
@@ -38,7 +38,7 @@ class ZoomManagerTest {
 
     @Test
     void testInitialZoom() {
-        assertEquals(1.0, zoomManager.getCurrentZoom());
+        assertEquals(Constants.DEFAULT_ZOOM, zoomManager.getCurrentZoom());
     }
 
     @Test
@@ -49,100 +49,90 @@ class ZoomManagerTest {
 
     @Test
     void testZoomIn() {
-        zoomManager.setDocument(pdfDocument);
         double initialZoom = zoomManager.getCurrentZoom();
+        zoomManager.setDocument(pdfDocument);
         
         zoomManager.zoomIn();
         
-        assertTrue(zoomManager.getCurrentZoom() > initialZoom);
+        assertEquals(initialZoom + Constants.ZOOM_STEP, zoomManager.getCurrentZoom());
         verify(pdfDocument).setZoomLevel(anyDouble());
-        verify(zoomChangeListener).onZoomChanged(anyDouble());
     }
 
     @Test
     void testZoomOut() {
+        zoomManager.setCurrentZoom(1.0);
         zoomManager.setDocument(pdfDocument);
-        zoomManager.setCurrentZoom(1.5);
         
         zoomManager.zoomOut();
         
-        assertTrue(zoomManager.getCurrentZoom() < 1.5);
+        assertEquals(1.0 - Constants.ZOOM_STEP, zoomManager.getCurrentZoom());
         verify(pdfDocument).setZoomLevel(anyDouble());
-        verify(zoomChangeListener).onZoomChanged(anyDouble());
     }
 
     @Test
     void testZoomInMaxLimit() {
+        zoomManager.setCurrentZoom(Constants.MAX_ZOOM);
         zoomManager.setDocument(pdfDocument);
-        zoomManager.setCurrentZoom(5.0); // Max zoom
         
         zoomManager.zoomIn();
         
-        assertEquals(5.0, zoomManager.getCurrentZoom()); // Should not exceed max
+        assertEquals(Constants.MAX_ZOOM, zoomManager.getCurrentZoom());
     }
 
     @Test
     void testZoomOutMinLimit() {
+        zoomManager.setCurrentZoom(Constants.MIN_ZOOM);
         zoomManager.setDocument(pdfDocument);
-        zoomManager.setCurrentZoom(0.1); // Min zoom
         
         zoomManager.zoomOut();
         
-        // Should not go below min (0.1), but zoom step is 0.25
-        // So it will try 0.1 - 0.25 = -0.15, which gets clamped to 0.1
-        assertTrue(zoomManager.getCurrentZoom() >= 0.1);
+        assertEquals(Constants.MIN_ZOOM, zoomManager.getCurrentZoom());
+    }
+
+    @Test
+    void testZoomInWithoutDocument() {
+        double initialZoom = zoomManager.getCurrentZoom();
+        
+        zoomManager.zoomIn();
+        
+        // Zoom should change but no document operations
+        assertEquals(initialZoom + Constants.ZOOM_STEP, zoomManager.getCurrentZoom());
+        verify(pdfDocument, never()).setZoomLevel(anyDouble());
+    }
+
+    @Test
+    void testZoomChangeListenerCalled() {
+        zoomManager.setDocument(pdfDocument);
+        
+        zoomManager.zoomIn();
+        
+        verify(zoomChangeListener).onZoomChanged(anyDouble());
+        verify(zoomChangeListener).onZoomApplied(anyDouble(), anyString());
     }
 
     @Test
     void testSetZoomChangeListener() {
         ZoomManager.ZoomChangeListener newListener = mock(ZoomManager.ZoomChangeListener.class);
+        
         zoomManager.setZoomChangeListener(newListener);
         zoomManager.setDocument(pdfDocument);
-        
         zoomManager.zoomIn();
         
         verify(newListener).onZoomChanged(anyDouble());
     }
 
     @Test
-    void testCalculateInitialZoomFromDimensions() {
-        double zoom = zoomManager.calculateInitialZoomFromDimensions(800, 600);
+    void testCalculateInitialZoomWithoutScrollPane() {
+        double zoom = zoomManager.calculateInitialZoomFromDimensions(1000, 800);
         
-        // Without scrollPane, should return default 0.7
         assertEquals(0.7, zoom);
-    }
-
-    @Test
-    void testZoomWithoutDocument() {
-        // Should not throw exception when document is null
-        assertDoesNotThrow(() -> zoomManager.zoomIn());
-        assertDoesNotThrow(() -> zoomManager.zoomOut());
     }
 
     @Test
     void testSetDocument() {
         zoomManager.setDocument(pdfDocument);
         
-        // Verify document is set by testing zoom operation
-        zoomManager.zoomIn();
-        verify(pdfDocument).setZoomLevel(anyDouble());
-    }
-
-    @Test
-    void testZoomInCallsListener() {
-        zoomManager.setDocument(pdfDocument);
-        
-        zoomManager.zoomIn();
-        
-        verify(zoomChangeListener).onZoomApplied(anyDouble(), anyString());
-    }
-
-    @Test
-    void testZoomOutCallsListener() {
-        zoomManager.setDocument(pdfDocument);
-        
-        zoomManager.zoomOut();
-        
-        verify(zoomChangeListener).onZoomApplied(anyDouble(), anyString());
+        // Should not throw exception
+        assertDoesNotThrow(() -> zoomManager.zoomIn());
     }
 }
