@@ -78,6 +78,9 @@
                     <MenuItem text="Fit to Width" onAction="#handleFitToWidth"/>
                     <MenuItem text="Fit to Page" onAction="#handleFitToPage"/>
                     <SeparatorMenuItem/>
+                    <MenuItem text="Toggle Bookmarks" onAction="#handleToggleBookmarks" accelerator="Ctrl+B"/>
+                    <MenuItem text="Add Bookmark..." onAction="#handleAddBookmark" accelerator="Ctrl+Shift+B"/>
+                    <SeparatorMenuItem/>
                     <MenuItem fx:id="toggleToolbarMenuItem" text="Hide Toolbar" onAction="#handleToggleToolbar"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Toggle Full Screen" onAction="#handleToggleFullScreen" accelerator="F11"/>
@@ -144,6 +147,13 @@
                     <ComboBox fx:id="zoomComboBox" onAction="#handleZoomChange" prefWidth="90" minWidth="90"/>
                     <Button text="Zoom In" onAction="#handleZoomIn"/>
                 </HBox>
+
+                <Region prefWidth="20"/>
+
+                <!-- Bookmark Button -->
+                <Button text="📑 Bookmarks" onAction="#handleToggleBookmarks">
+                    <tooltip><Tooltip text="Toggle Bookmarks (Ctrl+B)"/></tooltip>
+                </Button>
 
                 <Region prefWidth="20"/>
 

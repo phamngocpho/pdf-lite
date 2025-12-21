@@ -126,6 +126,8 @@ public class MainController {
     private RadioMenuItem lightThemeItem;
     @FXML
     private RadioMenuItem darkThemeItem;
+    @FXML
+    private ToggleButton bookmarkToggleButton;
 
 
     // ==================== Services and Managers ====================
@@ -190,6 +192,12 @@ public class MainController {
 
     // Save Status Manager
     private SaveStatusManager saveStatusManager;
+
+    // Bookmark Manager
+    private BookmarkManager bookmarkManager;
+
+    // Bookmark UI Manager
+    private BookmarkUIManager bookmarkUIManager;
 
     // ==================== Document State ====================
 
@@ -292,6 +300,16 @@ public class MainController {
                 // Set theme manager supplier for PageDeletionManager
                 if (pageDeletionManager != null) {
                     pageDeletionManager.setThemeManagerSupplier(() -> themeManager);
+                }
+
+                // Set theme manager for BookmarkManager
+                if (bookmarkManager != null) {
+                    bookmarkManager.setThemeManager(themeManager);
+                }
+
+                // Set theme manager for BookmarkUIManager
+                if (bookmarkUIManager != null) {
+                    bookmarkUIManager.setThemeManager(themeManager);
                 }
 
                 // Cập nhật DocumentOperationManager để nó có ThemeManager mới
@@ -500,6 +518,12 @@ public class MainController {
         // Auto-save Manager
         autoSaveManager = new AutoSaveManager(autoSaveExecutor);
 
+        // Bookmark Manager
+        bookmarkManager = new BookmarkManager();
+
+        // Bookmark UI Manager
+        bookmarkUIManager = new BookmarkUIManager(rootPane, bookmarkManager, uiStateManager, navigationHelper);
+
         // Set callback to update icon after auto-save
         autoSaveManager.setOnAutoSaveCallback(() -> {
             if (saveStatusManager != null) {
@@ -586,6 +610,12 @@ public class MainController {
         if (currentDocument != null && pagesContainer != null && documentSetupManager != null) {
             annotationManager = documentSetupManager.setupDocument(
                     currentDocument, pagesContainer, scrollPane, zoomChangeListener, uiStateManager);
+        }
+
+        // Load bookmarks for the new document
+        if (currentDocument != null && bookmarkManager != null) {
+            bookmarkManager.setCurrentDocument(currentDocument);
+            logger.info("Bookmarks loaded for document: {}", file.getName());
         }
     }
 
@@ -1130,6 +1160,28 @@ public class MainController {
             if (pagesContainer != null) {
                 annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
             }
+        }
+    }
+
+    // ==================== BOOKMARK OPERATIONS ====================
+    
+    /**
+     * Toggles the bookmark sidebar visibility.
+     */
+    @FXML
+    private void handleToggleBookmarks() {
+        if (bookmarkUIManager != null) {
+            bookmarkUIManager.handleToggleBookmarks(currentDocument);
+        }
+    }
+
+    /**
+     * Adds a bookmark for the current page.
+     */
+    @FXML
+    private void handleAddBookmark() {
+        if (bookmarkUIManager != null) {
+            bookmarkUIManager.handleAddBookmark(currentDocument);
         }
     }
 }
