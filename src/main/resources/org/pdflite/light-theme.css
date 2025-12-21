@@ -399,6 +399,7 @@
 .encryption-dialog,
 .custom-confirm-dialog,
 .custom-info-dialog,
+.custom-comment-dialog,
 .custom-input-dialog {
     -fx-background-color: #ffffff;
     -fx-background-radius: 12;
@@ -419,6 +420,7 @@
 .encryption-dialog > .custom-title-bar,
 .custom-confirm-dialog > .custom-title-bar,
 .custom-info-dialog > .custom-title-bar,
+.custom-comment-dialog > .custom-title-bar,
 .custom-input-dialog > .custom-title-bar {
     -fx-background-color: #f5f5f5;
     -fx-border-color: transparent transparent #d0d0d0 transparent;

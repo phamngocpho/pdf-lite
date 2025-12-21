@@ -8,6 +8,7 @@ import org.pdflite.command.CommandManager;
 import org.pdflite.model.Annotation;
 import org.pdflite.model.ArrowAnnotation;
 import org.pdflite.model.CircleAnnotation;
+import org.pdflite.model.CommentAnnotation;
 import org.pdflite.model.HighlightAnnotation;
 import org.pdflite.model.RectangleAnnotation;
 import org.pdflite.model.SearchResult;
@@ -184,6 +185,7 @@ public class AnnotationLayer extends Canvas {
      *   <li>Mouse pressed - Start annotation creation</li>
      *   <li>Mouse dragged - Preview annotation while dragging</li>
      *   <li>Mouse released - Finalize and store annotation</li>
+     *   <li>Mouse clicked - Show comment content</li>
      * </ul>
      * </p>
      */
@@ -205,6 +207,26 @@ public class AnnotationLayer extends Canvas {
                     event.consume(); // Nuốt sự kiện để không bật ContextMenu
                 }
                 // --- KẾT THÚC FIX LỖI XUNG ĐỘT ---
+            }
+        });
+
+        setOnMouseClicked(event -> {
+            if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 1) {
+                // Check if clicked on a comment icon
+                double x = event.getX();
+                double y = event.getY();
+                
+                for (Annotation annotation : annotations) {
+                    if (annotation instanceof CommentAnnotation comment) {
+                        double iconSize = 24;
+                        if (x >= comment.getX() && x <= comment.getX() + iconSize &&
+                            y >= comment.getY() && y <= comment.getY() + iconSize) {
+                            showCommentPopup(comment, event.getScreenX(), event.getScreenY());
+                            event.consume();
+                            break;
+                        }
+                    }
+                }
             }
         });
 
@@ -351,6 +373,8 @@ public class AnnotationLayer extends Canvas {
                     gc.setFill(getColorWithAlpha(highlight.getColor(), 0.4));
                     gc.fillRect(highlight.getX(), highlight.getY(),
                             highlight.getWidth(), highlight.getHeight());
+                } else if (annotation instanceof CommentAnnotation comment) {
+                    drawCommentIcon(gc, comment);
                 } else if (annotation instanceof ShapeAnnotation shape) {
                     shape.draw(gc, scale);
                 }
@@ -701,7 +725,84 @@ public class AnnotationLayer extends Canvas {
         }
     }
 
+    /**
+     * Draws a comment icon on the canvas.
+     *
+     * @param gc      the graphics context
+     * @param comment the comment annotation
+     */
+    private void drawCommentIcon(GraphicsContext gc, CommentAnnotation comment) {
+        double iconSize = 24;
+        double x = comment.getX();
+        double y = comment.getY();
+
+        // Draw speech bubble icon
+        gc.setFill(comment.getColor());
+        gc.fillRoundRect(x, y, iconSize, iconSize * 0.75, 5, 5);
+
+        // Draw tail
+        gc.fillPolygon(
+                new double[]{x + iconSize * 0.2, x + iconSize * 0.4, x + iconSize * 0.3},
+                new double[]{y + iconSize * 0.75, y + iconSize * 0.75, y + iconSize},
+                3
+        );
+
+        // Draw border
+        gc.setStroke(Color.DARKGRAY);
+        gc.setLineWidth(1.5);
+        gc.strokeRoundRect(x, y, iconSize, iconSize * 0.75, 5, 5);
+
+        // Draw "..." text
+        gc.setFill(Color.WHITE);
+        gc.setFont(javafx.scene.text.Font.font("Arial", javafx.scene.text.FontWeight.BOLD, 12));
+        gc.fillText("...", x + 6, y + iconSize * 0.5);
+    }
+
+    /**
+     * Shows a popup with the comment content.
+     *
+     * @param comment the comment annotation
+     * @param screenX screen X coordinate for popup position
+     * @param screenY screen Y coordinate for popup position
+     */
+    public void showCommentPopup(CommentAnnotation comment, double screenX, double screenY) {
+        javafx.stage.Popup popup = new javafx.stage.Popup();
+        
+        javafx.scene.control.Label label = new javafx.scene.control.Label(comment.getComment());
+        label.setStyle("-fx-background-color: #FFFFCC; -fx-padding: 10; -fx-border-color: #999999; " +
+                      "-fx-border-width: 1; -fx-font-size: 12px; -fx-max-width: 300px; -fx-wrap-text: true; " +
+                      "-fx-text-fill: #000000;"); // Màu text đen
+        label.setWrapText(true);
+        label.setMaxWidth(300);
+        
+        popup.getContent().add(label);
+        popup.setAutoHide(true);
+        popup.show(this.getScene().getWindow(), screenX + 10, screenY + 10);
+        
+        logger.debug("Showing comment popup: '{}'", comment.getComment());
+    }
+
     // ==================== ANNOTATION MANAGEMENT ====================
+
+    /**
+     * Checks if there is a comment annotation at the specified coordinates.
+     *
+     * @param x the X coordinate
+     * @param y the Y coordinate
+     * @return the comment annotation if found, null otherwise
+     */
+    public CommentAnnotation findCommentAt(double x, double y) {
+        double iconSize = 24;
+        for (Annotation annotation : annotations) {
+            if (annotation instanceof CommentAnnotation comment) {
+                if (x >= comment.getX() && x <= comment.getX() + iconSize &&
+                    y >= comment.getY() && y <= comment.getY() + iconSize) {
+                    return comment;
+                }
+            }
+        }
+        return null;
+    }
 
     /**
      * Finds an annotation at the specified coordinates using hit detection.
