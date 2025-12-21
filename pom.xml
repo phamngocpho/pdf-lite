@@ -214,15 +214,7 @@
                     <includes>
                         <include>**/*Test.java</include>
                     </includes>
-                    <argLine>
-                        -Djava.awt.headless=true
-                        -Dtestfx.robot=glass
-                        -Dtestfx.headless=true
-                        -Dprism.order=sw
-                        -Dprism.text=t2k
-                        -Dglass.platform=Monocle
-                        -Dmonocle.platform=Headless
-                    </argLine>
+                    <forkedProcessTimeoutInSeconds>120</forkedProcessTimeoutInSeconds>
                 </configuration>
             </plugin>
 

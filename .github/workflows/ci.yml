@@ -41,7 +41,11 @@ jobs:
     
     - name: Run Tests (Linux)
       if: runner.os == 'Linux'
-      run: ./mvnw test -B
+      run: ./mvnw test -Djava.awt.headless=true -Dglass.platform=Monocle -Dmonocle.platform=Headless -Dprism.order=sw -B
+    
+    - name: Run Tests (macOS)
+      if: runner.os == 'macOS'
+      run: ./mvnw test -Djava.awt.headless=true -Dglass.platform=Monocle -Dmonocle.platform=Headless -Dprism.order=sw -B
     
     - name: Run Tests (macOS)
       if: runner.os == 'macOS'
