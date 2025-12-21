@@ -56,13 +56,26 @@ public class PageDuplicationManager {
 
             // Create and insert copies
             for (int i = 0; i < numberOfCopies; i++) {
-                // Import the page (creates a deep copy)
+                // Use importPage which creates a proper deep copy
                 PDPage duplicatedPage = document.importPage(sourcePage);
-
-                // Remove from end and insert at desired position
-                document.removePage(duplicatedPage);
-                document.getPages().insertBefore(duplicatedPage,
-                        document.getPage(insertPosition + i));
+                
+                // The imported page is added at the end, we need to move it
+                int lastIndex = document.getNumberOfPages() - 1;
+                int targetPosition = insertPosition + i;
+                
+                // If target position is not at the end, we need to reorder
+                if (targetPosition < lastIndex) {
+                    // Remove from end
+                    document.removePage(lastIndex);
+                    
+                    // Insert at target position
+                    if (targetPosition >= document.getNumberOfPages()) {
+                        document.addPage(duplicatedPage);
+                    } else {
+                        PDPage pageAtTarget = document.getPage(targetPosition);
+                        document.getPages().insertBefore(duplicatedPage, pageAtTarget);
+                    }
+                }
             }
 
             // Mark document as modified
