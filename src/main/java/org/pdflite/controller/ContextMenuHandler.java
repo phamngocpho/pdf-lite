@@ -120,10 +120,77 @@ public class ContextMenuHandler {
     }
 
     /**
+     * Callback interface for adding comment annotations.
+     */
+    public interface AddCommentCallback {
+        void onAddComment(int pageIndex, double canvasX, double canvasY, String comment);
+    }
+
+    /**
+     * Callback interface for deleting comment annotations.
+     */
+    public interface DeleteCommentCallback {
+        void onDeleteComment(int pageIndex, double canvasX, double canvasY);
+    }
+
+    /**
      * Sets the callback for deleting highlight annotations.
      */
     public void setDeleteHighlightCallback(DeleteHighlightCallback callback) {
         this.deleteHighlightCallback = callback;
+    }
+
+    private AddCommentCallback addCommentCallback;
+    private DeleteCommentCallback deleteCommentCallback;
+
+    /**
+     * Sets the callback for adding comment annotations.
+     */
+    public void setAddCommentCallback(AddCommentCallback callback) {
+        this.addCommentCallback = callback;
+    }
+
+    /**
+     * Sets the callback for deleting comment annotations.
+     */
+    public void setDeleteCommentCallback(DeleteCommentCallback callback) {
+        this.deleteCommentCallback = callback;
+    }
+
+    /**
+     * Handles add comment operation.
+     * Opens a dialog for the user to enter comment text.
+     */
+    public void handleAddComment(int pageIndex, double canvasX, double canvasY, double zoom) {
+        logger.info("Opening comment dialog at canvas position ({}, {})", canvasX, canvasY);
+
+        // Show custom comment dialog
+        String comment = org.pdflite.dialog.CustomCommentDialog.show(themeManager);
+
+        // If OK was clicked, add the comment via callback
+        if (comment != null && !comment.trim().isEmpty()) {
+            logger.info("Comment confirmed: '{}'", comment);
+
+            if (addCommentCallback != null) {
+                addCommentCallback.onAddComment(pageIndex, canvasX, canvasY, comment);
+            } else {
+                logger.warn("Add comment callback not set");
+            }
+        } else {
+            logger.info("Comment cancelled or empty");
+        }
+    }
+
+    /**
+     * Handles delete comment operation.
+     */
+    public void handleDeleteComment(int pageIndex, double canvasX, double canvasY) {
+        if (deleteCommentCallback == null) {
+            logger.warn("Delete comment callback not set");
+            return;
+        }
+
+        deleteCommentCallback.onDeleteComment(pageIndex, canvasX, canvasY);
     }
 
     /**
@@ -445,7 +512,7 @@ public class ContextMenuHandler {
 
                     List<org.apache.pdfbox.text.TextPosition> positions = currentSelection.getTextPositions();
                     if (positions != null && !positions.isEmpty()) {
-                        org.apache.pdfbox.text.TextPosition firstPos = positions.get(0);
+                        org.apache.pdfbox.text.TextPosition firstPos = positions.getFirst();
                         try {
                             originalFont = firstPos.getFont();
                             fontSize = firstPos.getFontSizeInPt();

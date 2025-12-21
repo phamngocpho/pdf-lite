@@ -336,6 +336,7 @@ public class PageRenderer {
         // Create context menu pane
         ContextMenuPane contextPane = new ContextMenuPane(contextMenuHandler);
         contextPane.setDocumentInfo(currentDocument, pageIndex, currentZoom);
+        contextPane.setAnnotationLayer(annotationLayer); // Set reference for comment clicks
         contextPane.setPrefSize(image.getWidth(), image.getHeight());
         contextPane.setMaxSize(image.getWidth(), image.getHeight());
 

@@ -524,6 +524,16 @@ public class MainController {
         );
         highlightManager.setupHighlightCallback(pageRenderer);
         highlightManager.setupDeleteHighlightCallback(pageRenderer);
+
+        // Comment handling
+        CommentManager commentManager = new CommentManager(
+                uiStateManager,
+                () -> currentDocument,
+                this::getCurrentZoom,
+                () -> annotationManager
+        );
+        commentManager.setupAddCommentCallback(pageRenderer);
+        commentManager.setupDeleteCommentCallback(pageRenderer);
     }
 
     /**

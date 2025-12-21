@@ -4,6 +4,7 @@ import java.awt.geom.Rectangle2D;
 import java.util.List;
 
 import org.pdflite.controller.ContextMenuHandler;
+import org.pdflite.model.CommentAnnotation;
 import org.pdflite.model.PDFDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,11 +38,14 @@ public class ContextMenuPane extends StackPane {
     private double lastContextMenuX;
     private double lastContextMenuY;
     private boolean hasHighlightUnderCursor;
+    private boolean hasCommentUnderCursor;
 
     private static final Color HIGHLIGHT_FILL = Color.color(0.0, 0.47, 0.84, 0.3); // Similar to SmartPDFViewer
     private static final double MIN_SELECTION_SIZE = 5.0;
     private static final double HIGHLIGHT_HEIGHT_MULTIPLIER = 1.35;
     private static final double HIGHLIGHT_EXTRA_PADDING_PX = 2.0;
+
+    private AnnotationLayer annotationLayer; // Reference to annotation layer for comment clicks
 
     public ContextMenuPane(ContextMenuHandler handler) {
         this.handler = handler;
@@ -79,6 +83,9 @@ public class ContextMenuPane extends StackPane {
 
             // Check for highlight annotation under the cursor
             hasHighlightUnderCursor = hasHighlightAtPosition(x, y);
+            
+            // Check for comment annotation under the cursor
+            hasCommentUnderCursor = hasCommentAtPosition(x, y);
 
             //logger.debug("Context menu requested at ({:.1f}, {:.1f})", x, y);
 
@@ -93,20 +100,20 @@ public class ContextMenuPane extends StackPane {
             // Check for text selection (has highlight regions)
             boolean hasSelection = !highlightGroup.getChildren().isEmpty() && highlightGroup.isVisible();
 
-            // Show the menu if it has text OR image
-            if (hasSelection || handler.hasImageAtPosition() || hasHighlightUnderCursor) {
-                updateContextMenuItems();
-                contextMenu.show(this, event.getScreenX(), event.getScreenY());
-                //logger.info("Context menu shown (hasText={}, hasImage={})",hasSelection, handler.hasImageAtPosition());
-            } else {
-                logger.warn("Context menu blocked: no text or image");
-            }
+            // Always show the menu (Add Comment is always available)
+            updateContextMenuItems();
+            contextMenu.show(this, event.getScreenX(), event.getScreenY());
 
             event.consume();
         });
     }
 
     private void handleMousePressed(MouseEvent event) {
+        // Hide context menu if it's showing
+        if (contextMenu != null && contextMenu.isShowing()) {
+            contextMenu.hide();
+        }
+
         // LEFT CLICK: Start selection
         if (event.getButton() == MouseButton.PRIMARY) {
             isSelecting = true;
@@ -169,6 +176,16 @@ public class ContextMenuPane extends StackPane {
 
     private void handleMouseClicked(MouseEvent event) {
         if (event.getButton() == MouseButton.PRIMARY) {
+            // Check if clicked on a comment icon first
+            if (annotationLayer != null && clickCount == 0) {
+                CommentAnnotation comment = annotationLayer.findCommentAt(event.getX(), event.getY());
+                if (comment != null) {
+                    annotationLayer.showCommentPopup(comment, event.getScreenX(), event.getScreenY());
+                    event.consume();
+                    return;
+                }
+            }
+
             clickCount++;
 
             if (clickTimer != null) {
@@ -292,11 +309,14 @@ public class ContextMenuPane extends StackPane {
 
     private void setupContextMenu() {
         contextMenu = new ContextMenu();
+        contextMenu.setAutoHide(true); // Auto hide when clicking outside
 
         MenuItem copyText = new MenuItem("Copy Text");
         MenuItem editText = new MenuItem("Edit Text");
         MenuItem highlightSelection = new MenuItem("Highlight Selection");
         MenuItem deleteHighlight = new MenuItem("Delete Highlight");
+        MenuItem addComment = new MenuItem("Add Comment");
+        MenuItem deleteComment = new MenuItem("Delete Comment");
         MenuItem copyImage = new MenuItem("Copy Image");
         MenuItem separator = new MenuItem("──────────");
         MenuItem clearSelection = new MenuItem("Clear Selection");
@@ -323,6 +343,16 @@ public class ContextMenuPane extends StackPane {
             clearSelection();
         });
 
+        addComment.setOnAction(e -> {
+            handler.handleAddComment(currentPageIndex, lastContextMenuX, lastContextMenuY, currentZoom);
+            clearSelection();
+        });
+
+        deleteComment.setOnAction(e -> {
+            handler.handleDeleteComment(currentPageIndex, lastContextMenuX, lastContextMenuY);
+            clearSelection();
+        });
+
         copyImage.setOnAction(e -> {
             handler.handleCopyImage();
             logger.info("Image copied");
@@ -330,7 +360,7 @@ public class ContextMenuPane extends StackPane {
 
         clearSelection.setOnAction(e -> clearSelection());
 
-        contextMenu.getItems().addAll(copyText, editText, highlightSelection, deleteHighlight, copyImage, clearSelection);
+        contextMenu.getItems().addAll(copyText, editText, highlightSelection, deleteHighlight, addComment, deleteComment, copyImage, clearSelection);
     }
 
     private void updateContextMenuItems() {
@@ -341,9 +371,11 @@ public class ContextMenuPane extends StackPane {
         contextMenu.getItems().get(1).setDisable(!hasText);  // Edit Text
         contextMenu.getItems().get(2).setDisable(!hasText);  // Highlight Selection
         contextMenu.getItems().get(3).setDisable(!hasHighlightUnderCursor); // Delete Highlight
-        contextMenu.getItems().get(4).setDisable(!hasImage); // Copy Image
+        contextMenu.getItems().get(4).setDisable(false);     // Add Comment - always enabled
+        contextMenu.getItems().get(5).setDisable(!hasCommentUnderCursor); // Delete Comment
+        contextMenu.getItems().get(6).setDisable(!hasImage); // Copy Image
 
-        logger.debug("Context menu: text={}, image={}", hasText, hasImage);
+        logger.debug("Context menu: text={}, image={}, comment={}", hasText, hasImage, hasCommentUnderCursor);
     }
 
     public void setDocumentInfo(PDFDocument document, int pageIndex, double zoom) {
@@ -358,6 +390,13 @@ public class ContextMenuPane extends StackPane {
             handler.clearImageCache();
             handler.clearTextSelector();
         }
+    }
+
+    /**
+     * Sets the annotation layer reference for handling comment clicks.
+     */
+    public void setAnnotationLayer(AnnotationLayer layer) {
+        this.annotationLayer = layer;
     }
 
     public void clearSelection() {
@@ -379,5 +418,13 @@ public class ContextMenuPane extends StackPane {
             }
         }
         return false;
+    }
+
+    private boolean hasCommentAtPosition(double x, double y) {
+        if (currentDocument == null || annotationLayer == null) {
+            return false;
+        }
+        CommentAnnotation comment = annotationLayer.findCommentAt(x, y);
+        return comment != null;
     }
 }

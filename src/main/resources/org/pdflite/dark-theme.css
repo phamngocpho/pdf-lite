@@ -479,7 +479,8 @@
 .search-dialog,
 .encryption-dialog,
 .custom-confirm-dialog,
-.custom-info-dialog {
+.custom-info-dialog,
+.custom-comment-dialog {
     -fx-background-color: #252525;
     -fx-background-radius: 12;
     -fx-border-radius: 12;
@@ -498,7 +499,8 @@
 .search-dialog > .custom-title-bar,
 .encryption-dialog > .custom-title-bar,
 .custom-confirm-dialog > .custom-title-bar,
-.custom-info-dialog > .custom-title-bar {
+.custom-info-dialog > .custom-title-bar,
+.custom-comment-dialog > .custom-title-bar {
     -fx-background-color: #2a2a2a;
     -fx-border-color: transparent transparent #404040 transparent;
     -fx-border-width: 0 0 1 0;
