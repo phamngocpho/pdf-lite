@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   build:
+    timeout-minutes: 20
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -38,9 +39,13 @@ jobs:
       if: runner.os == 'Windows'
       run: ./mvnw.cmd test
     
-    - name: Run Tests (Unix)
-      if: runner.os != 'Windows'
-      run: ./mvnw test
+    - name: Run Tests (Linux)
+      if: runner.os == 'Linux'
+      run: ./mvnw test -B
+    
+    - name: Run Tests (macOS)
+      if: runner.os == 'macOS'
+      run: ./mvnw test -B
     
     - name: Build (Windows)
       if: runner.os == 'Windows'
