@@ -196,6 +196,9 @@ public class MainController {
     // Bookmark Manager
     private BookmarkManager bookmarkManager;
 
+    // Bookmark UI Manager
+    private BookmarkUIManager bookmarkUIManager;
+
     // ==================== Document State ====================
 
     private PDFDocument currentDocument;
@@ -205,8 +208,6 @@ public class MainController {
             Executors.newSingleThreadScheduledExecutor();
     private final Set<Integer> loadingPages = ConcurrentHashMap.newKeySet();
     private boolean highlightModeActive = false;
-    private VBox bookmarkSidebar;
-    private boolean bookmarkSidebarVisible = false;
 
     // ==================== Initialization ====================
 
@@ -304,6 +305,11 @@ public class MainController {
                 // Set theme manager for BookmarkManager
                 if (bookmarkManager != null) {
                     bookmarkManager.setThemeManager(themeManager);
+                }
+
+                // Set theme manager for BookmarkUIManager
+                if (bookmarkUIManager != null) {
+                    bookmarkUIManager.setThemeManager(themeManager);
                 }
 
                 // Cập nhật DocumentOperationManager để nó có ThemeManager mới
@@ -514,7 +520,9 @@ public class MainController {
 
         // Bookmark Manager
         bookmarkManager = new BookmarkManager();
-        bookmarkManager.setOnNavigateToPage(this::navigateToBookmarkedPage);
+
+        // Bookmark UI Manager
+        bookmarkUIManager = new BookmarkUIManager(rootPane, bookmarkManager, uiStateManager, navigationHelper);
 
         // Set callback to update icon after auto-save
         autoSaveManager.setOnAutoSaveCallback(() -> {
@@ -1152,17 +1160,8 @@ public class MainController {
      */
     @FXML
     private void handleToggleBookmarks() {
-        if (currentDocument == null) {
-            uiStateManager.showError("No Document", "Please open a PDF document first.");
-            return;
-        }
-
-        bookmarkSidebarVisible = !bookmarkSidebarVisible;
-
-        if (bookmarkSidebarVisible) {
-            showBookmarkSidebar();
-        } else {
-            hideBookmarkSidebar();
+        if (bookmarkUIManager != null) {
+            bookmarkUIManager.handleToggleBookmarks(currentDocument);
         }
     }
 
@@ -1171,58 +1170,8 @@ public class MainController {
      */
     @FXML
     private void handleAddBookmark() {
-        if (currentDocument == null) {
-            uiStateManager.showError("No Document", "Please open a PDF document first.");
-            return;
-        }
-
-        int currentPage = currentDocument.getCurrentPage();
-        
-        String result = org.pdflite.dialog.BookmarkInputDialog.show(
-                "Add Bookmark",
-                "Add bookmark for page " + (currentPage + 1),
-                "Bookmark title:",
-                "Page " + (currentPage + 1),
-                themeManager
-        );
-
-        if (result != null && !result.trim().isEmpty()) {
-            bookmarkManager.addBookmark(currentPage, result.trim());
-            uiStateManager.updateStatus("Bookmark added for page " + (currentPage + 1));
-        }
-    }
-
-    /**
-     * Shows the bookmark sidebar.
-     */
-    private void showBookmarkSidebar() {
-        if (bookmarkSidebar == null) {
-            bookmarkSidebar = bookmarkManager.createBookmarkSidebar();
-        }
-
-        if (rootPane.getRight() == null) {
-            rootPane.setRight(bookmarkSidebar);
-            logger.info("Bookmark sidebar shown");
-        }
-    }
-
-    /**
-     * Hides the bookmark sidebar.
-     */
-    private void hideBookmarkSidebar() {
-        if (rootPane.getRight() == bookmarkSidebar) {
-            rootPane.setRight(null);
-            logger.info("Bookmark sidebar hidden");
-        }
-    }
-
-    /**
-     * Navigates to a bookmarked page.
-     */
-    private void navigateToBookmarkedPage(int pageNumber) {
-        if (navigationHelper != null) {
-            navigationHelper.navigateToPage(pageNumber);
-            uiStateManager.updateStatus("Navigated to bookmarked page " + (pageNumber + 1));
+        if (bookmarkUIManager != null) {
+            bookmarkUIManager.handleAddBookmark(currentDocument);
         }
     }
 }
