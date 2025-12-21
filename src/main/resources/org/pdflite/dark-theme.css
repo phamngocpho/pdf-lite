@@ -479,7 +479,8 @@
 .search-dialog,
 .encryption-dialog,
 .custom-confirm-dialog,
-.custom-info-dialog {
+.custom-info-dialog,
+.custom-input-dialog {
     -fx-background-color: #252525;
     -fx-background-radius: 12;
     -fx-border-radius: 12;
@@ -498,7 +499,8 @@
 .search-dialog > .custom-title-bar,
 .encryption-dialog > .custom-title-bar,
 .custom-confirm-dialog > .custom-title-bar,
-.custom-info-dialog > .custom-title-bar {
+.custom-info-dialog > .custom-title-bar,
+.custom-input-dialog > .custom-title-bar {
     -fx-background-color: #2a2a2a;
     -fx-border-color: transparent transparent #404040 transparent;
     -fx-border-width: 0 0 1 0;
@@ -507,7 +509,8 @@
 
 /* Custom dialog content styles */
 .custom-info-dialog .info-content-label,
-.custom-confirm-dialog .label {
+.custom-confirm-dialog .label,
+.custom-input-dialog .label {
     -fx-text-fill: #e0e0e0;
     -fx-background-color: transparent;
     -fx-border-color: transparent;
