@@ -117,6 +117,14 @@
             <scope>test</scope>
         </dependency>
         
+        <!-- TestFX Monocle for headless JavaFX testing -->
+        <dependency>
+            <groupId>org.testfx</groupId>
+            <artifactId>openjfx-monocle</artifactId>
+            <version>jdk-12.0.1+2</version>
+            <scope>test</scope>
+        </dependency>
+        
         <!-- Property-Based Testing -->
         <dependency>
             <groupId>com.pholser</groupId>
@@ -206,6 +214,15 @@
                     <includes>
                         <include>**/*Test.java</include>
                     </includes>
+                    <argLine>
+                        -Djava.awt.headless=true
+                        -Dtestfx.robot=glass
+                        -Dtestfx.headless=true
+                        -Dprism.order=sw
+                        -Dprism.text=t2k
+                        -Dglass.platform=Monocle
+                        -Dmonocle.platform=Headless
+                    </argLine>
                 </configuration>
             </plugin>
 

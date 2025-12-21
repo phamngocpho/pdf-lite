@@ -35,19 +35,13 @@ jobs:
       if: runner.os != 'Windows'
       run: chmod +x ./mvnw
     
-    - name: Setup Xvfb (Linux only)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y xvfb libgl1-mesa-glx libgtk-3-0
-    
     - name: Run Tests (Windows)
       if: runner.os == 'Windows'
       run: ./mvnw.cmd test
     
-    - name: Run Tests (Linux with Xvfb)
+    - name: Run Tests (Linux)
       if: runner.os == 'Linux'
-      run: xvfb-run -a ./mvnw test -B
+      run: ./mvnw test -B
     
     - name: Run Tests (macOS)
       if: runner.os == 'macOS'
