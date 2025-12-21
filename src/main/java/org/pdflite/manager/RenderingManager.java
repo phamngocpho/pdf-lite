@@ -270,5 +270,33 @@ public class RenderingManager {
     public VBox getPagesContainer() {
         return pagesContainer;
     }
+
+    /**
+     * Clears the page renderer cache to force re-rendering.
+     * This should be called after modifying the PDF content (e.g., text edits).
+     */
+    public void clearPageRendererCache() {
+        if (pageRenderer != null) {
+            pageRenderer.clearCache();
+            logger.info("Cleared PageRenderer cache");
+        }
+    }
+
+    /**
+     * Clears cache and reloads only the visible pages without recreating all placeholders.
+     * This is more efficient than renderAllPages() for single page edits.
+     */
+    public void reloadVisiblePages() {
+        if (scrollHandler != null) {
+            // Clear cache first
+            clearPageRendererCache();
+            
+            // Trigger scroll handler to reload visible pages
+            Platform.runLater(() -> {
+                scrollHandler.handleScroll();
+                logger.info("Triggered reload of visible pages");
+            });
+        }
+    }
 }
 
