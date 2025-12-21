@@ -57,10 +57,10 @@ public class ContextMenuHandler {
     private ImageInfo currentImageUnderCursor;
     private int currentPageIndex = -1;
     private float currentPageHeight = 0;
-    
+
     // Callback for text editing
     private TextEditCallback textEditCallback;
-    
+
     // Callback for highlight selection
     private HighlightCallback highlightCallback;
 
@@ -73,38 +73,38 @@ public class ContextMenuHandler {
         logger.info("ContextMenuHandler initialized!");
         this.smartTextSelector = new SmartTextSelector();
     }
-    
+
     /**
      * Sets the theme manager for dialog styling.
      */
     public void setThemeManager(ThemeManager themeManager) {
         this.themeManager = themeManager;
     }
-    
+
     /**
      * Sets the callback for text editing operations.
      */
     public void setTextEditCallback(TextEditCallback callback) {
         this.textEditCallback = callback;
     }
-    
+
     /**
      * Sets the callback for highlight operations.
      */
     public void setHighlightCallback(HighlightCallback callback) {
         this.highlightCallback = callback;
     }
-    
+
     /**
      * Callback interface for text editing operations.
      */
     public interface TextEditCallback {
-        void onTextEdit(int pageIndex, 
-                       float coverX, float coverY, float coverWidth, float coverHeight,
-                       float textX, float textY, 
-                       String newText, float fontSize, PDFont font);
+        void onTextEdit(int pageIndex,
+                        float coverX, float coverY, float coverWidth, float coverHeight,
+                        float textX, float textY,
+                        String newText, float fontSize, PDFont font);
     }
-    
+
     /**
      * Callback interface for highlight operations.
      */
@@ -169,10 +169,10 @@ public class ContextMenuHandler {
             // Use smart text selector to get the selected text, positions, and highlight regions
             String selectedText = smartTextSelector.getSelectedText(pdfStart, pdfEnd);
             String cleanedText = (selectedText != null) ? selectedText.trim() : "";
-            List<org.apache.pdfbox.text.TextPosition> textPositions = 
-                smartTextSelector.getSelectedTextPositions(pdfStart, pdfEnd);
-            List<Rectangle2D> highlightRegions = 
-                smartTextSelector.getHighlightRegions(pdfStart, pdfEnd);
+            List<org.apache.pdfbox.text.TextPosition> textPositions =
+                    smartTextSelector.getSelectedTextPositions(pdfStart, pdfEnd);
+            List<Rectangle2D> highlightRegions =
+                    smartTextSelector.getHighlightRegions(pdfStart, pdfEnd);
 
             // Create selection info using the drag rectangle converted to PDF coordinates
             // The drag rectangle gives us the correct position in PDF space
@@ -184,8 +184,8 @@ public class ContextMenuHandler {
                     x1, y1, width, height, pageHeight, zoom
             );
 
-            currentSelection = new SelectionInfo(pageIndex, pdfRect, cleanedText, new ArrayList<>(), 
-                                                textPositions, highlightRegions);
+            currentSelection = new SelectionInfo(pageIndex, pdfRect, cleanedText, new ArrayList<>(),
+                    textPositions, highlightRegions);
 
             if (currentSelection.hasText()) {
                 logger.info("Length:   {} characters", currentSelection.getText().length());
@@ -210,8 +210,8 @@ public class ContextMenuHandler {
      * @return Selected text
      */
     public String selectTextAtPoint(PDFDocument document, int pageIndex,
-                                     double canvasX, double canvasY,
-                                     double zoom, String clickType) {
+                                    double canvasX, double canvasY,
+                                    double zoom, String clickType) {
         if (document == null || document.getDocument() == null) {
             return "";
         }
@@ -303,7 +303,7 @@ public class ContextMenuHandler {
             logger.warn("No text to copy");
         }
     }
-    
+
     /**
      * Handles highlight selection operation.
      * Creates highlight annotations for the selected text regions.
@@ -313,29 +313,29 @@ public class ContextMenuHandler {
             logger.warn("No text to highlight");
             return;
         }
-        
+
         if (highlightCallback == null) {
             logger.warn("Highlight callback not set");
             return;
         }
-        
+
         List<Rectangle2D> highlightRegions = currentSelection.getHighlightRegions();
         if (highlightRegions == null || highlightRegions.isEmpty()) {
             logger.warn("No highlight regions available");
             return;
         }
-        
+
         // Get the highlight color from MainController via callback
         // For now, use a default color (will be set by callback)
         Color highlightColor = Color.YELLOW;
-        
-        logger.info("Creating {} highlight annotations for page {}", 
+
+        logger.info("Creating {} highlight annotations for page {}",
                 highlightRegions.size(), currentSelection.getPageIndex());
-        
+
         // Call the callback to create highlights
         highlightCallback.onHighlight(
-                currentSelection.getPageIndex(), 
-                highlightRegions, 
+                currentSelection.getPageIndex(),
+                highlightRegions,
                 highlightColor);
     }
 
@@ -381,12 +381,12 @@ public class ContextMenuHandler {
             dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
             javafx.scene.Scene dialogScene = new javafx.scene.Scene(dialogRoot);
             dialogScene.setFill(javafx.scene.paint.Color.TRANSPARENT); // Transparent background
-            
+
             // Apply current theme to dialog
             if (themeManager != null) {
                 themeManager.applyThemeToScene(dialogScene);
             }
-            
+
             dialogStage.setScene(dialogScene);
             controller.setDialogStage(dialogStage);
 
@@ -396,76 +396,76 @@ public class ContextMenuHandler {
             if (controller.isOkClicked()) {
                 String newText = controller.getNewText();
                 logger.info("Text edit confirmed: '{}' -> '{}'", originalText, newText);
-                
+
                 if (textEditCallback != null) {
                     // Use highlight regions to get the actual text bounds (what's shown in blue)
                     List<Rectangle2D> highlightRegions = currentSelection.getHighlightRegions();
-                    
+
                     if (highlightRegions == null || highlightRegions.isEmpty()) {
                         logger.warn("No highlight regions available, using selection rectangle");
                         // Fallback to selection rectangle
                         highlightRegions = new ArrayList<>();
                         highlightRegions.add(currentSelection.pdfRect);
                     }
-                    
+
                     // Calculate bounding box of all highlight regions
                     double minX = Double.MAX_VALUE;
                     double minY = Double.MAX_VALUE;
                     double maxX = Double.MIN_VALUE;
                     double maxY = Double.MIN_VALUE;
-                    
+
                     for (Rectangle2D region : highlightRegions) {
                         minX = Math.min(minX, region.getMinX());
                         minY = Math.min(minY, region.getMinY());
                         maxX = Math.max(maxX, region.getMaxX());
                         maxY = Math.max(maxY, region.getMaxY());
                     }
-                    
+
                     // These are in Java coordinates (top-left origin)
                     float textX = (float) minX;
                     float yJava = (float) minY;
                     float coverWidth = (float) (maxX - minX);
                     float height = (float) (maxY - minY);
-                    
+
                     // Convert to PDF User Space coordinates (bottom-left origin)
                     // For the covering rectangle. We need the bottom-left corner
                     // to Extend upward for diacritics and downward for descenders
                     float coverY = currentPageHeight - yJava - height - 3.0f;  // Extend down 3 points
                     float coverHeight = height + 9.0f;  // Extend up 6 points plus down 3 points = total 9
-                    
+
                     // For text placement, we need the baseline position
                     // Since coverY was extended down by 3 points, add 3 to compensate and keep text position
                     // Then add the original offset (12% of height)
                     float textY = coverY + 3.0f + (height * 0.05f);
-                    
+
                     // Extract font and font size from the first TextPosition
                     PDFont originalFont = null;
                     PDFont font;
                     float fontSize = 12.0f; // Default fallback
-                    
+
                     List<org.apache.pdfbox.text.TextPosition> positions = currentSelection.getTextPositions();
                     if (positions != null && !positions.isEmpty()) {
                         org.apache.pdfbox.text.TextPosition firstPos = positions.get(0);
                         try {
                             originalFont = firstPos.getFont();
                             fontSize = firstPos.getFontSizeInPt();
-                            logger.info("Extracted font: {} (size: {})", 
+                            logger.info("Extracted font: {} (size: {})",
                                     originalFont != null ? originalFont.getName() : "null", fontSize);
                         } catch (Exception e) {
                             logger.warn("Could not extract font from TextPosition: {}", e.getMessage());
                         }
                     }
-                    
+
                     // Map the original font to a Standard 14 font that supports all characters
                     // Embedded subset fonts cannot be used for new text
                     font = mapToStandardFont(originalFont);
-                    
+
                     // Ensure minimum font size for readability
                     if (fontSize < 8.0f) {
                         logger.warn("Font size {} too small, using 10pt", fontSize);
                         fontSize = 10.0f;
                     }
-                    
+
                     logger.info("TEXT REPLACEMENT:");
                     logger.info("  Page height: {}", currentPageHeight);
                     logger.info("  Selection rect (Java coords): x={}, y={}, width={}, height={}",
@@ -474,11 +474,11 @@ public class ContextMenuHandler {
                             textX, coverY, coverWidth, coverHeight);
                     logger.info("  Text position (User Space): x={}, y={}", textX, textY);
                     logger.info("  Font: {}, Size: {}", font.getName(), fontSize);
-                    
+
                     textEditCallback.onTextEdit(currentSelection.pageIndex,
                             textX, coverY, coverWidth, coverHeight,
-                                               textX, textY,
-                                               newText, fontSize, font);
+                            textX, textY,
+                            newText, fontSize, font);
                 } else {
                     logger.warn("Text edit callback not set - cannot add text to PDF");
                 }
@@ -543,9 +543,9 @@ public class ContextMenuHandler {
             this.highlightRegions = new ArrayList<>();
             // TODO: Implement image extraction
         }
-        
+
         public SelectionInfo(int pageIndex, Rectangle2D.Float pdfRect,
-                             String text, List<Object> images, 
+                             String text, List<Object> images,
                              List<org.apache.pdfbox.text.TextPosition> textPositions) {
             this.pageIndex = pageIndex;
             this.pdfRect = pdfRect;
@@ -554,9 +554,9 @@ public class ContextMenuHandler {
             this.highlightRegions = new ArrayList<>();
             // TODO: Implement image extraction
         }
-        
+
         public SelectionInfo(int pageIndex, Rectangle2D.Float pdfRect,
-                             String text, List<Object> images, 
+                             String text, List<Object> images,
                              List<org.apache.pdfbox.text.TextPosition> textPositions,
                              List<Rectangle2D> highlightRegions) {
             this.pageIndex = pageIndex;
@@ -582,11 +582,11 @@ public class ContextMenuHandler {
         public Rectangle2D.Float getPdfRect() {
             return pdfRect;
         }
-        
+
         public List<org.apache.pdfbox.text.TextPosition> getTextPositions() {
             return textPositions;
         }
-        
+
         public List<Rectangle2D> getHighlightRegions() {
             return highlightRegions;
         }
@@ -717,27 +717,27 @@ public class ContextMenuHandler {
         if (originalFont == null) {
             logger.info("No original font, using Helvetica");
             return new PDType1Font(
-                Standard14Fonts.FontName.HELVETICA);
+                    Standard14Fonts.FontName.HELVETICA);
         }
-        
+
         String fontName = originalFont.getName().toLowerCase();
         logger.info("Mapping font '{}' to Standard 14 font", originalFont.getName());
-        
+
         // Check for bold
         boolean isBold = fontName.contains("bold");
-        
+
         // Check for italic/oblique
         boolean isItalic = fontName.contains("italic") || fontName.contains("oblique");
-        
+
         // Check for monospace/courier
         boolean isMono = fontName.contains("courier") || fontName.contains("mono");
-        
+
         // Check for serif/times
         boolean isSerif = fontName.contains("times") || fontName.contains("serif");
-        
+
         // Map to appropriate Standard 14 font
         Standard14Fonts.FontName standardFont;
-        
+
         if (isMono) {
             if (isBold && isItalic) {
                 standardFont = Standard14Fonts.FontName.COURIER_BOLD_OBLIQUE;
@@ -770,7 +770,7 @@ public class ContextMenuHandler {
                 standardFont = Standard14Fonts.FontName.HELVETICA;
             }
         }
-        
+
         logger.info("Mapped to Standard 14 font: {}", standardFont);
         return new PDType1Font(standardFont);
     }

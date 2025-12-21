@@ -58,10 +58,10 @@ public record UIStateManager(Label statusLabel, Button prevButton, Button nextBu
     public void showError(String title, String message) {
         ThemeManager themeManager = themeManagerSupplier != null ? themeManagerSupplier.get() : null;
         org.pdflite.dialog.CustomInfoDialog.show(
-            title,
-            "Error",
-            message,
-            themeManager
+                title,
+                "Error",
+                message,
+                themeManager
         );
         logger.error("Error: {} - {}", title, message);
     }

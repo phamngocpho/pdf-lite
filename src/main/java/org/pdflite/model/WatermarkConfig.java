@@ -11,11 +11,11 @@ import java.io.File;
  * @since 1.0.0
  */
 public class WatermarkConfig {
-    
+
     public enum WatermarkType {
         TEXT, IMAGE
     }
-    
+
     public enum Position {
         CENTER("Center"),
         TOP_LEFT("Top Left"),
@@ -27,18 +27,18 @@ public class WatermarkConfig {
         BOTTOM_CENTER("Bottom Center"),
         BOTTOM_RIGHT("Bottom Right"),
         CUSTOM("Custom");
-        
+
         private final String displayName;
-        
+
         Position(String displayName) {
             this.displayName = displayName;
         }
-        
+
         public String getDisplayName() {
             return displayName;
         }
     }
-    
+
     private WatermarkType type;
     private String text;
     private File imageFile;
@@ -53,7 +53,7 @@ public class WatermarkConfig {
     private float scale;
     private boolean applyToAllPages;
     private String pageRange;
-    
+
     public WatermarkConfig() {
         // Default values
         this.type = WatermarkType.TEXT;
@@ -70,117 +70,117 @@ public class WatermarkConfig {
         this.customX = 0;
         this.customY = 0;
     }
-    
+
     // Getters and Setters
-    
+
     public WatermarkType getType() {
         return type;
     }
-    
+
     public void setType(WatermarkType type) {
         this.type = type;
     }
-    
+
     public String getText() {
         return text;
     }
-    
+
     public void setText(String text) {
         this.text = text;
     }
-    
+
     public File getImageFile() {
         return imageFile;
     }
-    
+
     public void setImageFile(File imageFile) {
         this.imageFile = imageFile;
     }
-    
+
     public Position getPosition() {
         return position;
     }
-    
+
     public void setPosition(Position position) {
         this.position = position;
     }
-    
+
     public float getCustomX() {
         return customX;
     }
-    
+
     public void setCustomX(float customX) {
         this.customX = customX;
     }
-    
+
     public float getCustomY() {
         return customY;
     }
-    
+
     public void setCustomY(float customY) {
         this.customY = customY;
     }
-    
+
     public float getOpacity() {
         return opacity;
     }
-    
+
     public void setOpacity(float opacity) {
         this.opacity = Math.max(0f, Math.min(1f, opacity));
     }
-    
+
     public float getRotation() {
         return rotation;
     }
-    
+
     public void setRotation(float rotation) {
         this.rotation = rotation;
     }
-    
+
     public int getFontSize() {
         return fontSize;
     }
-    
+
     public void setFontSize(int fontSize) {
         this.fontSize = fontSize;
     }
-    
+
     public String getFontName() {
         return fontName;
     }
-    
+
     public void setFontName(String fontName) {
         this.fontName = fontName;
     }
-    
+
     public java.awt.Color getColor() {
         return color;
     }
-    
+
     public void setColor(java.awt.Color color) {
         this.color = color;
     }
-    
+
     public float getScale() {
         return scale;
     }
-    
+
     public void setScale(float scale) {
         this.scale = scale;
     }
-    
+
     public boolean isApplyToAllPages() {
         return applyToAllPages;
     }
-    
+
     public void setApplyToAllPages(boolean applyToAllPages) {
         this.applyToAllPages = applyToAllPages;
     }
-    
+
     public String getPageRange() {
         return pageRange;
     }
-    
+
     public void setPageRange(String pageRange) {
         this.pageRange = pageRange;
     }

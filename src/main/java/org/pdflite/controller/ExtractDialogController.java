@@ -99,14 +99,14 @@ public class ExtractDialogController {
      */
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
-        
+
         // Create and add a custom title bar
         String title = dialogStage.getTitle() != null ? dialogStage.getTitle() : "Extract PDF Pages";
         DialogTitleBar titleBar = new DialogTitleBar(title, dialogStage);
         if (dialogTitleBar != null) {
             dialogTitleBar.getChildren().setAll(titleBar.getTitleBar().getChildren());
         }
-        
+
         // Ensure FlowPane layout is calculated correctly after the dialog is shown
         // This fixes the issue where FlowPane doesn't calculate the correct column count initially
         // Use a small delay to ensure the dialog is fully rendered
@@ -559,10 +559,10 @@ public class ExtractDialogController {
      */
     private void showError(String title, String message) {
         Platform.runLater(() -> CustomInfoDialog.show(
-            title,
-            "Error",
-            message,
-            themeManager
+                title,
+                "Error",
+                message,
+                themeManager
         ));
     }
 
@@ -571,10 +571,10 @@ public class ExtractDialogController {
      */
     private void showInfo(String message) {
         Platform.runLater(() -> CustomInfoDialog.show(
-            "Extract Complete",
-            "Success",
-            message,
-            themeManager
+                "Extract Complete",
+                "Success",
+                message,
+                themeManager
         ));
     }
 

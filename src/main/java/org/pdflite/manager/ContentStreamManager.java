@@ -69,7 +69,7 @@ public class ContentStreamManager {
         // 2. Identify text operators (Tj, TJ, ', ", etc.) within the region
         // 3. Remove those operators from the stream
         // 4. Rebuild the content stream without the removed operators
-        
+
         // For now, we just log a warning
         throw new UnsupportedOperationException(
                 "Text removal from content stream is not yet implemented. " +
@@ -150,18 +150,18 @@ public class ContentStreamManager {
         // Note: We need the PDDocument to create a content stream
         // This method should be called with a page that belongs to an open document
         // The document reference is obtained from the page's document catalog
-        
+
         // Create content stream in APPEND mode to add to existing content
         // PDFBox will automatically get the document from the page
         org.apache.pdfbox.pdmodel.PDDocument doc = null;
-        
+
         // Try to get document from page (PDFBox 3.x way)
         try {
             // In PDFBox 3.x, we need to pass the document explicitly
             // For now, throw an exception indicating we need the document
             throw new IllegalStateException(
-                "addText requires the PDDocument to be passed. " +
-                "Use addText(PDDocument, PDPage, String, double, double, PDFont, float) instead.");
+                    "addText requires the PDDocument to be passed. " +
+                            "Use addText(PDDocument, PDPage, String, double, double, PDFont, float) instead.");
         } catch (IllegalStateException e) {
             throw new IOException(e.getMessage(), e);
         }
@@ -195,7 +195,7 @@ public class ContentStreamManager {
      * @param height   the height of the rectangle
      * @throws IOException if content stream manipulation fails
      */
-    public void drawWhiteRectangle(org.apache.pdfbox.pdmodel.PDDocument document, PDPage page, 
+    public void drawWhiteRectangle(org.apache.pdfbox.pdmodel.PDDocument document, PDPage page,
                                    float x, float y, float width, float height) throws IOException {
         if (document == null || page == null) {
             throw new IllegalArgumentException("Document and page cannot be null");
@@ -216,7 +216,7 @@ public class ContentStreamManager {
 
             // Set fill color to white
             contentStream.setNonStrokingColor(1.0f, 1.0f, 1.0f);
-            
+
             // Draw filled rectangle
             contentStream.addRect(x, y, width, height);
             contentStream.fill();
@@ -243,15 +243,15 @@ public class ContentStreamManager {
      * @throws IOException if content stream manipulation fails
      */
     public void replaceText(org.apache.pdfbox.pdmodel.PDDocument document, PDPage page,
-                           float x, float y, float width, float height,
-                           String newText, float textX, float textY,
-                           PDFont font, float fontSize) throws IOException {
+                            float x, float y, float width, float height,
+                            String newText, float textX, float textY,
+                            PDFont font, float fontSize) throws IOException {
         // First, draw white rectangle to cover old text
         drawWhiteRectangle(document, page, x, y, width, height);
-        
+
         // Then, add new text
         addText(document, page, newText, textX, textY, font, fontSize);
-        
+
         logger.info("Replaced text: covered area ({}, {}) {}x{}, added '{}' at ({}, {})",
                 x, y, width, height, newText, textX, textY);
     }
@@ -282,7 +282,7 @@ public class ContentStreamManager {
         // This is a placeholder for advanced content stream manipulation
         // Actual implementation would create a custom PDFStreamEngine
         // and allow the modifier to process operators
-        
+
         throw new UnsupportedOperationException(
                 "Advanced content stream modification is not yet implemented. " +
                         "This requires custom PDFStreamEngine implementation.");

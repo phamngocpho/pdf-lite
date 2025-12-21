@@ -31,7 +31,7 @@ import java.util.List;
  */
 public class WatermarkService {
     private static final Logger logger = LoggerFactory.getLogger(WatermarkService.class);
-    
+
     /**
      * Applies watermark to the PDF document based on the configuration.
      *
@@ -43,150 +43,150 @@ public class WatermarkService {
         if (pdfDoc == null || config == null) {
             throw new IllegalArgumentException("PDF document and config cannot be null");
         }
-        
+
         PDDocument document = pdfDoc.getDocument();
         List<Integer> targetPages = determineTargetPages(document, config);
-        
+
         logger.info("Applying {} watermark to {} page(s)", config.getType(), targetPages.size());
-        
+
         for (int pageIndex : targetPages) {
             PDPage page = document.getPage(pageIndex);
-            
+
             if (config.getType() == WatermarkConfig.WatermarkType.TEXT) {
                 applyTextWatermark(document, page, config);
             } else {
                 applyImageWatermark(document, page, config);
             }
         }
-        
+
         // Clear cache to force re-render
         pdfDoc.clearCache();
-        
+
         logger.info("Watermark applied successfully");
     }
-    
+
     /**
      * Applies text watermark to a page.
      */
-    private void applyTextWatermark(PDDocument document, PDPage page, WatermarkConfig config) 
+    private void applyTextWatermark(PDDocument document, PDPage page, WatermarkConfig config)
             throws IOException {
         PDRectangle pageSize = page.getMediaBox();
         float pageWidth = pageSize.getWidth();
         float pageHeight = pageSize.getHeight();
-        
+
         try (PDPageContentStream contentStream = new PDPageContentStream(
                 document, page, PDPageContentStream.AppendMode.APPEND, true, true)) {
-            
+
             // Set transparency
             PDExtendedGraphicsState graphicsState = new PDExtendedGraphicsState();
             graphicsState.setNonStrokingAlphaConstant(config.getOpacity());
             graphicsState.setStrokingAlphaConstant(config.getOpacity());
             contentStream.setGraphicsStateParameters(graphicsState);
-            
+
             // Set font
             PDFont font = getFont(config.getFontName());
             contentStream.setFont(font, config.getFontSize());
-            
+
             // Set color
             contentStream.setNonStrokingColor(config.getColor());
-            
+
             // Calculate text dimensions
             float textWidth = font.getStringWidth(config.getText()) / 1000 * config.getFontSize();
             float textHeight = config.getFontSize();
-            
+
             // Calculate position (this gives us the bottom-left corner)
             float[] position = calculatePosition(config, pageWidth, pageHeight, textWidth, textHeight);
             float x = position[0];
             float y = position[1];
-            
+
             // Apply rotation and positioning
             contentStream.beginText();
-            
+
             if (config.getRotation() != 0) {
                 // Calculate center of text for rotation
                 float centerX = x + textWidth / 2;
                 float centerY = y + textHeight / 2;
-                
+
                 // Create rotation matrix around center point
                 double radians = Math.toRadians(config.getRotation());
                 Matrix matrix = new Matrix();
                 matrix.translate(centerX, centerY);
                 matrix.rotate(radians);
                 matrix.translate(-textWidth / 2, -textHeight / 2);
-                
+
                 contentStream.setTextMatrix(matrix);
             } else {
                 contentStream.newLineAtOffset(x, y);
             }
-            
+
             contentStream.showText(config.getText());
             contentStream.endText();
         }
     }
-    
+
     /**
      * Applies image watermark to a page.
      */
-    private void applyImageWatermark(PDDocument document, PDPage page, WatermarkConfig config) 
+    private void applyImageWatermark(PDDocument document, PDPage page, WatermarkConfig config)
             throws IOException {
         if (config.getImageFile() == null || !config.getImageFile().exists()) {
             throw new IOException("Image file not found: " + config.getImageFile());
         }
-        
+
         PDRectangle pageSize = page.getMediaBox();
         float pageWidth = pageSize.getWidth();
         float pageHeight = pageSize.getHeight();
-        
+
         // Load image
         BufferedImage bufferedImage = ImageIO.read(config.getImageFile());
         PDImageXObject pdImage = PDImageXObject.createFromFileByContent(
                 config.getImageFile(), document);
-        
+
         // Calculate scaled dimensions
         float imageWidth = pdImage.getWidth() * config.getScale();
         float imageHeight = pdImage.getHeight() * config.getScale();
-        
+
         // Calculate position
         float[] position = calculatePosition(config, pageWidth, pageHeight, imageWidth, imageHeight);
         float x = position[0];
         float y = position[1];
-        
+
         try (PDPageContentStream contentStream = new PDPageContentStream(
                 document, page, PDPageContentStream.AppendMode.APPEND, true, true)) {
-            
+
             // Set transparency
             PDExtendedGraphicsState graphicsState = new PDExtendedGraphicsState();
             graphicsState.setNonStrokingAlphaConstant(config.getOpacity());
             contentStream.setGraphicsStateParameters(graphicsState);
-            
+
             // Save graphics state
             contentStream.saveGraphicsState();
-            
+
             if (config.getRotation() != 0) {
                 // Calculate center of image for rotation
                 float centerX = x + imageWidth / 2;
                 float centerY = y + imageHeight / 2;
-                
+
                 // Translate to center, rotate, translate back
                 contentStream.transform(Matrix.getTranslateInstance(centerX, centerY));
                 contentStream.transform(Matrix.getRotateInstance(Math.toRadians(config.getRotation()), 0, 0));
                 contentStream.transform(Matrix.getTranslateInstance(-imageWidth / 2, -imageHeight / 2));
-                
+
                 contentStream.drawImage(pdImage, 0, 0, imageWidth, imageHeight);
             } else {
                 contentStream.drawImage(pdImage, x, y, imageWidth, imageHeight);
             }
-            
+
             // Restore graphics state
             contentStream.restoreGraphicsState();
         }
     }
-    
+
     /**
      * Calculates the position for watermark based on configuration.
      */
     private float[] calculatePosition(WatermarkConfig config, float pageWidth, float pageHeight,
-                                     float contentWidth, float contentHeight) {
+                                      float contentWidth, float contentHeight) {
         float x, y;
 
         y = switch (config.getPosition()) {
@@ -231,17 +231,17 @@ public class WatermarkService {
                 yield (pageHeight - contentHeight) / 2;
             }
         };
-        
+
         return new float[]{x, y};
     }
-    
+
     /**
      * Determines which pages to apply watermark to based on configuration.
      */
     private List<Integer> determineTargetPages(PDDocument document, WatermarkConfig config) {
         List<Integer> pages = new ArrayList<>();
         int totalPages = document.getNumberOfPages();
-        
+
         if (config.isApplyToAllPages()) {
             for (int i = 0; i < totalPages; i++) {
                 pages.add(i);
@@ -276,10 +276,10 @@ public class WatermarkService {
                 }
             }
         }
-        
+
         return pages;
     }
-    
+
     /**
      * Gets PDFont based on font name.
      */

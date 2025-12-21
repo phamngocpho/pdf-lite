@@ -5,15 +5,14 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.pdflite.controller.PageRenderer;
+import org.pdflite.dialog.CustomConfirmDialog;
+import org.pdflite.dialog.CustomInfoDialog;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javafx.application.Platform;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.VBox;
 
@@ -75,7 +74,7 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
             // Using 100% ensures coordinate calculations for text selection are accurate
             double initialZoom = 1.0;
             newDocument.setZoomLevel(initialZoom);
-            
+
             // Update renderer and scroll handler with a new document
             pageRenderer.setDocument(newDocument, initialZoom);
             zoomManager.setDocument(newDocument);
@@ -127,80 +126,52 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
             return;
         }
 
-        // Check if file exists and show overwrite confirmation
+        // No need to confirm overwriting when saving the currently open file
+        // The overwriting confirmation is only needed for "Save As" operation
         File targetFile = currentDocument.getFile();
-        if (targetFile != null && targetFile.exists()) {
-            boolean confirmed = org.pdflite.dialog.CustomConfirmDialog.show(
-                "Confirm Overwrite",
-                "File already exists",
-                "The file '" + targetFile.getName() + "' already exists.\nDo you want to overwrite it?",
-                themeManager
-            );
-
-            if (!confirmed) {
-                // User cancelled the save operation
-                logger.info("Save operation cancelled by user");
-                return;
-            }
-        }
 
         // Check if the document is encrypted
         if (currentDocument.getDocument().isEncrypted()) {
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle("Lưu file đã mã hóa");
-            alert.setHeaderText("File PDF này có mật khẩu bảo vệ");
-            alert.setContentText("""
-                    Bạn muốn:
-                    - Lưu và GIỮ mật khẩu (chọn Cancel và dùng 'Save As')
-                    - Lưu và XÓA mật khẩu (chọn OK)""");
-
-            ButtonType keepPassword = new ButtonType("Giữ mật khẩu", ButtonBar.ButtonData.CANCEL_CLOSE);
-            ButtonType removePassword = new ButtonType("Xóa mật khẩu", ButtonBar.ButtonData.OK_DONE);
-            alert.getButtonTypes().setAll(removePassword, keepPassword);
-
-            if (themeManager != null) {
-                themeManager.applyThemeToScene(alert.getDialogPane().getScene());
-            }
+            boolean removePassword = CustomConfirmDialog.show(
+                    "Lưu file đã mã hóa",
+                    "File PDF này có mật khẩu bảo vệ",
+                    "Bạn muốn:\n" +
+                            "- Lưu và GIỮ mật khẩu (chọn Cancel và dùng 'Save As')\n" +
+                            "- Lưu và XÓA mật khẩu (chọn OK)",
+                    themeManager
+            );
 
             final boolean[] success = new boolean[1];
-            alert.showAndWait().ifPresent(response -> {
-                if (response == removePassword) {
-                    // User wants to remove password - proceed with save
-                    try {
-                        fileManager.save(currentDocument);
+            if (removePassword) {
+                // User wants to remove password - proceed with save
+                try {
+                    fileManager.save(currentDocument);
 
-                        Alert successAlert = new Alert(Alert.AlertType.INFORMATION);
-                        successAlert.setTitle("Thành công");
-                        successAlert.setHeaderText("Đã lưu file");
-                        successAlert.setContentText("File đã được lưu và mật khẩu đã được xóa.");
+                    CustomInfoDialog.show(
+                            "Thành công",
+                            "Đã lưu file",
+                            "File đã được lưu và mật khẩu đã được xóa.",
+                            themeManager
+                    );
 
-                        if (themeManager != null) {
-                            themeManager.applyThemeToScene(successAlert.getDialogPane().getScene());
-                        }
-
-                        successAlert.showAndWait();
-                        success[0] = true;
-                    } catch (IOException e) {
-                        logger.error("Error saving document", e);
-                        uiStateManager.showError("Save Error", "Could not save the document: " + e.getMessage());
-                        success[0] = false;
-                    }
-                } else {
-                    // User wants to keep the password - suggest Save As
-                    Alert infoAlert = new Alert(Alert.AlertType.INFORMATION);
-                    infoAlert.setTitle("Thông tin");
-                    infoAlert.setHeaderText("Sử dụng Save As");
-                    infoAlert.setContentText("Để giữ mật khẩu, vui lòng sử dụng chức năng 'Save As'\n" +
-                            "hoặc chức năng 'Encrypt PDF' để đặt lại mật khẩu mới.");
-
-                    if (themeManager != null) {
-                        themeManager.applyThemeToScene(infoAlert.getDialogPane().getScene());
-                    }
-
-                    infoAlert.showAndWait();
+                    success[0] = true;
+                } catch (IOException e) {
+                    logger.error("Error saving document", e);
+                    uiStateManager.showError("Save Error", "Could not save the document: " + e.getMessage());
                     success[0] = false;
                 }
-            });
+            } else {
+                // User wants to keep the password - suggest Save As
+                CustomInfoDialog.show(
+                        "Thông tin",
+                        "Sử dụng Save As",
+                        "Để giữ mật khẩu, vui lòng sử dụng chức năng 'Save As'\n" +
+                                "hoặc chức năng 'Encrypt PDF' để đặt lại mật khẩu mới.",
+                        themeManager
+                );
+
+                success[0] = false;
+            }
         } else {
             // Normal save for non-encrypted documents
             try {

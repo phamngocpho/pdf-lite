@@ -437,10 +437,10 @@ public class PageReorderDialogController {
      */
     private void showError(String title, String message) {
         Platform.runLater(() -> CustomInfoDialog.show(
-            title,
-            "Error",
-            message,
-            themeManager
+                title,
+                "Error",
+                message,
+                themeManager
         ));
     }
 
@@ -449,10 +449,10 @@ public class PageReorderDialogController {
      */
     private void showInfo(String message) {
         Platform.runLater(() -> CustomInfoDialog.show(
-            "Page Reorder",
-            "Success",
-            message,
-            themeManager
+                "Page Reorder",
+                "Success",
+                message,
+                themeManager
         ));
     }
 

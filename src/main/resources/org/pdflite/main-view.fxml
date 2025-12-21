@@ -29,6 +29,12 @@
                     <Label fx:id="titleLabel" text="PDF Lite - PDF Viewer &amp; Editor" styleClass="title-bar-label"/>
                 </HBox>
                 <Region HBox.hgrow="ALWAYS"/>
+                <!-- Save Status Indicator -->
+                <StackPane fx:id="saveStatusIndicator" visible="false" managed="false">
+                    <HBox.margin>
+                        <Insets right="10"/>
+                    </HBox.margin>
+                </StackPane>
                 <Button fx:id="minimizeButton" text="_" styleClass="title-bar-button,minimize-button" onAction="#handleMinimize" focusTraversable="false"/>
                 <Button fx:id="maximizeButton" text="□" styleClass="title-bar-button,maximize-button" onAction="#handleMaximize" focusTraversable="false"/>
                 <Button fx:id="closeButton" text="✕" styleClass="title-bar-button,close-button" onAction="#handleClose" focusTraversable="false"/>
@@ -46,7 +52,7 @@
                     <MenuItem text="Export..." onAction="#handleExport" accelerator="Ctrl+Shift+E"/>
                     <MenuItem text="Print..." onAction="#handlePrint" accelerator="Ctrl+P"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Save" onAction="#handleSave"/>
+                    <MenuItem text="Save" onAction="#handleSave" accelerator="Ctrl+S"/>
                     <MenuItem text="Save As..." onAction="#handleSaveAs"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Optimize PDF..." onAction="#handleOptimizePDF" accelerator="Ctrl+Shift+O"/>

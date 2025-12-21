@@ -34,7 +34,7 @@ import java.util.List;
  * @version 1.0.0
  * @since 1.0.0
  */
-public class ImageManager {
+public record ImageManager(UIStateManager uiStateManager) {
     private static final Logger logger = LoggerFactory.getLogger(ImageManager.class);
 
     /**
@@ -44,15 +44,12 @@ public class ImageManager {
             "jpg", "jpeg", "png", "gif", "bmp", "tiff", "tif"
     );
 
-    private final UIStateManager uiStateManager;
-
     /**
      * Creates a new ImageManager.
      *
      * @param uiStateManager the UI state manager for status updates
      */
-    public ImageManager(UIStateManager uiStateManager) {
-        this.uiStateManager = uiStateManager;
+    public ImageManager {
     }
 
     /**

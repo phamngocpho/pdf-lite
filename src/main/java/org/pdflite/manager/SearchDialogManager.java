@@ -89,7 +89,7 @@ public class SearchDialogManager {
                 }
 
                 searchDialogStage.initOwner(rootPane.getScene().getWindow());
-                
+
                 searchDialogController.setDialogStage(searchDialogStage);
 
                 searchDialogStage.setOnCloseRequest(e -> searchDialogController.cleanup());
@@ -125,6 +125,7 @@ public class SearchDialogManager {
             searchDialogStage.close();
         }
     }
+
     public void setThemeManager(ThemeManager themeManager) {
         this.themeManager = themeManager;
 

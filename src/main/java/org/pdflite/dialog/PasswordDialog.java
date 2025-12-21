@@ -40,7 +40,7 @@ public class PasswordDialog extends Dialog<String> {
         passwordField.textProperty().addListener((observable, oldValue, newValue) -> loginButton.setDisable(newValue.trim().isEmpty()));
 
         getDialogPane().setContent(grid);
-        
+
         // Set minimum size for Ubuntu/Linux compatibility
         getDialogPane().setMinWidth(400);
         getDialogPane().setMinHeight(150);

@@ -145,10 +145,10 @@ public class TitleBarManager {
                 restoreY = stage.getY();
                 restoreWidth = stage.getWidth();
                 restoreHeight = stage.getHeight();
-                
+
                 // Maximize to visual bounds (excludes taskbar)
                 maximizeToScreen(stage);
-                
+
                 isMaximized = true;
                 iconManager.updateMaximizeIcon(maximizeButton, true);
                 logger.info("Window maximized");
@@ -191,21 +191,21 @@ public class TitleBarManager {
     public void setMaximizedState(boolean maximized) {
         this.isMaximized = maximized;
         iconManager.updateMaximizeIcon(maximizeButton, maximized);
-        
+
         // Set default restore size (centered on screen)
         if (maximized) {
             javafx.stage.Screen screen = javafx.stage.Screen.getPrimary();
             javafx.geometry.Rectangle2D bounds = screen.getVisualBounds();
-            
+
             // Default size: 1200x800 (from FXML)
             restoreWidth = 1200;
             restoreHeight = 800;
-            
+
             // Center position
             restoreX = bounds.getMinX() + (bounds.getWidth() - restoreWidth) / 2;
             restoreY = bounds.getMinY() + (bounds.getHeight() - restoreHeight) / 2;
         }
-        
+
         logger.info("Maximized state set to: {}", maximized);
     }
 }

@@ -20,13 +20,13 @@ public class ProgressDialog {
     /**
      * Runs a task in background with a progress dialog.
      *
-     * @param task          the task to run
-     * @param title         the dialog title
-     * @param message       the progress message
-     * @param onSuccess     callback when task succeeds
-     * @param onFailure     callback when task fails
-     * @param themeManager  theme manager for styling (can be null)
-     * @param <T>           the task result type
+     * @param task         the task to run
+     * @param title        the dialog title
+     * @param message      the progress message
+     * @param onSuccess    callback when task succeeds
+     * @param onFailure    callback when task fails
+     * @param themeManager theme manager for styling (can be null)
+     * @param <T>          the task result type
      */
     public static <T> void runWithProgress(
             Task<T> task,

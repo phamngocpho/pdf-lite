@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
+import org.pdflite.command.CommandManager;
 import org.pdflite.model.Annotation;
 import org.pdflite.model.ArrowAnnotation;
 import org.pdflite.model.CircleAnnotation;
@@ -12,7 +13,9 @@ import org.pdflite.model.RectangleAnnotation;
 import org.pdflite.model.SearchResult;
 import org.pdflite.model.ShapeAnnotation;
 import org.pdflite.util.Constants;
+
 import static org.pdflite.util.Constants.LOW_RENDER_SCALE;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,7 +58,6 @@ public class AnnotationLayer extends Canvas {
     private Annotation tempAnnotation;
     private double currentLineWidth = 2.0;
     private Consumer<Annotation> onAnnotationAdded;
-    private org.pdflite.command.CommandManager commandManager;
 
     /**
      * List of annotations currently on this layer.
@@ -102,7 +104,8 @@ public class AnnotationLayer extends Canvas {
     /**
      * Record for storing text region highlight information.
      */
-    public record TextRegionHighlight(double x, double y, double width, double height, String text) {}
+    public record TextRegionHighlight(double x, double y, double width, double height, String text) {
+    }
 
     /**
      * Creates a new annotation layer with the specified dimensions.
@@ -122,7 +125,7 @@ public class AnnotationLayer extends Canvas {
         // Clamp dimensions to prevent GPU texture overflow
         // Must call super() first for Java 21 compatibility
         super(Math.min(width, Constants.MAX_CANVAS_SIZE), Math.min(height, Constants.MAX_CANVAS_SIZE));
-        
+
         // Check if clamping occurred and log warning
         double clampedWidth = Math.min(width, Constants.MAX_CANVAS_SIZE);
         double clampedHeight = Math.min(height, Constants.MAX_CANVAS_SIZE);
@@ -130,7 +133,7 @@ public class AnnotationLayer extends Canvas {
             logger.warn("AnnotationLayer dimensions {}x{} clamped to {}x{} to prevent GPU texture overflow",
                     width, height, clampedWidth, clampedHeight);
         }
-        
+
         setupMouseHandlers();
         logger.debug("AnnotationLayer created: {}x{}", clampedWidth, clampedHeight);
     }
@@ -142,14 +145,13 @@ public class AnnotationLayer extends Canvas {
     public void setOnAnnotationAdded(Consumer<Annotation> callback) {
         this.onAnnotationAdded = callback;
     }
-    
+
     /**
      * Sets the command manager for undo/redo support.
-     * 
+     *
      * @param commandManager the command manager
      */
-    public void setCommandManager(org.pdflite.command.CommandManager commandManager) {
-        this.commandManager = commandManager;
+    public void setCommandManager(CommandManager commandManager) {
     }
 
     public void setLineWidth(double width) {
@@ -255,7 +257,7 @@ public class AnnotationLayer extends Canvas {
                 } else if (tempAnnotation != null) {
                     // Don't add to local list - let the callback/command handle it
                     // annotations.add(tempAnnotation);
-                    
+
                     if (onAnnotationAdded != null) {
                         onAnnotationAdded.accept(tempAnnotation);
                     } else {
@@ -303,10 +305,10 @@ public class AnnotationLayer extends Canvas {
 
         if (width > 5 && height > 5) {
             HighlightAnnotation annotation = new HighlightAnnotation(pageIndex, x, y, width, height, currentColor);
-            
+
             // Don't add to local list - let the callback/command handle it
             // annotations.add(annotation);
-            
+
             // Call the callback to use command pattern for undo/redo
             if (onAnnotationAdded != null) {
                 onAnnotationAdded.accept(annotation);
@@ -314,8 +316,8 @@ public class AnnotationLayer extends Canvas {
                 // Fallback: add directly if no callback
                 annotations.add(annotation);
             }
-            
-            logger.debug("Added highlight annotation at ({}, {}) with size {}x{} on page {}", 
+
+            logger.debug("Added highlight annotation at ({}, {}) with size {}x{} on page {}",
                     x, y, width, height, pageIndex);
         }
     }
@@ -340,7 +342,7 @@ public class AnnotationLayer extends Canvas {
                         getWidth(), getHeight());
                 return;
             }
-            
+
             gc.clearRect(0, 0, getWidth(), getHeight());
             drawSearchHighlights(gc);
             drawTextRegionHighlights(gc);
@@ -361,7 +363,7 @@ public class AnnotationLayer extends Canvas {
             }
         } catch (NullPointerException e) {
             logger.error("NullPointerException in redraw() - canvas too large ({}x{}). " +
-                    "This usually happens when canvas exceeds GPU texture limit.",
+                            "This usually happens when canvas exceeds GPU texture limit.",
                     getWidth(), getHeight(), e);
         } catch (Exception e) {
             logger.error("Error redrawing annotations", e);
@@ -547,7 +549,7 @@ public class AnnotationLayer extends Canvas {
     public TextRegionHighlight findTextRegionAt(double x, double y) {
         for (TextRegionHighlight region : textRegionHighlights) {
             if (x >= region.x() && x <= (region.x() + region.width()) &&
-                y >= region.y() && y <= (region.y() + region.height())) {
+                    y >= region.y() && y <= (region.y() + region.height())) {
                 return region;
             }
         }
@@ -712,11 +714,11 @@ public class AnnotationLayer extends Canvas {
         // Search in reverse order (top annotation first)
         for (int i = annotations.size() - 1; i >= 0; i--) {
             Annotation annotation = annotations.get(i);
-            
+
             if (annotation instanceof HighlightAnnotation highlight) {
                 // Check if point is within highlight bounds
                 if (x >= highlight.getX() && x <= (highlight.getX() + highlight.getWidth()) &&
-                    y >= highlight.getY() && y <= (highlight.getY() + highlight.getHeight())) {
+                        y >= highlight.getY() && y <= (highlight.getY() + highlight.getHeight())) {
                     return annotation;
                 }
             } else if (annotation instanceof ShapeAnnotation shape) {
@@ -725,11 +727,11 @@ public class AnnotationLayer extends Canvas {
                 double maxX = Math.max(shape.getX(), shape.getEndX()) * scale;
                 double minY = Math.min(shape.getY(), shape.getEndY()) * scale;
                 double maxY = Math.max(shape.getY(), shape.getEndY()) * scale;
-                
+
                 // Add some tolerance for easier selection
                 double tolerance = 10;
                 if (x >= (minX - tolerance) && x <= (maxX + tolerance) &&
-                    y >= (minY - tolerance) && y <= (maxY + tolerance)) {
+                        y >= (minY - tolerance) && y <= (maxY + tolerance)) {
                     return annotation;
                 }
             }
@@ -756,7 +758,7 @@ public class AnnotationLayer extends Canvas {
      * Updates the color of a HighlightAnnotation.
      *
      * @param annotation the annotation to update
-     * @param newColor the new color
+     * @param newColor   the new color
      * @return true if the color was updated, false otherwise
      */
     public boolean updateAnnotationColor(Annotation annotation, Color newColor) {
@@ -766,14 +768,14 @@ public class AnnotationLayer extends Canvas {
             if (index >= 0) {
                 // Create new annotation with updated color
                 HighlightAnnotation updated = new HighlightAnnotation(
-                    highlight.getPageNumber(),
-                    highlight.getX(),
-                    highlight.getY(),
-                    highlight.getWidth(),
-                    highlight.getHeight(),
-                    newColor
+                        highlight.getPageNumber(),
+                        highlight.getX(),
+                        highlight.getY(),
+                        highlight.getWidth(),
+                        highlight.getHeight(),
+                        newColor
                 );
-                
+
                 // Replace in list
                 annotations.set(index, updated);
                 redraw();

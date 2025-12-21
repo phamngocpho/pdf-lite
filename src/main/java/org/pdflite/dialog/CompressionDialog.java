@@ -16,7 +16,7 @@ import org.pdflite.util.DialogTitleBar;
  * Dialog for PDF compression settings.
  */
 public class CompressionDialog {
-    
+
     private final Stage dialog;
     private CompressionManager.CompressionLevel selectedLevel = CompressionManager.CompressionLevel.MEDIUM;
     private boolean confirmed = false;
@@ -24,8 +24,8 @@ public class CompressionDialog {
     private final org.pdflite.model.PDFDocument pdfDocument;
     private final CompressionManager compressionManager;
 
-    public CompressionDialog(long currentSize, int estimatedReduction, ThemeManager themeManager, 
-                           org.pdflite.model.PDFDocument pdfDocument, CompressionManager compressionManager) {
+    public CompressionDialog(long currentSize, int estimatedReduction, ThemeManager themeManager,
+                             org.pdflite.model.PDFDocument pdfDocument, CompressionManager compressionManager) {
         this.pdfDocument = pdfDocument;
         this.compressionManager = compressionManager;
         dialog = new Stage();
@@ -85,11 +85,11 @@ public class CompressionDialog {
             RadioButton radio = new RadioButton(level.getDescription());
             radio.setToggleGroup(group);
             radio.setUserData(level);
-            
+
             if (level == CompressionManager.CompressionLevel.MEDIUM) {
                 radio.setSelected(true);
             }
-            
+
             radioBox.getChildren().add(radio);
         }
 
@@ -104,38 +104,38 @@ public class CompressionDialog {
         javafx.scene.shape.SVGPath warningIcon = new javafx.scene.shape.SVGPath();
         warningIcon.setContent("m130-172 350-604 350 604H130Zm48-28h604L480-720 178-200Zm302-60q8.5 0 14.25-5.75T500-280q0-8.5-5.75-14.25T480-300q-8.5 0-14.25 5.75T460-280q0 8.5 5.75 14.25T480-260Zm-14-80h28v-200h-28v200Zm14-120Z");
         warningIcon.setFill(javafx.scene.paint.Color.web("#ff9800"));
-        
+
         // Set fixed size for icon
         javafx.scene.layout.StackPane iconContainer = new javafx.scene.layout.StackPane(warningIcon);
         iconContainer.setMinSize(16, 16);
         iconContainer.setMaxSize(16, 16);
         iconContainer.setPrefSize(16, 16);
-        
+
         // Scale to fit container
         double scale = 16.0 / 960.0; // SVG viewBox is 960x960
         warningIcon.setScaleX(scale);
         warningIcon.setScaleY(scale);
-        
+
         Label warningLabel = new Label("Higher compression may reduce image quality. " +
-                                      "This operation cannot be undone.");
+                "This operation cannot be undone.");
         warningLabel.setWrapText(true);
         warningLabel.setMaxWidth(360);
         warningLabel.setStyle("-fx-text-fill: #ff9800; -fx-font-size: 11px;");
-        
+
         javafx.scene.layout.HBox warningBox = new javafx.scene.layout.HBox(8);
         warningBox.setAlignment(javafx.geometry.Pos.TOP_LEFT);
         warningBox.getChildren().addAll(iconContainer, warningLabel);
 
         // Estimated reduction
         estimateLabel = new Label(
-            String.format("Estimated size reduction: ~%d%%", estimatedReduction)
+                String.format("Estimated size reduction: ~%d%%", estimatedReduction)
         );
         estimateLabel.setStyle("-fx-text-fill: #4caf50; -fx-font-weight: bold;");
 
         content.getChildren().addAll(estimateLabel, infoLabel, sizeLabel, levelLabel, radioBox, warningBox);
         return content;
     }
-    
+
     /**
      * Updates the estimate label when compression level changes.
      */

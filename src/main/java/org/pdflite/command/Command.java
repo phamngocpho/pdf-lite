@@ -9,15 +9,15 @@ public interface Command {
      * Executes the command.
      */
     void execute();
-    
+
     /**
      * Undoes the command, reverting to the previous state.
      */
     void undo();
-    
+
     /**
      * Gets a description of the command for display purposes.
-     * 
+     *
      * @return a human-readable description of the command
      */
     String getDescription();

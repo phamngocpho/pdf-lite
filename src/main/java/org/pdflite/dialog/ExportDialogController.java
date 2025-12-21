@@ -22,26 +22,41 @@ import java.io.File;
 public class ExportDialogController {
     private static final Logger logger = LoggerFactory.getLogger(ExportDialogController.class);
 
-    @FXML private ToggleGroup exportTypeGroup;
-    @FXML private RadioButton imageRadio;
-    @FXML private RadioButton textRadio;
-    
-    @FXML private VBox imageOptionsPane;
-    @FXML private ComboBox<String> imageFormatComboBox;
-    @FXML private Spinner<Integer> dpiSpinner;
-    
-    @FXML private VBox textOptionsPane;
-    
-    @FXML private ToggleGroup pageRangeGroup;
-    @FXML private RadioButton currentPageRadio;
-    @FXML private RadioButton allPagesRadio;
-    @FXML private RadioButton specificPagesRadio;
-    @FXML private TextField pageRangeField;
-    
-    @FXML private TextField outputPathField;
-    @FXML private Button browseButton;
-    
-    @FXML private Label infoLabel;
+    @FXML
+    private ToggleGroup exportTypeGroup;
+    @FXML
+    private RadioButton imageRadio;
+    @FXML
+    private RadioButton textRadio;
+
+    @FXML
+    private VBox imageOptionsPane;
+    @FXML
+    private ComboBox<String> imageFormatComboBox;
+    @FXML
+    private Spinner<Integer> dpiSpinner;
+
+    @FXML
+    private VBox textOptionsPane;
+
+    @FXML
+    private ToggleGroup pageRangeGroup;
+    @FXML
+    private RadioButton currentPageRadio;
+    @FXML
+    private RadioButton allPagesRadio;
+    @FXML
+    private RadioButton specificPagesRadio;
+    @FXML
+    private TextField pageRangeField;
+
+    @FXML
+    private TextField outputPathField;
+    @FXML
+    private Button browseButton;
+
+    @FXML
+    private Label infoLabel;
 
     private Stage dialogStage;
     private boolean exportClicked = false;
@@ -51,18 +66,18 @@ public class ExportDialogController {
     @FXML
     private void initialize() {
         logger.debug("ExportDialogController initialized");
-        
+
         config = new ExportConfig();
-        
+
         // Setup image format combo
         imageFormatComboBox.getItems().addAll("PNG", "JPG");
         imageFormatComboBox.setValue("PNG");
-        
+
         // Setup DPI spinner
-        SpinnerValueFactory<Integer> dpiFactory = 
-            new SpinnerValueFactory.IntegerSpinnerValueFactory(72, 600, 300, 50);
+        SpinnerValueFactory<Integer> dpiFactory =
+                new SpinnerValueFactory.IntegerSpinnerValueFactory(72, 600, 300, 50);
         dpiSpinner.setValueFactory(dpiFactory);
-        
+
         setupListeners();
     }
 
@@ -83,13 +98,13 @@ public class ExportDialogController {
                 updateInfoLabel();
             }
         });
-        
+
         // Page range toggle
         pageRangeGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
             pageRangeField.setDisable(newVal != specificPagesRadio);
             updateInfoLabel();
         });
-        
+
         // Update info when format changes
         imageFormatComboBox.valueProperty().addListener((obs, oldVal, newVal) -> updateInfoLabel());
     }
@@ -125,20 +140,20 @@ public class ExportDialogController {
         } else {
             // Single file - choose file
             FileChooser fileChooser = new FileChooser();
-            
+
             if (imageRadio.isSelected()) {
                 fileChooser.setTitle("Save Image As");
                 String format = imageFormatComboBox.getValue().toLowerCase();
                 fileChooser.getExtensionFilters().add(
-                    new FileChooser.ExtensionFilter(format.toUpperCase() + " Image", "*." + format)
+                        new FileChooser.ExtensionFilter(format.toUpperCase() + " Image", "*." + format)
                 );
             } else {
                 fileChooser.setTitle("Save Text As");
                 fileChooser.getExtensionFilters().add(
-                    new FileChooser.ExtensionFilter("Text File", "*.txt")
+                        new FileChooser.ExtensionFilter("Text File", "*.txt")
                 );
             }
-            
+
             File file = fileChooser.showSaveDialog(dialogStage);
             if (file != null) {
                 outputPathField.setText(file.getAbsolutePath());
@@ -151,7 +166,7 @@ public class ExportDialogController {
         if (!validateInput()) {
             return;
         }
-        
+
         buildConfig();
         exportClicked = true;
         dialogStage.close();
@@ -167,7 +182,7 @@ public class ExportDialogController {
             showError("Please select an output location.");
             return false;
         }
-        
+
         if (specificPagesRadio.isSelected()) {
             String pageRange = pageRangeField.getText();
             if (pageRange == null || pageRange.trim().isEmpty()) {
@@ -179,19 +194,19 @@ public class ExportDialogController {
                 return false;
             }
         }
-        
+
         return true;
     }
 
     private void buildConfig() {
         config.exportToImage = imageRadio.isSelected();
         config.outputPath = outputPathField.getText();
-        
+
         if (imageRadio.isSelected()) {
             config.imageFormat = imageFormatComboBox.getValue();
             config.dpi = dpiSpinner.getValue();
         }
-        
+
         if (currentPageRadio.isSelected()) {
             config.pageRange = PageRange.CURRENT;
         } else if (allPagesRadio.isSelected()) {
@@ -204,7 +219,7 @@ public class ExportDialogController {
 
     private void updateInfoLabel() {
         StringBuilder info = new StringBuilder();
-        
+
         if (imageRadio.isSelected()) {
             if (allPagesRadio.isSelected()) {
                 info.append("Will export ").append(totalPages).append(" images to a folder");
@@ -222,7 +237,7 @@ public class ExportDialogController {
                 info.append("Will export selected pages text");
             }
         }
-        
+
         infoLabel.setText(info.toString());
     }
 

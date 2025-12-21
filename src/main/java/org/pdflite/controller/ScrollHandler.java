@@ -197,7 +197,7 @@ public class ScrollHandler {
                 // Always unload pages far from the viewport to prevent lag
                 // Adaptive unload distance based on zoom
                 double unloadDistance = currentZoom >= 1.5 ? viewportHeight :
-                                       (currentZoom >= 1.2 ? viewportHeight * 1.5 : viewportHeight * 2.0);
+                        (currentZoom >= 1.2 ? viewportHeight * 1.5 : viewportHeight * 2.0);
                 double unloadStart = Math.max(0, visibleStart - unloadDistance);
                 double unloadEnd = Math.min(contentHeight, visibleEnd + unloadDistance);
 
@@ -235,7 +235,7 @@ public class ScrollHandler {
     /**
      * Loads pages from a list up to the maximum concurrent load limit.
      *
-     * @param pageList         the list of page indices to load
+     * @param pageList           the list of page indices to load
      * @param maxConcurrentLoads the maximum number of pages to load
      * @param currentLoadedCount the current count of loaded pages
      * @return the updated count of loaded pages

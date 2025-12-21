@@ -74,9 +74,9 @@ public class PDFReorderService {
     /**
      * Moves a page from one position to another.
      *
-     * @param pdfDoc      the PDF document
-     * @param fromIndex   the source index (0-based)
-     * @param toIndex     the destination index (0-based)
+     * @param pdfDoc    the PDF document
+     * @param fromIndex the source index (0-based)
+     * @param toIndex   the destination index (0-based)
      */
     public void movePage(PDFDocument pdfDoc, int fromIndex, int toIndex) {
         if (pdfDoc == null) {

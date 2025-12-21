@@ -105,7 +105,7 @@ public class MergeDialogController {
      */
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
-        
+
         // Create and add a custom title bar
         String title = dialogStage.getTitle() != null ? dialogStage.getTitle() : "Merge PDF Files";
         DialogTitleBar titleBar = new DialogTitleBar(title, dialogStage);

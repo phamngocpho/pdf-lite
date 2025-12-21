@@ -45,7 +45,7 @@ public class ZoomManager {
         this.pdfService = pdfService;
         this.zoomChangeListener = zoomChangeListener;
     }
-    
+
     /**
      * Sets the zoom change listener.
      *
@@ -97,7 +97,7 @@ public class ZoomManager {
      */
     public void setCurrentZoom(double zoom) {
         this.currentZoom = zoom;
-        
+
         // Update the zoom combo box display immediately for better visibility
         if (currentDocument != null && zoomComboBox != null) {
             String zoomValue = String.format("%.0f%%", zoom * 100);
@@ -201,10 +201,10 @@ public class ZoomManager {
      * @param prefix optional prefix for status message
      */
     private void applyZoom(String prefix) {
-        logger.info("applyZoom called - document: {}, listener: {}", 
+        logger.info("applyZoom called - document: {}, listener: {}",
                 currentDocument != null ? "loaded" : "null",
                 zoomChangeListener != null ? "set" : "null");
-        
+
         if (currentDocument != null) {
             currentDocument.setZoomLevel(currentZoom);
             logger.info("Set document zoom level to: {}", currentZoom);

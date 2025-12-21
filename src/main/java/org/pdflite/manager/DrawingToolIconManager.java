@@ -66,7 +66,7 @@ public class DrawingToolIconManager {
             logger.error("Failed to create undo icon", e);
         }
     }
-    
+
     /**
      * Sets up redo button icon.
      *

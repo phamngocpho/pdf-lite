@@ -56,11 +56,11 @@ public class DialogTitleBar {
 
         // Make title bar draggable
         makeDraggable(stage);
-        
+
         // Apply rounded corners to stage
         applyRoundedCorners(stage);
     }
-    
+
     /**
      * Applies rounded corners to the dialog stage.
      *
@@ -70,7 +70,7 @@ public class DialogTitleBar {
         stage.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
                 newScene.setFill(javafx.scene.paint.Color.TRANSPARENT);
-                
+
                 // Apply clip to root for rounded corners
                 newScene.rootProperty().addListener((obsRoot, oldRoot, newRoot) -> {
                     if (newRoot != null) {

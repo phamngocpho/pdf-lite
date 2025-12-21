@@ -88,7 +88,7 @@ public class PrintDialogController {
      */
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
-        
+
         // Create and add a custom title bar
         String title = dialogStage.getTitle() != null ? dialogStage.getTitle() : "Print PDF";
         DialogTitleBar titleBar = new org.pdflite.util.DialogTitleBar(title, dialogStage);

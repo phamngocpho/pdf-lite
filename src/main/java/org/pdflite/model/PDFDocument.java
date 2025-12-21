@@ -41,12 +41,12 @@ public class PDFDocument {
     private int rotation;
     private final List<Annotation> annotations;
     private final Map<String, Image> imageCache;
-    
+
     /**
      * Flag indicating whether the document has unsaved edits.
      */
     private boolean hasUnsavedEdits;
-    
+
     /**
      * List of edit operations performed on this document.
      */

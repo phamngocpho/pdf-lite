@@ -16,50 +16,50 @@ import java.util.function.Supplier;
  */
 public class PageDeletionManager {
     private static final Logger logger = LoggerFactory.getLogger(PageDeletionManager.class);
-    
+
     private final UIStateManager uiStateManager;
     private final UndoRedoManager undoRedoManager;
     private final RenderingManager renderingManager;
     private final PageInfoManager pageInfoManager;
     private final PageRenderer pageRenderer;
     private Supplier<ThemeManager> themeManagerSupplier;
-    
+
     /**
      * Creates a new PageDeletionManager.
-     * 
-     * @param uiStateManager the UI state manager
-     * @param undoRedoManager the undo/redo manager
+     *
+     * @param uiStateManager   the UI state manager
+     * @param undoRedoManager  the undo/redo manager
      * @param renderingManager the rendering manager
-     * @param pageInfoManager the page info manager
-     * @param pageRenderer the page renderer
+     * @param pageInfoManager  the page info manager
+     * @param pageRenderer     the page renderer
      */
-    public PageDeletionManager(UIStateManager uiStateManager, 
-                              UndoRedoManager undoRedoManager,
-                              RenderingManager renderingManager,
-                              PageInfoManager pageInfoManager,
-                              PageRenderer pageRenderer) {
+    public PageDeletionManager(UIStateManager uiStateManager,
+                               UndoRedoManager undoRedoManager,
+                               RenderingManager renderingManager,
+                               PageInfoManager pageInfoManager,
+                               PageRenderer pageRenderer) {
         this.uiStateManager = uiStateManager;
         this.undoRedoManager = undoRedoManager;
         this.renderingManager = renderingManager;
         this.pageInfoManager = pageInfoManager;
         this.pageRenderer = pageRenderer;
-        
+
         logger.info("PageDeletionManager initialized");
     }
-    
+
     /**
      * Sets the theme manager supplier.
-     * 
+     *
      * @param themeManagerSupplier supplier that provides the current theme manager
      */
     public void setThemeManagerSupplier(Supplier<ThemeManager> themeManagerSupplier) {
         this.themeManagerSupplier = themeManagerSupplier;
     }
-    
+
     /**
      * Handles the page deletion operation.
      * Shows confirmation dialog, creates command, and executes it.
-     * 
+     *
      * @param currentDocument the current PDF document
      */
     public void handleDeletePage(PDFDocument currentDocument) {
@@ -68,101 +68,101 @@ public class PageDeletionManager {
             uiStateManager.showError("No Document", "Please open a PDF document first.");
             return;
         }
-        
+
         // Check if we can delete
         if (currentDocument.getTotalPages() <= 1) {
             uiStateManager.showError("Cannot Delete", "Cannot delete the last page of the document.");
             return;
         }
-        
+
         int currentPage = currentDocument.getCurrentPage();
-        
+
         // Show confirmation dialog
         if (!showConfirmationDialog(currentPage)) {
             return;
         }
-        
+
         // Execute deletion
         executeDeletePage(currentDocument, currentPage);
     }
-    
+
     /**
      * Shows a confirmation dialog for page deletion.
-     * 
+     *
      * @param pageNumber the page number to delete (0-based)
      * @return true if user confirmed, false otherwise
      */
     private boolean showConfirmationDialog(int pageNumber) {
         ThemeManager themeManager = themeManagerSupplier != null ? themeManagerSupplier.get() : null;
         return CustomConfirmDialog.show(
-            "Delete Page",
-            "Delete Page " + (pageNumber + 1) + "?",
-            "This action can be undone using Ctrl+Z.",
-            themeManager
+                "Delete Page",
+                "Delete Page " + (pageNumber + 1) + "?",
+                "This action can be undone using Ctrl+Z.",
+                themeManager
         );
     }
-    
+
     /**
      * Executes the page deletion command.
-     * 
+     *
      * @param currentDocument the current PDF document
-     * @param pageNumber the page number to delete (0-based)
+     * @param pageNumber      the page number to delete (0-based)
      */
     private void executeDeletePage(PDFDocument currentDocument, int pageNumber) {
         try {
             // Create delete page command with refresh callback
             DeletePageCommand cmd = new DeletePageCommand(
-                currentDocument, 
-                pageNumber,
-                () -> refreshAfterDeletion(currentDocument)
+                    currentDocument,
+                    pageNumber,
+                    () -> refreshAfterDeletion(currentDocument)
             );
-            
+
             // Execute command through undo/redo manager
             if (undoRedoManager != null) {
                 undoRedoManager.getCommandManager().executeCommand(cmd);
                 uiStateManager.updateStatus("Deleted page " + (pageNumber + 1));
                 logger.info("Deleted page {} from document", pageNumber + 1);
             }
-            
+
             // Adjust current page if needed
             adjustCurrentPageAfterDeletion(currentDocument);
-            
+
         } catch (Exception e) {
             logger.error("Error deleting page {}", pageNumber + 1, e);
             uiStateManager.showError("Delete Error", "Failed to delete page: " + e.getMessage());
         }
     }
-    
+
     /**
      * Refreshes the UI after page deletion.
-     * 
+     *
      * @param currentDocument the current PDF document
      */
     private void refreshAfterDeletion(PDFDocument currentDocument) {
         Platform.runLater(() -> {
             // Clear cache and re-render
             currentDocument.clearCache();
-            
+
             if (pageRenderer != null) {
                 pageRenderer.clearCache();
             }
-            
+
             if (renderingManager != null) {
                 renderingManager.renderAllPages();
             }
-            
+
             // Update page info
             if (pageInfoManager != null) {
                 pageInfoManager.updatePageInfo(currentDocument);
             }
-            
+
             logger.debug("UI refreshed after page deletion");
         });
     }
-    
+
     /**
      * Adjusts the current page index after deletion if necessary.
-     * 
+     *
      * @param currentDocument the current PDF document
      */
     private void adjustCurrentPageAfterDeletion(PDFDocument currentDocument) {

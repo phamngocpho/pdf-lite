@@ -51,7 +51,7 @@ public class TextEditDialogController {
      */
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
-        
+
         // Create and add custom title bar
         DialogTitleBar titleBar = new DialogTitleBar("Edit Text", dialogStage);
         // Copy children from title bar to dialogTitleBar HBox

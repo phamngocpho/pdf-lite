@@ -97,113 +97,113 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
         }
 
         boolean confirmed = org.pdflite.dialog.CustomConfirmDialog.show(
-            "Delete Page",
-            "Delete current page?",
-            "This will remove page " + (pageIndex + 1) + " from the document.",
-            themeManager
+                "Delete Page",
+                "Delete current page?",
+                "This will remove page " + (pageIndex + 1) + " from the document.",
+                themeManager
         );
 
         final PDFDocument[] result = new PDFDocument[1];
         if (confirmed) {
-                try {
-                    // 1. Save necessary information
-                    File currentFile = currentDocument.getFile();
-                    double oldZoom = zoomManager.getCurrentZoom();
+            try {
+                // 1. Save necessary information
+                File currentFile = currentDocument.getFile();
+                double oldZoom = zoomManager.getCurrentZoom();
 
-                    // 2. Delete page BEFORE save
-                    fileManager.deletePages(currentDocument, List.of(pageIndex));
+                // 2. Delete page BEFORE save
+                fileManager.deletePages(currentDocument, List.of(pageIndex));
 
-                    // 3. Save document
-                    pdfService.save(currentDocument);
+                // 3. Save document
+                pdfService.save(currentDocument);
 
-                    // 4. CRITICAL: Close old document to release file lock
-                    pdfService.closePDF(currentDocument);
+                // 4. CRITICAL: Close old document to release file lock
+                pdfService.closePDF(currentDocument);
 
-                    // 5. Clear ALL state
-                    contentPane.getChildren().clear();
-                    pagesContainer.set(null);
+                // 5. Clear ALL state
+                contentPane.getChildren().clear();
+                pagesContainer.set(null);
+                loadingPages.clear();
+
+                // 6. Clear cache and cancel all pending renders
+                pageRenderer.get().clearCache();
+                pageRenderer.get().cancelAllPendingRenders();
+
+                // 7. Create NEW PageRenderer and ScrollHandler
+                PageRenderer newPageRenderer = new PageRenderer(pdfService, renderExecutor);
+                ScrollHandler newScrollHandler = new ScrollHandler(newPageRenderer, scrollPane);
+                pageRenderer.set(newPageRenderer);
+                scrollHandler.set(newScrollHandler);
+
+                // Set page change listener again after recreating ScrollHandler
+                newScrollHandler.setPageChangeListener(newPageIndex -> Platform.runLater(() -> {
+                    if (result[0] != null) {
+                        pageInfoManager.updatePageInfo(result[0]);
+                    }
+                }));
+
+                // 8. Reopen file (so PDFBox loads new structure)
+                result[0] = fileManager.openFile(currentFile);
+                if (result[0] == null) {
+                    uiStateManager.showError("Error", "Could not reopen the file after deletion.");
+                    return null;
+                }
+
+                // 9. Calculate new current page
+                int newTotal = result[0].getTotalPages();
+                int newCurrentPage = (pageIndex >= newTotal) ? Math.max(0, newTotal - 1) : pageIndex;
+                result[0].setCurrentPage(newCurrentPage);
+                result[0].setZoomLevel(oldZoom);
+
+                // 10. Update renderer with a new document
+                newPageRenderer.setDocument(result[0], oldZoom);
+                zoomManager.setDocument(result[0]);
+                zoomManager.setCurrentZoom(oldZoom);
+
+                // 11. Recreate RenderingManager (note: caller will update renderingManager reference)
+                RenderingManager newRenderingManager = new RenderingManager(
+                        pdfService, newPageRenderer, newScrollHandler, zoomManager);
+                newRenderingManager.setDocument(result[0]);
+                newRenderingManager.setUIComponents(null, scrollPane, contentPane);
+
+                // Update the renderingManager reference (stored in a wrapper for caller to update)
+                renderingManagerWrapper.set(newRenderingManager);
+
+                // 12. CRITICAL: Set document for ScrollHandler AFTER rendering
+                newRenderingManager.renderAllPages();
+                pagesContainer.set(newRenderingManager.getPagesContainer());
+
+                // 13. Set the document for ScrollHandler with valid pagesContainer
+                newScrollHandler.setDocument(result[0], pagesContainer.get());
+
+                // 14. Update UI
+                pageInfoManager.updatePageInfo(result[0]);
+
+                // 15. Scroll to the top and trigger render
+                Platform.runLater(() -> {
+                    // Reset scroll position
+                    scrollPane.setVvalue(0);
+                    result[0].setCurrentPage(0);
+
+                    // Clear loading pages before triggering scroll
                     loadingPages.clear();
 
-                    // 6. Clear cache and cancel all pending renders
-                    pageRenderer.get().clearCache();
-                    pageRenderer.get().cancelAllPendingRenders();
+                    // Trigger scroll handler to load necessary pages
+                    newScrollHandler.handleScroll();
 
-                    // 7. Create NEW PageRenderer and ScrollHandler
-                    PageRenderer newPageRenderer = new PageRenderer(pdfService, renderExecutor);
-                    ScrollHandler newScrollHandler = new ScrollHandler(newPageRenderer, scrollPane);
-                    pageRenderer.set(newPageRenderer);
-                    scrollHandler.set(newScrollHandler);
-
-                    // Set page change listener again after recreating ScrollHandler
-                    newScrollHandler.setPageChangeListener(newPageIndex -> Platform.runLater(() -> {
-                        if (result[0] != null) {
-                            pageInfoManager.updatePageInfo(result[0]);
-                        }
-                    }));
-
-                    // 8. Reopen file (so PDFBox loads new structure)
-                    result[0] = fileManager.openFile(currentFile);
-                    if (result[0] == null) {
-                        uiStateManager.showError("Error", "Could not reopen the file after deletion.");
-                        return null;
-                    }
-
-                    // 9. Calculate new current page
-                    int newTotal = result[0].getTotalPages();
-                    int newCurrentPage = (pageIndex >= newTotal) ? Math.max(0, newTotal - 1) : pageIndex;
-                    result[0].setCurrentPage(newCurrentPage);
-                    result[0].setZoomLevel(oldZoom);
-
-                    // 10. Update renderer with a new document
-                    newPageRenderer.setDocument(result[0], oldZoom);
-                    zoomManager.setDocument(result[0]);
-                    zoomManager.setCurrentZoom(oldZoom);
-
-                    // 11. Recreate RenderingManager (note: caller will update renderingManager reference)
-                    RenderingManager newRenderingManager = new RenderingManager(
-                            pdfService, newPageRenderer, newScrollHandler, zoomManager);
-                    newRenderingManager.setDocument(result[0]);
-                    newRenderingManager.setUIComponents(null, scrollPane, contentPane);
-
-                    // Update the renderingManager reference (stored in a wrapper for caller to update)
-                    renderingManagerWrapper.set(newRenderingManager);
-
-                    // 12. CRITICAL: Set document for ScrollHandler AFTER rendering
-                    newRenderingManager.renderAllPages();
-                    pagesContainer.set(newRenderingManager.getPagesContainer());
-
-                    // 13. Set the document for ScrollHandler with valid pagesContainer
-                    newScrollHandler.setDocument(result[0], pagesContainer.get());
-
-                    // 14. Update UI
+                    // Update UI
                     pageInfoManager.updatePageInfo(result[0]);
+                    uiStateManager.updateStatus(
+                            "Deleted page " + (pageIndex + 1) + ". Total pages: " + newTotal
+                    );
+                });
 
-                    // 15. Scroll to the top and trigger render
-                    Platform.runLater(() -> {
-                        // Reset scroll position
-                        scrollPane.setVvalue(0);
-                        result[0].setCurrentPage(0);
+                logger.info("Successfully deleted page {} and reloaded document", pageIndex + 1);
 
-                        // Clear loading pages before triggering scroll
-                        loadingPages.clear();
-
-                        // Trigger scroll handler to load necessary pages
-                        newScrollHandler.handleScroll();
-
-                        // Update UI
-                        pageInfoManager.updatePageInfo(result[0]);
-                        uiStateManager.updateStatus(
-                                "Deleted page " + (pageIndex + 1) + ". Total pages: " + newTotal
-                        );
-                    });
-
-                    logger.info("Successfully deleted page {} and reloaded document", pageIndex + 1);
-
-                } catch (Exception ex) {
-                    logger.error("Error deleting page {}", pageIndex + 1, ex);
-                    uiStateManager.showError("Delete Page Error", "Could not delete the page: " + ex.getMessage());
-                    result[0] = null;
-                }
+            } catch (Exception ex) {
+                logger.error("Error deleting page {}", pageIndex + 1, ex);
+                uiStateManager.showError("Delete Page Error", "Could not delete the page: " + ex.getMessage());
+                result[0] = null;
+            }
         }
 
         return result[0];
@@ -216,15 +216,15 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
      * @param controller      the insert dialog controller with user selections
      * @param pagesContainer  the page container (will be updated)
      * @param loadingPages    the set of pages currently loading
-     * @param pageRenderer   the page renderer
-     * @param scrollHandler  the scroll handler
-     * @param scrollPane     the scroll pane
+     * @param pageRenderer    the page renderer
+     * @param scrollHandler   the scroll handler
+     * @param scrollPane      the scroll pane
      * @return the updated PDFDocument, or null if insertion failed
      */
     public PDFDocument insertBlankPages(PDFDocument currentDocument, InsertDialogController controller,
-                                       AtomicReference<VBox> pagesContainer, Set<Integer> loadingPages,
-                                       PageRenderer pageRenderer, ScrollHandler scrollHandler,
-                                       ScrollPane scrollPane) {
+                                        AtomicReference<VBox> pagesContainer, Set<Integer> loadingPages,
+                                        PageRenderer pageRenderer, ScrollHandler scrollHandler,
+                                        ScrollPane scrollPane) {
         if (currentDocument == null || controller == null || controller.isInsertClicked()) {
             return null;
         }

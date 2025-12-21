@@ -83,7 +83,7 @@ public class CompressionManager {
 
                 for (var name : resources.getXObjectNames()) {
                     PDXObject xObject = resources.getXObject(name);
-                    
+
                     if (xObject instanceof PDImageXObject image) {
                         totalImages++;
 
@@ -100,8 +100,8 @@ public class CompressionManager {
                 }
             }
 
-            logger.info("Compressed {} out of {} images with {} level", 
-                       compressedImages, totalImages, level);
+            logger.info("Compressed {} out of {} images with {} level",
+                    compressedImages, totalImages, level);
             return compressedImages > 0;
 
         } catch (Exception e) {
@@ -113,14 +113,14 @@ public class CompressionManager {
     /**
      * Compresses a single image.
      *
-     * @param image the image to compress
-     * @param level the compression level
+     * @param image    the image to compress
+     * @param level    the compression level
      * @param document the PDF document
      * @return compressed image or null if compression failed
      */
-    private PDImageXObject compressImage(PDImageXObject image, CompressionLevel level, PDDocument document) 
+    private PDImageXObject compressImage(PDImageXObject image, CompressionLevel level, PDDocument document)
             throws IOException {
-        
+
         // Skip if image is already small
         if (image.getWidth() < 100 || image.getHeight() < 100) {
             return null;
@@ -135,9 +135,9 @@ public class CompressionManager {
         BufferedImage rgbImage = bufferedImage;
         if (bufferedImage.getType() != BufferedImage.TYPE_INT_RGB) {
             rgbImage = new BufferedImage(
-                bufferedImage.getWidth(), 
-                bufferedImage.getHeight(), 
-                BufferedImage.TYPE_INT_RGB
+                    bufferedImage.getWidth(),
+                    bufferedImage.getHeight(),
+                    BufferedImage.TYPE_INT_RGB
             );
             java.awt.Graphics2D g = rgbImage.createGraphics();
             g.drawImage(bufferedImage, 0, 0, null);
@@ -146,7 +146,7 @@ public class CompressionManager {
 
         // Compress using JPEG
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        
+
         Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpeg");
         if (!writers.hasNext()) {
             return null;
@@ -154,7 +154,7 @@ public class CompressionManager {
 
         ImageWriter writer = writers.next();
         ImageWriteParam param = writer.getDefaultWriteParam();
-        
+
         if (param.canWriteCompressed()) {
             param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
             param.setCompressionQuality(level.getQuality());
@@ -169,13 +169,13 @@ public class CompressionManager {
 
         // Create new PDImageXObject from compressed data
         byte[] compressedData = baos.toByteArray();
-        
+
         // Only use compressed version if it's actually smaller
         if (compressedData.length < image.getStream().getLength()) {
             return PDImageXObject.createFromByteArray(
-                document,
-                compressedData,
-                "compressed"
+                    document,
+                    compressedData,
+                    "compressed"
             );
         }
 
@@ -213,7 +213,7 @@ public class CompressionManager {
 
                 for (var name : resources.getXObjectNames()) {
                     PDXObject xObject = resources.getXObject(name);
-                    
+
                     if (xObject instanceof PDImageXObject image) {
                         totalImages++;
                         long imageSize = image.getStream().getLength();
@@ -232,7 +232,7 @@ public class CompressionManager {
             // - Quality 0.7 (MEDIUM): ~30-50% reduction  
             // - Quality 0.5 (HIGH): ~50-70% reduction
             // - Quality 0.3 (MAXIMUM): ~70-85% reduction
-            
+
             float estimatedImageReduction = switch (level) {
                 case LOW -> 0.15f; // 15% reduction
                 case MEDIUM -> 0.40f; // 40% reduction

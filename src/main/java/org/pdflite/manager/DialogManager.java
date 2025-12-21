@@ -82,11 +82,11 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
             AccessPermission permission = currentDocument.getDocument().getCurrentAccessPermission();
             if (permission != null && !permission.canExtractContent() && !permission.isOwnerPermission()) {
                 org.pdflite.dialog.CustomInfoDialog.show(
-                    "Không có quyền",
-                    "Không thể tách PDF",
-                    "Bạn không có quyền trích xuất nội dung từ file PDF này.\n" +
-                            "Cần quyền Owner hoặc quyền Extract Content.",
-                    themeManager
+                        "Không có quyền",
+                        "Không thể tách PDF",
+                        "Bạn không có quyền trích xuất nội dung từ file PDF này.\n" +
+                                "Cần quyền Owner hoặc quyền Extract Content.",
+                        themeManager
                 );
                 return;
             }
@@ -136,11 +136,11 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
             AccessPermission permission = currentDocument.getDocument().getCurrentAccessPermission();
             if (permission != null && !permission.canExtractContent() && !permission.isOwnerPermission()) {
                 org.pdflite.dialog.CustomInfoDialog.show(
-                    "Không có quyền",
-                    "Không thể trích xuất trang",
-                    "Bạn không có quyền trích xuất nội dung từ file PDF này.\n" +
-                            "Cần quyền Owner hoặc quyền Extract Content.",
-                    themeManager
+                        "Không có quyền",
+                        "Không thể trích xuất trang",
+                        "Bạn không có quyền trích xuất nội dung từ file PDF này.\n" +
+                                "Cần quyền Owner hoặc quyền Extract Content.",
+                        themeManager
                 );
                 return;
             }
@@ -191,11 +191,11 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
             AccessPermission permission = currentDocument.getDocument().getCurrentAccessPermission();
             if (permission != null && !permission.canModify() && !permission.isOwnerPermission()) {
                 org.pdflite.dialog.CustomInfoDialog.show(
-                    "Không có quyền",
-                    "Không thể sắp xếp lại trang",
-                    "Bạn không có quyền chỉnh sửa file PDF này.\n" +
-                            "Cần quyền Owner hoặc quyền Modify.",
-                    themeManager
+                        "Không có quyền",
+                        "Không thể sắp xếp lại trang",
+                        "Bạn không có quyền chỉnh sửa file PDF này.\n" +
+                                "Cần quyền Owner hoặc quyền Modify.",
+                        themeManager
                 );
                 return;
             }
@@ -286,17 +286,17 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
         // This is important for cross-platform compatibility
         root.applyCss();
         root.layout();
-        
+
         // Workaround for Ubuntu/Linux dialog sizing issue
         // See: https://stackoverflow.com/questions/55190380/javafx-creates-alert-dialog-which-is-too-small
         // Set resizable to true initially to allow proper sizing on Linux
         dialogStage.setResizable(true);
-        
+
         // Size the stage to fit its content
         // minWidth/minHeight are set in FXML files to ensure the minimum size on Ubuntu
         // sizeToScene() will calculate the actual size based on content
         dialogStage.sizeToScene();
-        
+
         // After the dialog is shown, set resizable back to false (if desired)
         // This ensures proper sizing on Ubuntu while maintaining non-resizable behavior
         dialogStage.setOnShown(e -> Platform.runLater(() -> dialogStage.setResizable(false)));
@@ -347,15 +347,15 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
      */
     public void showAboutDialog() {
         org.pdflite.dialog.CustomInfoDialog.show(
-            "About PDF Lite",
-            "PDF Lite - PDF Viewer & Editor",
-            """
-                Version 1.0
-                
-                A lightweight PDF viewer with annotation features.
-                
-                Built with JavaFX and Apache PDFBox""",
-            themeManager
+                "About PDF Lite",
+                "PDF Lite - PDF Viewer & Editor",
+                """
+                        Version 1.0
+                        
+                        A lightweight PDF viewer with annotation features.
+                        
+                        Built with JavaFX and Apache PDFBox""",
+                themeManager
         );
     }
 
