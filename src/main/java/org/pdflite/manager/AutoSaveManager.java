@@ -71,59 +71,119 @@ public class AutoSaveManager {
             return;
         }
 
+        // CRITICAL: Capture the document reference NOW, not when the task executes
+        // This prevents saving the wrong document if user switches tabs before auto-save runs
+        final PDFDocument documentToSave = currentDocument;
+
         // Cancel any pending save
         cancelPendingSave();
 
         // Schedule new save after debounce period
         pendingSaveTask = scheduler.schedule(() -> {
             try {
-                performAutoSave();
+                performAutoSave(documentToSave);
             } catch (Exception e) {
                 logger.error("Error during auto-save", e);
             }
         }, DEBOUNCE_SECONDS, TimeUnit.SECONDS);
 
-        logger.debug("Auto-save scheduled in {} seconds", DEBOUNCE_SECONDS);
+        logger.debug("Auto-save scheduled in {} seconds for document: {}", 
+            DEBOUNCE_SECONDS, 
+            documentToSave.getFile() != null ? documentToSave.getFile().getName() : "unknown");
     }
 
     /**
-     * Performs the actual auto-save operation.
+     * Performs the actual auto-save operation for a specific document.
+     * 
+     * @param document the document to save (captured when auto-save was scheduled)
      */
-    private void performAutoSave() {
-        if (currentDocument == null || !currentDocument.hasUnsavedEdits()) {
+    private void performAutoSave(PDFDocument document) {
+        if (document == null || !document.hasUnsavedEdits()) {
             return;
         }
 
         try {
             // Auto-save directly to the original file (not backup)
-            File originalFile = currentDocument.getFile();
+            File originalFile = document.getFile();
             if (originalFile != null) {
-                // Save to original file
-                PDDocument pdDoc = currentDocument.getDocument();
+                // CRITICAL: Use the same save logic as manual save (Ctrl+S)
+                // This ensures proper handling of content stream modifications
+                // by saving to temp file, closing, and reloading the document
+                
+                PDDocument pdDoc = document.getDocument();
                 if (pdDoc != null) {
-                    pdDoc.save(originalFile);
-                    logger.info("Auto-saved to original file: {}", originalFile.getAbsolutePath());
-
-                    // Clear unsaved edits flag since we saved to the real file
-                    currentDocument.setHasUnsavedEdits(false);
-
-                    // Call callback if set
-                    if (onAutoSaveCallback != null) {
-                        javafx.application.Platform.runLater(onAutoSaveCallback);
+                    // Save to temporary file first
+                    File tempFile = new File(originalFile.getParent(),
+                            originalFile.getName() + ".autosave_tmp_" + System.currentTimeMillis());
+                    
+                    try {
+                        // Synchronize on the document to prevent concurrent access
+                        synchronized (pdDoc) {
+                            pdDoc.save(tempFile);
+                            logger.info("Auto-saved to temporary file: {}", tempFile.getName());
+                        }
+                        
+                        // Close the document to release file locks
+                        pdDoc.close();
+                        logger.info("Document closed for auto-save");
+                        
+                        // Delete the original file
+                        if (originalFile.exists()) {
+                            boolean deleted = originalFile.delete();
+                            if (!deleted) {
+                                throw new IOException("Could not delete original file during auto-save");
+                            }
+                        }
+                        
+                        // Rename temp file to original name
+                        boolean renamed = tempFile.renameTo(originalFile);
+                        if (!renamed) {
+                            // Try copy instead of rename
+                            java.nio.file.Files.copy(
+                                    tempFile.toPath(),
+                                    originalFile.toPath(),
+                                    java.nio.file.StandardCopyOption.REPLACE_EXISTING
+                            );
+                            tempFile.delete();
+                        }
+                        
+                        // Reload the document
+                        PDDocument newDoc = org.apache.pdfbox.Loader.loadPDF(originalFile);
+                        document.updateDocument(newDoc);
+                        
+                        logger.info("Auto-saved and reloaded document: {}", originalFile.getAbsolutePath());
+                        
+                        // Clear unsaved edits flag since we saved to the real file
+                        document.setHasUnsavedEdits(false);
+                        
+                        // Call callback if set
+                        if (onAutoSaveCallback != null) {
+                            javafx.application.Platform.runLater(onAutoSaveCallback);
+                        }
+                        
+                    } catch (Exception e) {
+                        // Cleanup temp file if something goes wrong
+                        if (tempFile.exists()) {
+                            tempFile.delete();
+                        }
+                        throw e;
                     }
                 }
             } else {
                 // No original file - save to backup location for recovery
-                File autoSaveFile = getAutoSaveFile(currentDocument);
-                File metadataFile = getMetadataFile(currentDocument);
+                File autoSaveFile = getAutoSaveFile(document);
+                File metadataFile = getMetadataFile(document);
 
-                PDDocument pdDoc = currentDocument.getDocument();
+                PDDocument pdDoc = document.getDocument();
                 if (pdDoc != null) {
-                    pdDoc.save(autoSaveFile);
-                    logger.info("Auto-saved to backup (no original file): {}", autoSaveFile.getAbsolutePath());
+                    // CRITICAL: Synchronize on the document to prevent concurrent access
+                    synchronized (pdDoc) {
+                        pdDoc.save(autoSaveFile);
+                        logger.info("Auto-saved to backup (no original file): {}", autoSaveFile.getAbsolutePath());
+                    }
 
                     // Save metadata
-                    saveMetadata(metadataFile, currentDocument);
+                    saveMetadata(metadataFile, document);
 
                     // Keep hasUnsavedEdits = true for untitled documents
 

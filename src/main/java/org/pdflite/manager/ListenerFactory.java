@@ -9,6 +9,8 @@ import javafx.application.Platform;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.VBox;
 
+import java.util.function.Supplier;
+
 /**
  * Factory class for creating various listeners used in MainController.
  * This helps reduce the size of MainController by extracting listener creation logic.
@@ -20,16 +22,16 @@ public class ListenerFactory {
      * Creates a zoom change listener with dynamic context.
      * The context can be updated later when the document is opened.
      *
-     * @param renderingManager the rendering manager
-     * @param searchManager    the search manager
-     * @param uiStateManager   the UI state manager
+     * @param renderingManagerSupplier supplier for the rendering manager
+     * @param searchManager            the search manager
+     * @param uiStateManager           the UI state manager
      * @return a zoom change listener that can be updated with document context
      */
     public static ZoomChangeListenerWithContext createZoomChangeListener(
-            RenderingManager renderingManager,
+            Supplier<RenderingManager> renderingManagerSupplier,
             SearchManager searchManager,
             UIStateManager uiStateManager) {
-        return new ZoomChangeListenerWithContext(renderingManager, searchManager, uiStateManager);
+        return new ZoomChangeListenerWithContext(renderingManagerSupplier, searchManager, uiStateManager);
     }
 
     /**
@@ -37,21 +39,20 @@ public class ListenerFactory {
      * This allows the listener to work before a document is opened.
      */
     public static class ZoomChangeListenerWithContext implements ZoomManager.ZoomChangeListener {
-        private final RenderingManager renderingManager;
+        private final Supplier<RenderingManager> renderingManagerSupplier;
         private final SearchManager searchManager;
         private final UIStateManager uiStateManager;
         private PDFDocument currentDocument;
         private VBox pagesContainer;
         private ScrollPane scrollPane;
 
-        public ZoomChangeListenerWithContext(RenderingManager renderingManager,
+        public ZoomChangeListenerWithContext(Supplier<RenderingManager> renderingManagerSupplier,
                                              SearchManager searchManager,
                                              UIStateManager uiStateManager) {
-            this.renderingManager = renderingManager;
+            this.renderingManagerSupplier = renderingManagerSupplier;
             this.searchManager = searchManager;
             this.uiStateManager = uiStateManager;
-            logger.info("ZoomChangeListenerWithContext created - renderingManager: {}",
-                    renderingManager != null ? "set" : "null");
+            logger.info("ZoomChangeListenerWithContext created with supplier");
         }
 
         /**
@@ -65,6 +66,7 @@ public class ListenerFactory {
             this.currentDocument = currentDocument;
             this.pagesContainer = pagesContainer;
             this.scrollPane = scrollPane;
+            RenderingManager renderingManager = renderingManagerSupplier.get();
             logger.info("ZoomChangeListener context updated - document: {}, pagesContainer: {}, scrollPane: {}, renderingManager: {}",
                     currentDocument != null ? "loaded" : "null",
                     pagesContainer != null ? "set" : "null",
@@ -74,6 +76,7 @@ public class ListenerFactory {
 
         @Override
         public void onZoomChanged(double newZoom) {
+            RenderingManager renderingManager = renderingManagerSupplier.get();
             logger.info("ZoomChangeListener.onZoomChanged called - newZoom: {}, document: {}, pagesContainer: {}, renderingManager: {}",
                     newZoom,
                     currentDocument != null ? "loaded" : "null",

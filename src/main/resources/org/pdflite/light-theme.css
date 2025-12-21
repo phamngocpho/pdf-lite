@@ -1006,3 +1006,61 @@
 .primary-button:pressed {
     -fx-background-color: #0055AA;
 }
+
+/* ==================== TAB PANE - DOCUMENT TABS ==================== */
+.document-tab-pane {
+    -fx-background-color: #ffffff;
+    -fx-border-color: transparent;
+}
+
+.document-tab-pane .tab-header-area {
+    -fx-background-color: #f8f8f8;
+    -fx-border-color: transparent transparent #e0e0e0 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 0;
+}
+
+.document-tab-pane .tab-header-background {
+    -fx-background-color: #f8f8f8;
+}
+
+.document-tab-pane .tab {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-radius: 0;
+    -fx-padding: 8 16;
+}
+
+.document-tab-pane .tab:selected {
+    -fx-background-color: #ffffff;
+    -fx-border-color: transparent transparent #007AFF transparent;
+    -fx-border-width: 0 0 2 0;
+}
+
+.document-tab-pane .tab:hover {
+    -fx-background-color: rgba(0, 0, 0, 0.03);
+}
+
+.document-tab-pane .tab .tab-label {
+    -fx-text-fill: #666666;
+    -fx-font-size: 13px;
+}
+
+.document-tab-pane .tab:selected .tab-label {
+    -fx-text-fill: #1a1a1a;
+    -fx-font-weight: 500;
+}
+
+.document-tab-pane .tab-close-button {
+    -fx-background-color: transparent;
+}
+
+.document-tab-pane .tab-close-button:hover {
+    -fx-background-color: rgba(0, 0, 0, 0.1);
+    -fx-background-radius: 3;
+}
+
+.document-tab-pane .tab-content-area {
+    -fx-background-color: #f0f0f0;
+    -fx-border-color: transparent;
+}

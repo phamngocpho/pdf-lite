@@ -107,14 +107,17 @@ public class DrawingToolsSetupManager {
             return;
         }
 
-        colorPicker.setValue(javafx.scene.paint.Color.BLACK);
+        colorPicker.setValue(javafx.scene.paint.Color.WHITE);
         colorPicker.setOnAction(e -> {
             if (updateCallback != null) {
                 updateCallback.run();
             }
         });
 
-        logger.info("Color picker configured");
+        // Sync initial color to annotation layers
+        if (updateCallback != null) {
+            updateCallback.run();
+        }
     }
 
     /**
@@ -132,7 +135,10 @@ public class DrawingToolsSetupManager {
             }
         });
 
-        logger.info("Highlight color picker configured");
+        // Sync initial color to annotation layers
+        if (updateCallback != null) {
+            updateCallback.run();
+        }
     }
 
     /**
