@@ -21,8 +21,8 @@ public class ListenerFactory {
      * The context can be updated later when the document is opened.
      *
      * @param renderingManager the rendering manager
-     * @param searchManager     the search manager
-     * @param uiStateManager    the UI state manager
+     * @param searchManager    the search manager
+     * @param uiStateManager   the UI state manager
      * @return a zoom change listener that can be updated with document context
      */
     public static ZoomChangeListenerWithContext createZoomChangeListener(
@@ -45,12 +45,12 @@ public class ListenerFactory {
         private ScrollPane scrollPane;
 
         public ZoomChangeListenerWithContext(RenderingManager renderingManager,
-                                            SearchManager searchManager,
-                                            UIStateManager uiStateManager) {
+                                             SearchManager searchManager,
+                                             UIStateManager uiStateManager) {
             this.renderingManager = renderingManager;
             this.searchManager = searchManager;
             this.uiStateManager = uiStateManager;
-            logger.info("ZoomChangeListenerWithContext created - renderingManager: {}", 
+            logger.info("ZoomChangeListenerWithContext created - renderingManager: {}",
                     renderingManager != null ? "set" : "null");
         }
 
@@ -92,26 +92,26 @@ public class ListenerFactory {
      * Handle zoom changed event with the provided context.
      * This is the common logic used by zoom change listeners.
      *
-     * @param newZoom           the new zoom level
-     * @param currentDocument    the current PDF document
-     * @param pagesContainer     the page container
-     * @param scrollPane         the scroll pane
-     * @param renderingManager   the rendering manager
-     * @param searchManager      the search manager
+     * @param newZoom          the new zoom level
+     * @param currentDocument  the current PDF document
+     * @param pagesContainer   the page container
+     * @param scrollPane       the scroll pane
+     * @param renderingManager the rendering manager
+     * @param searchManager    the search manager
      */
     private static void handleZoomChanged(double newZoom,
-                                         PDFDocument currentDocument,
-                                         VBox pagesContainer,
-                                         ScrollPane scrollPane,
-                                         RenderingManager renderingManager,
-                                         SearchManager searchManager) {
+                                          PDFDocument currentDocument,
+                                          VBox pagesContainer,
+                                          ScrollPane scrollPane,
+                                          RenderingManager renderingManager,
+                                          SearchManager searchManager) {
         logger.info("handleZoomChanged - newZoom: {}, document: {}, pagesContainer: {}, scrollPane: {}, renderingManager: {}",
                 newZoom,
                 currentDocument != null ? "loaded" : "null",
                 pagesContainer != null ? "set" : "null",
                 scrollPane != null ? "set" : "null",
                 renderingManager != null ? "set" : "null");
-        
+
         if (currentDocument != null && pagesContainer != null && scrollPane != null) {
             // Switch layout mode based on the threshold (70% => 0.7)
             try {
@@ -195,7 +195,7 @@ public class ListenerFactory {
     /**
      * Creates a page change listener for scroll handler.
      *
-     * @param currentDocument  the current PDF document
+     * @param currentDocument the current PDF document
      * @param pageInfoManager the page info manager
      * @return the page change listener
      */

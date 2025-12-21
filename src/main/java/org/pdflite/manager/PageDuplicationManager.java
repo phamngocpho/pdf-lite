@@ -15,13 +15,13 @@ public class PageDuplicationManager {
     /**
      * Duplicates a page in the PDF document.
      *
-     * @param pdfDocument the PDF document
+     * @param pdfDocument     the PDF document
      * @param sourcePageIndex the index of the page to duplicate (0-based)
-     * @param insertPosition the position where to insert the duplicate (0-based)
-     * @param numberOfCopies how many copies to create
+     * @param insertPosition  the position where to insert the duplicate (0-based)
+     * @param numberOfCopies  how many copies to create
      * @return true if duplication was successful
      */
-    public boolean duplicatePage(PDFDocument pdfDocument, int sourcePageIndex, 
+    public boolean duplicatePage(PDFDocument pdfDocument, int sourcePageIndex,
                                  int insertPosition, int numberOfCopies) {
         if (pdfDocument == null) {
             logger.warn("Cannot duplicate page: document is null");
@@ -58,18 +58,18 @@ public class PageDuplicationManager {
             for (int i = 0; i < numberOfCopies; i++) {
                 // Import the page (creates a deep copy)
                 PDPage duplicatedPage = document.importPage(sourcePage);
-                
+
                 // Remove from end and insert at desired position
                 document.removePage(duplicatedPage);
-                document.getPages().insertBefore(duplicatedPage, 
-                    document.getPage(insertPosition + i));
+                document.getPages().insertBefore(duplicatedPage,
+                        document.getPage(insertPosition + i));
             }
 
             // Mark document as modified
             pdfDocument.setHasUnsavedEdits(true);
-            
-            logger.info("Duplicated page {} {} times at position {}", 
-                       sourcePageIndex + 1, numberOfCopies, insertPosition + 1);
+
+            logger.info("Duplicated page {} {} times at position {}",
+                    sourcePageIndex + 1, numberOfCopies, insertPosition + 1);
             return true;
 
         } catch (Exception e) {

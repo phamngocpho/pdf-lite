@@ -85,9 +85,9 @@ public abstract class ShapeAnnotation extends Annotation {
     }
 
     /**
-         * Helper class to hold drawing bounds information.
-         */
-        protected record DrawingBounds(double drawX, double drawY, double width, double height) {
+     * Helper class to hold drawing bounds information.
+     */
+    protected record DrawingBounds(double drawX, double drawY, double width, double height) {
     }
 
     // Phương thức abstract để AnnotationLayer biết cách vẽ

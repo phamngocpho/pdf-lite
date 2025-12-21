@@ -23,7 +23,7 @@ public class AutoSaveManager {
     private static final Logger logger = LoggerFactory.getLogger(AutoSaveManager.class);
     private static final int DEBOUNCE_SECONDS = 5; // Wait 5 seconds after last change
     private static final String AUTOSAVE_DIR = ".pdflite/autosave";
-    
+
     private final ScheduledExecutorService scheduler;
     private ScheduledFuture<?> pendingSaveTask;
     private PDFDocument currentDocument;
@@ -34,7 +34,7 @@ public class AutoSaveManager {
         this.scheduler = scheduler;
         ensureAutoSaveDirectoryExists();
     }
-    
+
     /**
      * Sets a callback to be called after successful auto-save.
      *
@@ -53,12 +53,12 @@ public class AutoSaveManager {
     public void setDocument(PDFDocument document) {
         // Cancel pending save for old document
         cancelPendingSave();
-        
+
         // Clear old auto-save if switching documents
         if (currentDocument != null && currentDocument != document) {
             clearAutoSave(currentDocument);
         }
-        
+
         this.currentDocument = document;
     }
 
@@ -103,10 +103,10 @@ public class AutoSaveManager {
                 if (pdDoc != null) {
                     pdDoc.save(originalFile);
                     logger.info("Auto-saved to original file: {}", originalFile.getAbsolutePath());
-                    
+
                     // Clear unsaved edits flag since we saved to the real file
                     currentDocument.setHasUnsavedEdits(false);
-                    
+
                     // Call callback if set
                     if (onAutoSaveCallback != null) {
                         javafx.application.Platform.runLater(onAutoSaveCallback);
@@ -124,9 +124,9 @@ public class AutoSaveManager {
 
                     // Save metadata
                     saveMetadata(metadataFile, currentDocument);
-                    
+
                     // Keep hasUnsavedEdits = true for untitled documents
-                    
+
                     // Call callback if set
                     if (onAutoSaveCallback != null) {
                         javafx.application.Platform.runLater(onAutoSaveCallback);

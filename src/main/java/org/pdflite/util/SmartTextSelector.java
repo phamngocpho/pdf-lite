@@ -42,7 +42,7 @@ public class SmartTextSelector {
             this.lineNumber = line;
             this.textPosition = tp;
         }
-        
+
         public TextPosition getTextPosition() {
             return textPosition;
         }
@@ -63,7 +63,7 @@ public class SmartTextSelector {
     /**
      * Extracts text positions from a PDF page.
      *
-     * @param doc      The PDF document
+     * @param doc     The PDF document
      * @param pageNum Zero-based page number
      * @throws IOException if extraction fails
      */
@@ -330,7 +330,7 @@ public class SmartTextSelector {
      */
     public List<TextPosition> getSelectedTextPositions(Point2D start, Point2D end) {
         List<TextPosition> positions = new ArrayList<>();
-        
+
         if (characters.isEmpty()) {
             return positions;
         }

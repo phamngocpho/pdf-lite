@@ -14,9 +14,9 @@ import org.slf4j.LoggerFactory;
  * Manages drawing tools setup and configuration.
  */
 public class DrawingToolsSetupManager {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(DrawingToolsSetupManager.class);
-    
+
     private final PageRenderer pageRenderer;
 
     // Callbacks for updating styles
@@ -25,23 +25,23 @@ public class DrawingToolsSetupManager {
     public DrawingToolsSetupManager(PageRenderer pageRenderer, UIStateManager uiStateManager) {
         this.pageRenderer = pageRenderer;
     }
-    
+
     /**
      * Sets up drawing tool selection listeners.
      */
     public void setupDrawingToolSelection(ToggleGroup drawingToolsGroup,
-                                         ToggleButton btnDrawRect,
-                                         ToggleButton btnDrawCircle,
-                                         ToggleButton btnDrawArrow,
-                                         VBox pagesContainer,
-                                         AnnotationManager annotationManager) {
+                                          ToggleButton btnDrawRect,
+                                          ToggleButton btnDrawCircle,
+                                          ToggleButton btnDrawArrow,
+                                          VBox pagesContainer,
+                                          AnnotationManager annotationManager) {
         if (drawingToolsGroup == null) {
             return;
         }
-        
+
         drawingToolsGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
             ToggleButton selectedBtn = (newVal != null) ? (ToggleButton) newVal : null;
-            
+
             // Handle tool selection - annotationManager will be null until the document is opened
             if (annotationManager == null) {
                 // If no document is open, just handle basic selection mode
@@ -58,34 +58,34 @@ public class DrawingToolsSetupManager {
                 }
                 return;
             }
-            
+
             // Document is open - use annotation manager
             annotationManager.handleToolSelection(
-                selectedBtn,
-                btnDrawRect,
-                btnDrawCircle,
-                btnDrawArrow,
-                active -> {
-                    if (pageRenderer != null && pagesContainer != null) {
-                        pageRenderer.setSelectionModeActive(pagesContainer, active);
-                    }
-                },
-                pagesContainer,
-                updateDrawingStyleCallback
+                    selectedBtn,
+                    btnDrawRect,
+                    btnDrawCircle,
+                    btnDrawArrow,
+                    active -> {
+                        if (pageRenderer != null && pagesContainer != null) {
+                            pageRenderer.setSelectionModeActive(pagesContainer, active);
+                        }
+                    },
+                    pagesContainer,
+                    updateDrawingStyleCallback
             );
         });
-        
+
         logger.info("Drawing tool selection listeners configured");
     }
-    
+
     /**
      * Makes toggle buttons deselectable.
      */
     public void makeToggleButtonsDeselectable(ToggleButton btnDrawRect,
-                                             ToggleButton btnDrawCircle,
-                                             ToggleButton btnDrawArrow,
-                                             ToggleGroup drawingToolsGroup,
-                                             AnnotationManager annotationManager) {
+                                              ToggleButton btnDrawCircle,
+                                              ToggleButton btnDrawArrow,
+                                              ToggleGroup drawingToolsGroup,
+                                              AnnotationManager annotationManager) {
         if (annotationManager != null && drawingToolsGroup != null) {
             if (btnDrawRect != null) {
                 annotationManager.makeToggleButtonDeselectable(btnDrawRect, drawingToolsGroup);
@@ -98,7 +98,7 @@ public class DrawingToolsSetupManager {
             }
         }
     }
-    
+
     /**
      * Sets up color picker for drawing tools.
      */
@@ -106,17 +106,17 @@ public class DrawingToolsSetupManager {
         if (colorPicker == null) {
             return;
         }
-        
+
         colorPicker.setValue(javafx.scene.paint.Color.BLACK);
         colorPicker.setOnAction(e -> {
             if (updateCallback != null) {
                 updateCallback.run();
             }
         });
-        
+
         logger.info("Color picker configured");
     }
-    
+
     /**
      * Sets up highlight color picker.
      */
@@ -124,27 +124,27 @@ public class DrawingToolsSetupManager {
         if (highlightColorPicker == null) {
             return;
         }
-        
+
         highlightColorPicker.setValue(javafx.scene.paint.Color.YELLOW);
         highlightColorPicker.setOnAction(e -> {
             if (updateCallback != null) {
                 updateCallback.run();
             }
         });
-        
+
         logger.info("Highlight color picker configured");
     }
-    
+
     /**
      * Sets up stroke width slider.
      */
-    public void setupStrokeWidthSlider(Slider strokeWidthSlider, 
-                                      Label strokeWidthLabel,
-                                      Runnable updateCallback) {
+    public void setupStrokeWidthSlider(Slider strokeWidthSlider,
+                                       Label strokeWidthLabel,
+                                       Runnable updateCallback) {
         if (strokeWidthSlider == null) {
             return;
         }
-        
+
         strokeWidthSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (updateCallback != null) {
                 updateCallback.run();
@@ -153,22 +153,22 @@ public class DrawingToolsSetupManager {
                 strokeWidthLabel.setText(String.format("%.0f", newVal.doubleValue()));
             }
         });
-        
+
         // Initialize label with current value
         if (strokeWidthLabel != null) {
             strokeWidthLabel.setText(String.format("%.0f", strokeWidthSlider.getValue()));
         }
-        
+
         logger.info("Stroke width slider configured");
     }
-    
+
     /**
      * Sets the callback for updating drawing style.
      */
     public void setUpdateDrawingStyleCallback(Runnable callback) {
         this.updateDrawingStyleCallback = callback;
     }
-    
+
     /**
      * Sets the callback for updating highlight color.
      */

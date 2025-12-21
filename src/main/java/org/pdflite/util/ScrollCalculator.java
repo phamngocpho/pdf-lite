@@ -125,7 +125,7 @@ public class ScrollCalculator {
      * The row height is the maximum height of all page boxes in the row.
      *
      * @param pagesContainer the container holding all page boxes
-     * @param rowIndex        the index of the row (0-based)
+     * @param rowIndex       the index of the row (0-based)
      * @return the height of the row in pixels
      */
     private static double calculateRowHeight(VBox pagesContainer, int rowIndex) {

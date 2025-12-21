@@ -277,24 +277,24 @@ public record ImageInsertionManager(BorderPane rootPane, UIStateManager uiStateM
 
         // Show info dialog explaining how to use text editing
         org.pdflite.dialog.CustomInfoDialog.show(
-            "Text Editing",
-            "How to Edit Text in PDF",
-            """
-                Text editing in PDF is a complex operation with limitations:
-                
-                1. Enable 'Text Selection' mode from the toolbar
-                2. Click on the text you want to edit
-                3. Right-click and select 'Edit Text' from context menu
-                4. Edit the text in the dialog
-                5. Click OK to apply changes
-                
-                Note: This feature is experimental and may not work for:
-                - Scanned PDFs (images of text)
-                - PDFs with complex formatting
-                - Encrypted or protected PDFs
-                
-                For best results, use 'Insert Image' to add new content instead.""",
-            themeManager
+                "Text Editing",
+                "How to Edit Text in PDF",
+                """
+                        Text editing in PDF is a complex operation with limitations:
+                        
+                        1. Enable 'Text Selection' mode from the toolbar
+                        2. Click on the text you want to edit
+                        3. Right-click and select 'Edit Text' from context menu
+                        4. Edit the text in the dialog
+                        5. Click OK to apply changes
+                        
+                        Note: This feature is experimental and may not work for:
+                        - Scanned PDFs (images of text)
+                        - PDFs with complex formatting
+                        - Encrypted or protected PDFs
+                        
+                        For best results, use 'Insert Image' to add new content instead.""",
+                themeManager
         );
     }
 

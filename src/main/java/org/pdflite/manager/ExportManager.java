@@ -76,23 +76,23 @@ public class ExportManager {
             dialogStage.initStyle(javafx.stage.StageStyle.TRANSPARENT);
             dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
             dialogStage.initOwner(rootPane.getScene().getWindow());
-            
+
             // Add title bar
             org.pdflite.util.DialogTitleBar titleBar = new org.pdflite.util.DialogTitleBar("Export PDF", dialogStage);
             mainContainer.getChildren().add(titleBar.getTitleBar());
-            
+
             // Add dialog content
             mainContainer.getChildren().add(dialogContent);
-            
+
             javafx.scene.Scene scene = new javafx.scene.Scene(mainContainer);
             scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
             dialogStage.setScene(scene);
-            
+
             // Apply theme
             if (themeManager != null) {
                 themeManager.applyThemeToScene(scene);
             }
-            
+
             controller.setDialogStage(dialogStage);
 
             dialogStage.showAndWait();

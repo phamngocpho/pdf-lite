@@ -1,8 +1,10 @@
 package org.pdflite.manager;
 
 import java.io.IOException;
+import java.util.function.Supplier;
 
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.pdflite.model.PDFDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,29 +15,15 @@ import javafx.scene.control.Alert;
 /**
  * Manages text editing operations on PDF documents.
  */
-public class TextEditManager {
-    
+public record TextEditManager(UIStateManager uiStateManager, ContentStreamManager contentStreamManager,
+                              RenderingManager renderingManager, SaveStatusManager saveStatusManager) {
+
     private static final Logger logger = LoggerFactory.getLogger(TextEditManager.class);
-    
-    private final UIStateManager uiStateManager;
-    private final ContentStreamManager contentStreamManager;
-    private final RenderingManager renderingManager;
-    private final SaveStatusManager saveStatusManager;
-    
-    public TextEditManager(UIStateManager uiStateManager, 
-                          ContentStreamManager contentStreamManager,
-                          RenderingManager renderingManager,
-                          SaveStatusManager saveStatusManager) {
-        this.uiStateManager = uiStateManager;
-        this.contentStreamManager = contentStreamManager;
-        this.renderingManager = renderingManager;
-        this.saveStatusManager = saveStatusManager;
-    }
-    
+
     /**
      * Creates a text edit callback for the context menu handler.
      */
-    public TextEditCallback createTextEditCallback(java.util.function.Supplier<PDFDocument> documentSupplier) {
+    public TextEditCallback createTextEditCallback(Supplier<PDFDocument> documentSupplier) {
         return (pageIndex, coverX, coverY, coverWidth, coverHeight, textX, textY, newText, fontSize, font) -> {
             try {
                 // Get current document
@@ -51,7 +39,7 @@ public class TextEditManager {
 
                 // Replace text: cover old text with white rectangle, then add new text
                 logger.info("Replacing text on page {}: covering ({}, {}) {}x{}, adding '{}' at ({}, {}) with font {} size {}",
-                        pageIndex + 1, coverX, coverY, coverWidth, coverHeight, 
+                        pageIndex + 1, coverX, coverY, coverWidth, coverHeight,
                         newText, textX, textY, font.getName(), fontSize);
 
                 contentStreamManager.replaceText(
@@ -78,16 +66,16 @@ public class TextEditManager {
                 logger.error("Error adding text to PDF", e);
                 uiStateManager.updateStatus("Error adding text: " + e.getMessage());
                 showTextEditError("Failed to add text to PDF", e.getMessage());
-                
+
             } catch (IndexOutOfBoundsException e) {
                 logger.error("Invalid page index: {}", pageIndex, e);
                 uiStateManager.updateStatus("Error: Invalid page index");
-                showTextEditError("Invalid page index", 
-                    "Page " + (pageIndex + 1) + " does not exist in the document.");
+                showTextEditError("Invalid page index",
+                        "Page " + (pageIndex + 1) + " does not exist in the document.");
             }
         };
     }
-    
+
     /**
      * Refreshes the current page rendering to show changes.
      */
@@ -100,20 +88,20 @@ public class TextEditManager {
 
         // Clear caches to force re-render
         document.clearCache();
-        
+
         // Re-render all visible pages
         Platform.runLater(() -> {
             if (renderingManager != null) {
                 renderingManager.renderAllPages();
             }
         });
-        
+
         // Trigger auto-save after edit
         if (saveStatusManager != null) {
             saveStatusManager.triggerAutoSave();
         }
     }
-    
+
     /**
      * Shows an error dialog for text editing errors.
      */
@@ -126,14 +114,14 @@ public class TextEditManager {
             alert.showAndWait();
         });
     }
-    
+
     /**
      * Functional interface for text edit callback.
      */
     @FunctionalInterface
     public interface TextEditCallback {
         void onTextEdit(int pageIndex, float coverX, float coverY, float coverWidth, float coverHeight,
-                       float textX, float textY, String newText, float fontSize, 
-                       org.apache.pdfbox.pdmodel.font.PDFont font);
+                        float textX, float textY, String newText, float fontSize,
+                        PDFont font);
     }
 }

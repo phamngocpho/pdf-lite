@@ -9,37 +9,16 @@ import org.slf4j.LoggerFactory;
 /**
  * Manages page operations such as duplication, deletion, and reordering.
  */
-public class PageOperationsManager {
-    
+public record PageOperationsManager(UIStateManager uiStateManager, PageDuplicationManager pageDuplicationManager,
+                                    RenderingManager renderingManager, PageInfoManager pageInfoManager,
+                                    SaveStatusManager saveStatusManager, PageRenderer pageRenderer,
+                                    ThemeManager themeManager) {
+
     private static final Logger logger = LoggerFactory.getLogger(PageOperationsManager.class);
-    
-    private final UIStateManager uiStateManager;
-    private final PageDuplicationManager pageDuplicationManager;
-    private final RenderingManager renderingManager;
-    private final PageInfoManager pageInfoManager;
-    private final SaveStatusManager saveStatusManager;
-    private final PageRenderer pageRenderer;
-    private final ThemeManager themeManager;
-    
-    public PageOperationsManager(UIStateManager uiStateManager,
-                                PageDuplicationManager pageDuplicationManager,
-                                RenderingManager renderingManager,
-                                PageInfoManager pageInfoManager,
-                                SaveStatusManager saveStatusManager,
-                                PageRenderer pageRenderer,
-                                ThemeManager themeManager) {
-        this.uiStateManager = uiStateManager;
-        this.pageDuplicationManager = pageDuplicationManager;
-        this.renderingManager = renderingManager;
-        this.pageInfoManager = pageInfoManager;
-        this.saveStatusManager = saveStatusManager;
-        this.pageRenderer = pageRenderer;
-        this.themeManager = themeManager;
-    }
-    
+
     /**
      * Handles page duplication operation.
-     * 
+     *
      * @param document The current PDF document
      */
     public void handleDuplicatePage(PDFDocument document) {
@@ -61,8 +40,8 @@ public class PageOperationsManager {
                 int numberOfCopies = dialog.getNumberOfCopies();
 
                 // Duplicate the page
-                if (pageDuplicationManager.duplicatePage(document, sourcePageIndex, 
-                                                        insertPosition, numberOfCopies)) {
+                if (pageDuplicationManager.duplicatePage(document, sourcePageIndex,
+                        insertPosition, numberOfCopies)) {
                     // Clear caches and re-render
                     document.clearCache();
                     pageRenderer.clearCache();
@@ -72,18 +51,18 @@ public class PageOperationsManager {
                     pageInfoManager.updatePageInfo(document);
 
                     uiStateManager.updateStatus(
-                        String.format("Duplicated page %d (%d copies) - Don't forget to save!", 
+                            String.format("Duplicated page %d (%d copies) - Don't forget to save!",
                                     sourcePageIndex + 1, numberOfCopies));
-                    logger.info("Page {} duplicated {} times at position {}", 
-                               sourcePageIndex + 1, numberOfCopies, insertPosition + 1);
-                    
+                    logger.info("Page {} duplicated {} times at position {}",
+                            sourcePageIndex + 1, numberOfCopies, insertPosition + 1);
+
                     // Trigger auto-save
                     if (saveStatusManager != null) {
                         saveStatusManager.triggerAutoSave();
                     }
                 } else {
-                    uiStateManager.showError("Duplication Failed", 
-                        "Failed to duplicate the page.");
+                    uiStateManager.showError("Duplication Failed",
+                            "Failed to duplicate the page.");
                 }
             }
         } catch (Exception e) {

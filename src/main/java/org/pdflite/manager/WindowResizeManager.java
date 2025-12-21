@@ -220,6 +220,6 @@ public class WindowResizeManager {
      */
     private boolean isEventOnControl(MouseEvent event) {
         return event.getTarget() instanceof javafx.scene.control.Control ||
-               event.getTarget() instanceof javafx.scene.control.Labeled;
+                event.getTarget() instanceof javafx.scene.control.Labeled;
     }
 }

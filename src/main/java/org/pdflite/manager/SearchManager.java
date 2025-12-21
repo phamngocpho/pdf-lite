@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javafx.collections.ListChangeListener;
 import javafx.scene.layout.HBox;
@@ -50,7 +49,7 @@ public class SearchManager {
     // Search results state
     private final Map<Integer, List<SearchResult>> resultsByPage = new HashMap<>();
     private SearchResult activeResult = null;
-    
+
     // Page listeners for auto-highlighting
     private final Map<VBox, ListChangeListener<Node>> pageListeners = new HashMap<>();
     private ListChangeListener<Node> containerListener;
@@ -104,7 +103,7 @@ public class SearchManager {
 
         // Setup listeners to catch future renders (lazy loading)
         setupPageChangeListeners();
-        
+
         // Update currently visible/rendered pages
         Platform.runLater(() -> {
             updateAllHighlights();
@@ -230,7 +229,6 @@ public class SearchManager {
                     .add(result);
         }
     }
-
 
 
     private void updateAllHighlights() {
@@ -440,7 +438,7 @@ public class SearchManager {
         for (VBox pageBox : collectPageBoxes(pagesContainer)) {
             registerPageBoxListener(pageBox);
         }
-        
+
         logger.debug("Page change listeners setup complete");
     }
 
@@ -469,10 +467,10 @@ public class SearchManager {
                 try {
                     int pageIndex = Integer.parseInt(id.replace("page-", ""));
                     List<SearchResult> results = resultsByPage.get(pageIndex);
-                    
+
                     if (results != null && !results.isEmpty()) {
                         layer.setSearchHighlights(results);
-                        
+
                         if (activeResult != null && activeResult.pageNumber() - 1 == pageIndex) {
                             layer.setActiveSearchResult(activeResult);
                         }
@@ -487,7 +485,7 @@ public class SearchManager {
 
     private void removePageListeners() {
         VBox pagesContainer = mainController.getPagesContainer();
-        
+
         // Remove container listener
         if (containerListener != null && pagesContainer != null) {
             pagesContainer.getChildren().removeListener(containerListener);

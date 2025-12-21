@@ -71,7 +71,7 @@ public class PDFLiteApplication extends Application {
 
         // Use undecorated style for a custom title bar
         stage.initStyle(javafx.stage.StageStyle.UNDECORATED);
-        
+
         stage.setMinWidth(MIN_WIDTH);
         stage.setMinHeight(MIN_HEIGHT);
 
@@ -97,27 +97,27 @@ public class PDFLiteApplication extends Application {
 
         // Maximize the window to fill the screen (excluding taskbar)
         TitleBarManager.maximizeToScreen(stage);
-        
+
         // Set initial opacity to 0 for smooth fade-in
         stage.setOpacity(0);
-        
+
         stage.show();
-        
+
         // Smooth fade-in animation with easing (like Windows 11)
         Platform.runLater(() -> {
             FadeTransition fadeIn = new FadeTransition(Duration.millis(200), scene.getRoot());
             fadeIn.setFromValue(0.0);
             fadeIn.setToValue(1.0);
             fadeIn.setInterpolator(Interpolator.EASE_OUT);
-            
+
             // Set stage opacity gradually for a smoother effect
             stage.setOpacity(1);
             fadeIn.play();
-            
+
             // Notify the controller that the window is maximized on startup
             controller.notifyWindowMaximized();
         });
-        
+
         logger.info("Application started successfully");
 
         // Open the last file after UI is shown

@@ -77,7 +77,7 @@ public class ContextMenuPane extends StackPane {
             lastContextMenuX = x;
             lastContextMenuY = y;
 
-            // Check for highlight annotation under cursor
+            // Check for highlight annotation under the cursor
             hasHighlightUnderCursor = hasHighlightAtPosition(x, y);
 
             //logger.debug("Context menu requested at ({:.1f}, {:.1f})", x, y);
@@ -312,7 +312,7 @@ public class ContextMenuPane extends StackPane {
             handler.handleEditText();
             clearSelection();
         });
-        
+
         highlightSelection.setOnAction(e -> {
             handler.handleHighlightSelection();
             clearSelection();

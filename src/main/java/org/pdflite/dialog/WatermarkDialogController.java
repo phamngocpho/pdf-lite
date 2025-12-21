@@ -162,7 +162,7 @@ public class WatermarkDialogController {
 
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
-        
+
         // Create and add custom title bar
         String title = dialogStage.getTitle() != null ? dialogStage.getTitle() : "Add Watermark";
         DialogTitleBar titleBar = new org.pdflite.util.DialogTitleBar(title, dialogStage);

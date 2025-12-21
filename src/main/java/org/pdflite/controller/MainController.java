@@ -161,7 +161,7 @@ public class MainController {
     private ExportManager exportManager;
     private ImageInsertionManager imageInsertionManager;
     private HighlightPersistenceManager highlightPersistenceManager;
-    
+
     // Refactored managers
     private RecoveryManager recoveryManager;
     private TextEditManager textEditManager;
@@ -175,19 +175,19 @@ public class MainController {
 
     // Undo/Redo Manager
     private UndoRedoManager undoRedoManager;
-    
+
     // Page Deletion Manager
     private PageDeletionManager pageDeletionManager;
-    
+
     // Page Duplication Manager
     private PageDuplicationManager pageDuplicationManager;
-    
+
     // Metadata Manager
     private MetadataManager metadataManager;
-    
+
     // Auto-save Manager
     private AutoSaveManager autoSaveManager;
-    
+
     // Save Status Manager
     private SaveStatusManager saveStatusManager;
 
@@ -196,8 +196,8 @@ public class MainController {
     private PDFDocument currentDocument;
     private VBox pagesContainer;
     private final ExecutorService renderExecutor = Executors.newFixedThreadPool(6);
-    private final java.util.concurrent.ScheduledExecutorService autoSaveExecutor = 
-        Executors.newSingleThreadScheduledExecutor();
+    private final java.util.concurrent.ScheduledExecutorService autoSaveExecutor =
+            Executors.newSingleThreadScheduledExecutor();
     private final Set<Integer> loadingPages = ConcurrentHashMap.newKeySet();
     private boolean highlightModeActive = false;
 
@@ -238,14 +238,14 @@ public class MainController {
 
         // Initialize image insertion manager (will be fully initialized after rendering manager is ready)
         imageInsertionManager = new ImageInsertionManager(rootPane, uiStateManager, renderingManager, pageRenderer, null);
-      
+
         // Initialize highlight persistence manager
         highlightPersistenceManager = new HighlightPersistenceManager();
 
         // Initialize undo/redo manager
         undoRedoManager = new UndoRedoManager(uiStateManager);
         undoRedoManager.setButtons(undoButton, redoButton);
-        
+
         // Set command manager in page renderer
         if (pageRenderer != null) {
             pageRenderer.setCommandManager(undoRedoManager.getCommandManager());
@@ -260,12 +260,12 @@ public class MainController {
         rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
                 themeManager = new ThemeManager(newScene, logoImageView);
-                
+
                 // Set theme menu items for automatic updates
                 themeManager.setThemeMenuItems(systemThemeItem, lightThemeItem, darkThemeItem);
-                
+
                 searchDialogManager.setThemeManager(themeManager);
-                
+
                 // Initialize SaveStatusManager now that UI is ready
                 if (saveStatusManager == null && saveStatusIndicator != null) {
                     saveStatusManager = new SaveStatusManager(saveStatusIndicator, autoSaveManager, uiStateManager);
@@ -273,11 +273,12 @@ public class MainController {
 
                 // Cập nhật ThemeManager cho các Manager cần dùng nó
                 if (dialogManager != null) dialogManager = new DialogManager(rootPane, themeManager, uiStateManager);
-                if (encryptionManager != null) encryptionManager = new EncryptionManager(rootPane, pdfService, themeManager, uiStateManager);
+                if (encryptionManager != null)
+                    encryptionManager = new EncryptionManager(rootPane, pdfService, themeManager, uiStateManager);
 
                 // Cập nhật ImageInsertionManager với ThemeManager
                 imageInsertionManager = new ImageInsertionManager(rootPane, uiStateManager, renderingManager, pageRenderer, themeManager);
-                
+
                 // Cập nhật ExportManager với ThemeManager
                 if (exportManager != null) {
                     exportManager.setThemeManager(themeManager);
@@ -287,7 +288,7 @@ public class MainController {
                 if (pageRenderer != null && pageRenderer.getContextMenuHandler() != null) {
                     pageRenderer.getContextMenuHandler().setThemeManager(themeManager);
                 }
-                
+
                 // Set theme manager supplier for PageDeletionManager
                 if (pageDeletionManager != null) {
                     pageDeletionManager.setThemeManagerSupplier(() -> themeManager);
@@ -303,7 +304,7 @@ public class MainController {
                         recentFilesMenuManager);
 
                 recentFilesMenuManager.updateRecentFilesMenu();
-                
+
                 // Initialize refactored managers that need ThemeManager
                 initializeRefactoredManagers();
             }
@@ -331,29 +332,29 @@ public class MainController {
         if (scrollPane != null) {
             scrollPane.vvalueProperty().addListener((obs, oldVal, newVal) -> scrollHandler.handleScroll());
         }
-        
+
         // Setup drawing tools using DrawingToolsSetupManager
         if (drawingToolsSetupManager != null) {
             // Setup drawing tool selection
             drawingToolsSetupManager.setupDrawingToolSelection(
-                drawingToolsGroup, btnDrawRect, btnDrawCircle, btnDrawArrow, 
-                pagesContainer, annotationManager);
-            
+                    drawingToolsGroup, btnDrawRect, btnDrawCircle, btnDrawArrow,
+                    pagesContainer, annotationManager);
+
             // Make toggle buttons deselectable
             drawingToolsSetupManager.makeToggleButtonsDeselectable(
-                btnDrawRect, btnDrawCircle, btnDrawArrow, drawingToolsGroup, annotationManager);
-            
+                    btnDrawRect, btnDrawCircle, btnDrawArrow, drawingToolsGroup, annotationManager);
+
             // Set callbacks
             drawingToolsSetupManager.setUpdateDrawingStyleCallback(this::updateDrawingStyleForAllPages);
             drawingToolsSetupManager.setUpdateHighlightColorCallback(this::updateHighlightColorForAllPages);
-            
+
             // Setup color pickers
             drawingToolsSetupManager.setupColorPicker(colorPicker, this::updateDrawingStyleForAllPages);
             drawingToolsSetupManager.setupHighlightColorPicker(highlightColorPicker, this::updateHighlightColorForAllPages);
-            
+
             // Setup stroke width slider
-            drawingToolsSetupManager.setupStrokeWidthSlider(strokeWidthSlider, strokeWidthLabel, 
-                                                           this::updateDrawingStyleForAllPages);
+            drawingToolsSetupManager.setupStrokeWidthSlider(strokeWidthSlider, strokeWidthLabel,
+                    this::updateDrawingStyleForAllPages);
         }
 
         // Setup drawing tool icons
@@ -362,14 +363,14 @@ public class MainController {
         drawingToolIconManager.setupRedoIcon(redoButton);
 
         uiStateManager.updateUIState(false);
-        
+
         // Check for recovery files on startup
         Platform.runLater(() -> {
             if (recoveryManager != null) {
                 recoveryManager.checkForRecovery(this::openPDFFile);
             }
         });
-        
+
         // Setup keyboard shortcuts
         rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (oldScene != null && keyboardShortcutManager != null) {
@@ -380,52 +381,52 @@ public class MainController {
             }
         });
     }
-    
+
     /**
      * Initializes refactored managers that depend on other managers.
      */
     private void initializeRefactoredManagers() {
         // Recovery Manager
         recoveryManager = new RecoveryManager(autoSaveManager, uiStateManager, themeManager);
-        
+
         // Text Edit Manager
-        textEditManager = new TextEditManager(uiStateManager, contentStreamManager, 
-                                             renderingManager, saveStatusManager);
-        
+        textEditManager = new TextEditManager(uiStateManager, contentStreamManager,
+                renderingManager, saveStatusManager);
+
         // Application Lifecycle Manager
         applicationLifecycleManager = new ApplicationLifecycleManager(
-            fileManager, autoSaveManager, recoveryManager, renderExecutor, autoSaveExecutor);
-        
+                fileManager, autoSaveManager, recoveryManager, renderExecutor, autoSaveExecutor);
+
         // Keyboard Shortcut Manager
         keyboardShortcutManager = new KeyboardShortcutManager(undoRedoManager);
-        
+
         // Document Setup Manager
         documentSetupManager = new DocumentSetupManager(
-            zoomManager, renderingManager, pageInfoManager, highlightPersistenceManager,
-            autoSaveManager, saveStatusManager, pageRenderer, scrollHandler);
-        
+                zoomManager, renderingManager, pageInfoManager, highlightPersistenceManager,
+                autoSaveManager, saveStatusManager, pageRenderer, scrollHandler);
+
         // Document Properties Manager
         documentPropertiesManager = new DocumentPropertiesManager(
-            metadataManager, uiStateManager, saveStatusManager, themeManager);
-        
+                metadataManager, uiStateManager, saveStatusManager, themeManager);
+
         // PDF Optimization Manager
         pdfOptimizationManager = new PDFOptimizationManager(
-            uiStateManager, renderingManager, saveStatusManager, themeManager);
-        
+                uiStateManager, renderingManager, saveStatusManager, themeManager);
+
         // Page Operations Manager
         pageOperationsManager = new PageOperationsManager(
-            uiStateManager, pageDuplicationManager, renderingManager, 
-            pageInfoManager, saveStatusManager, pageRenderer, themeManager);
-        
+                uiStateManager, pageDuplicationManager, renderingManager,
+                pageInfoManager, saveStatusManager, pageRenderer, themeManager);
+
         // Drawing Tools Setup Manager
         drawingToolsSetupManager = new DrawingToolsSetupManager(pageRenderer, uiStateManager);
-        
+
         // Setup text edit callback
         setupTextEditCallback();
     }
-    
+
     /**
-    /**
+     * /**
      * Initializes all manager classes.
      */
     private void initializeManagers() {
@@ -438,10 +439,10 @@ public class MainController {
 
         // Rendering Manager - needs zoomManager
         renderingManager = new RenderingManager(pdfService, pageRenderer, scrollHandler, zoomManager);
-        
+
         // Now create zoom change listener with renderingManager
         zoomChangeListener = ListenerFactory.createZoomChangeListener(renderingManager, searchManager, uiStateManager);
-        
+
         // Set the listener to zoomManager
         zoomManager.setZoomChangeListener(zoomChangeListener);
 
@@ -480,25 +481,25 @@ public class MainController {
 
         // Content Stream Manager
         contentStreamManager = new org.pdflite.manager.ContentStreamManager();
-        
+
         // Page Deletion Manager (needs undoRedoManager, renderingManager, pageInfoManager, pageRenderer)
         pageDeletionManager = new PageDeletionManager(
-            uiStateManager, 
-            undoRedoManager, 
-            renderingManager, 
-            pageInfoManager, 
-            pageRenderer
+                uiStateManager,
+                undoRedoManager,
+                renderingManager,
+                pageInfoManager,
+                pageRenderer
         );
-        
+
         // Page Duplication Manager
         pageDuplicationManager = new PageDuplicationManager();
-        
+
         // Metadata Manager
         metadataManager = new MetadataManager();
-        
+
         // Auto-save Manager
         autoSaveManager = new AutoSaveManager(autoSaveExecutor);
-        
+
         // Set callback to update icon after auto-save
         autoSaveManager.setOnAutoSaveCallback(() -> {
             if (saveStatusManager != null) {
@@ -506,7 +507,7 @@ public class MainController {
             }
             uiStateManager.updateStatus("Auto-saved");
         });
-        
+
         // Save Status Manager (needs to be created after saveStatusIndicator is injected)
         // Will be initialized in rootPane.sceneProperty listener
 
@@ -533,13 +534,13 @@ public class MainController {
         if (textEditManager == null || pageRenderer == null) {
             return;
         }
-        
+
         // Create callback that gets the current document dynamically
         pageRenderer.getContextMenuHandler().setTextEditCallback(
-            (pageIndex, coverX, coverY, coverWidth, coverHeight, textX, textY, newText, fontSize, font) -> textEditManager.createTextEditCallback(() -> currentDocument)
-                .onTextEdit(pageIndex, coverX, coverY, coverWidth, coverHeight,
-                           textX, textY, newText, fontSize, font));
-        
+                (pageIndex, coverX, coverY, coverWidth, coverHeight, textX, textY, newText, fontSize, font) -> textEditManager.createTextEditCallback(() -> currentDocument)
+                        .onTextEdit(pageIndex, coverX, coverY, coverWidth, coverHeight,
+                                textX, textY, newText, fontSize, font));
+
         logger.info("Text edit callback configured successfully");
     }
 
@@ -564,7 +565,7 @@ public class MainController {
         if (saveStatusManager != null) {
             saveStatusManager.hideSaveStatusIndicator();
         }
-        
+
         AtomicReference<VBox> pagesContainerRef =
                 new AtomicReference<>(pagesContainer);
         currentDocument = documentLifecycleManager.openPDFFile(file, currentDocument, pageRenderer,
@@ -574,7 +575,7 @@ public class MainController {
         // Setup the document using DocumentSetupManager
         if (currentDocument != null && pagesContainer != null && documentSetupManager != null) {
             annotationManager = documentSetupManager.setupDocument(
-                currentDocument, pagesContainer, scrollPane, zoomChangeListener, uiStateManager);
+                    currentDocument, pagesContainer, scrollPane, zoomChangeListener, uiStateManager);
         }
     }
 
@@ -583,28 +584,28 @@ public class MainController {
         if (currentDocument == null) {
             return;
         }
-        
+
         // Save highlights to PDF before saving document
         if (highlightPersistenceManager != null) {
             try {
                 highlightPersistenceManager.saveHighlightsToPDF(
-                    currentDocument.getDocument(), 
-                    currentDocument.getAnnotations());
+                        currentDocument.getDocument(),
+                        currentDocument.getAnnotations());
                 logger.info("Highlights saved to PDF");
             } catch (Exception e) {
                 logger.error("Error saving highlights to PDF", e);
-                uiStateManager.showError("Save Error", 
-                    "Failed to save highlights: " + e.getMessage());
+                uiStateManager.showError("Save Error",
+                        "Failed to save highlights: " + e.getMessage());
             }
         }
-        
+
         documentLifecycleManager.saveDocument(currentDocument);
-        
+
         // Clear auto-save after a successful save
         if (autoSaveManager != null) {
             autoSaveManager.clearAutoSave(currentDocument);
         }
-        
+
         // Update save status indicator
         if (saveStatusManager != null) {
             saveStatusManager.updateSaveStatusIndicator(true);
@@ -696,14 +697,14 @@ public class MainController {
     @FXML
     private void handleToggleToolbar() {
         if (toolbar == null) return;
-        
+
         boolean isToolbarVisible = toolbar.isVisible();
-        
+
         if (isToolbarVisible) {
             // Hide toolbar
             toolbar.setManaged(false);
             toolbar.setVisible(false);
-            
+
             // Update menu item text
             if (toggleToolbarMenuItem != null) {
                 toggleToolbarMenuItem.setText("Show Toolbar");
@@ -712,7 +713,7 @@ public class MainController {
             // Show toolbar
             toolbar.setManaged(true);
             toolbar.setVisible(true);
-            
+
             // Update menu item text
             if (toggleToolbarMenuItem != null) {
                 toggleToolbarMenuItem.setText("Hide Toolbar");
@@ -980,18 +981,18 @@ public class MainController {
                 // Clear all caches to force re-render with a new page order
                 currentDocument.clearCache();
                 pageRenderer.clearCache();
-                
+
                 // Re-render all pages
                 renderingManager.renderAllPages();
-                
+
                 // Update status
                 uiStateManager.updateStatus("Pages reordered - Don't forget to save!");
-                
+
                 // Trigger auto-save
                 if (saveStatusManager != null) {
                     saveStatusManager.triggerAutoSave();
                 }
-                
+
                 logger.info("View refreshed after page reorder");
             });
         });
@@ -1062,13 +1063,13 @@ public class MainController {
             annotationManager.updateDrawingStyleForAllPages(colorPicker.getValue(), strokeWidthSlider.getValue());
         }
     }
-    
+
     private void updateHighlightColorForAllPages() {
         if (annotationManager != null && highlightColorPicker != null) {
             annotationManager.updateHighlightColorForAllPages(highlightColorPicker.getValue());
         }
     }
-    
+
     public javafx.scene.paint.Color getHighlightColor() {
         return highlightColorPicker != null ? highlightColorPicker.getValue() : javafx.scene.paint.Color.YELLOW;
     }
@@ -1085,7 +1086,7 @@ public class MainController {
             undoRedoManager.handleUndo();
         }
     }
-    
+
     @FXML
     private void handleRedo() {
         if (undoRedoManager != null) {

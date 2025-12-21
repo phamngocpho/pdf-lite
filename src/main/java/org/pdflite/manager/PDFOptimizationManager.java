@@ -11,28 +11,14 @@ import javafx.concurrent.Task;
 /**
  * Manages PDF optimization operations including compression and file size reduction.
  */
-public class PDFOptimizationManager {
-    
+public record PDFOptimizationManager(UIStateManager uiStateManager, RenderingManager renderingManager,
+                                     SaveStatusManager saveStatusManager, ThemeManager themeManager) {
+
     private static final Logger logger = LoggerFactory.getLogger(PDFOptimizationManager.class);
-    
-    private final UIStateManager uiStateManager;
-    private final RenderingManager renderingManager;
-    private final SaveStatusManager saveStatusManager;
-    private final ThemeManager themeManager;
-    
-    public PDFOptimizationManager(UIStateManager uiStateManager,
-                                 RenderingManager renderingManager,
-                                 SaveStatusManager saveStatusManager,
-                                 ThemeManager themeManager) {
-        this.uiStateManager = uiStateManager;
-        this.renderingManager = renderingManager;
-        this.saveStatusManager = saveStatusManager;
-        this.themeManager = themeManager;
-    }
-    
+
     /**
      * Opens the PDF optimization dialog and handles compression.
-     * 
+     *
      * @param document The current PDF document
      */
     public void openOptimizationDialog(PDFDocument document) {
@@ -44,25 +30,25 @@ public class PDFOptimizationManager {
         try {
             // Get actual file size
             long fileSize = calculateFileSize(document);
-            
+
             // Create a compression manager
             CompressionManager compressionManager = new CompressionManager();
-            
+
             // Estimate compression for MEDIUM level (default selection)
             int estimatedReduction = compressionManager.estimateCompression(
-                document, 
-                CompressionManager.CompressionLevel.MEDIUM
+                    document,
+                    CompressionManager.CompressionLevel.MEDIUM
             );
 
             // Show compression dialog
             CompressionDialog dialog = new CompressionDialog(
-                fileSize, estimatedReduction, themeManager, 
-                document, compressionManager);
+                    fileSize, estimatedReduction, themeManager,
+                    document, compressionManager);
 
             if (dialog.showAndWait()) {
                 // User clicked Optimize
                 var level = dialog.getSelectedLevel();
-                
+
                 // Perform compression with progress dialog
                 performCompression(document, compressionManager, level);
             }
@@ -71,7 +57,7 @@ public class PDFOptimizationManager {
             uiStateManager.showError("Error", "Failed to optimize PDF: " + e.getMessage());
         }
     }
-    
+
     /**
      * Calculates the file size of the document.
      */
@@ -83,13 +69,13 @@ public class PDFOptimizationManager {
             return (long) document.getDocument().getNumberOfPages() * 1024 * 100;
         }
     }
-    
+
     /**
      * Performs compression with a progress dialog.
      */
-    private void performCompression(PDFDocument document, 
-                                   CompressionManager compressionManager,
-                                   CompressionManager.CompressionLevel level) {
+    private void performCompression(PDFDocument document,
+                                    CompressionManager compressionManager,
+                                    CompressionManager.CompressionLevel level) {
         // Create background task
         Task<Boolean> compressionTask = new Task<>() {
             @Override
@@ -97,18 +83,18 @@ public class PDFOptimizationManager {
                 return compressionManager.compressPDF(document, level);
             }
         };
-        
+
         // Run with progress dialog
         ProgressDialog.runWithProgress(
-            compressionTask,
-            "Optimizing",
-            "Optimizing PDF...",
-            result -> handleCompressionSuccess(result, level),
+                compressionTask,
+                "Optimizing",
+                "Optimizing PDF...",
+                result -> handleCompressionSuccess(result, level),
                 this::handleCompressionError,
-            themeManager
+                themeManager
         );
     }
-    
+
     /**
      * Handles successful compression.
      */
@@ -118,20 +104,20 @@ public class PDFOptimizationManager {
             if (renderingManager != null) {
                 renderingManager.renderAllPages();
             }
-            
+
             uiStateManager.updateStatus("PDF optimized - Don't forget to save!");
             logger.info("PDF compressed with {} level", level);
-            
+
             // Trigger auto-save
             if (saveStatusManager != null) {
                 saveStatusManager.triggerAutoSave();
             }
         } else {
-            uiStateManager.showError("Optimization Failed", 
-                "No images found to compress or optimization failed.");
+            uiStateManager.showError("Optimization Failed",
+                    "No images found to compress or optimization failed.");
         }
     }
-    
+
     /**
      * Handles compression errors.
      */

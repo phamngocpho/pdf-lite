@@ -36,7 +36,7 @@ public class ThemeManager {
     private final ImageView logoImageView;
     private String currentTheme; // CSS path hiện tại
     private ThemeMode themeMode; // Mode hiện tại
-    
+
     // Theme menu items (optional)
     private RadioMenuItem systemThemeItem;
     private RadioMenuItem lightThemeItem;
@@ -45,10 +45,10 @@ public class ThemeManager {
     public ThemeManager(Scene mainScene, ImageView logoImageView) {
         this.mainScene = mainScene;
         this.logoImageView = logoImageView;
-        
+
         // Load saved preference
         this.themeMode = org.pdflite.util.ThemePreference.loadThemePreference();
-        
+
         // Apply theme based on mode
         if (themeMode == ThemeMode.SYSTEM) {
             this.currentTheme = detectSystemTheme();
@@ -61,11 +61,11 @@ public class ThemeManager {
         if (mainScene != null) {
             applyThemeInternal(mainScene, currentTheme);
         }
-        
+
         updateLogo();
 
-        logger.info("ThemeManager initialized with mode: {} (theme: {})", 
-                    themeMode, currentTheme.contains("dark") ? "Dark" : "Light");
+        logger.info("ThemeManager initialized with mode: {} (theme: {})",
+                themeMode, currentTheme.contains("dark") ? "Dark" : "Light");
     }
 
     /**
@@ -117,7 +117,7 @@ public class ThemeManager {
 
     /**
      * Detects the system theme preference.
-     * 
+     *
      * @return the CSS path for the detected theme
      */
     private String detectSystemTheme() {
@@ -126,12 +126,12 @@ public class ThemeManager {
             if (System.getProperty("os.name").toLowerCase().contains("win")) {
                 return detectWindowsTheme();
             }
-            
+
             // macOS: Check system appearance
             if (System.getProperty("os.name").toLowerCase().contains("mac")) {
                 return detectMacOSTheme();
             }
-            
+
             // Linux: Check GTK theme or environment variables
             if (System.getProperty("os.name").toLowerCase().contains("linux")) {
                 return detectLinuxTheme();
@@ -139,7 +139,7 @@ public class ThemeManager {
         } catch (Exception e) {
             logger.warn("Failed to detect system theme, defaulting to light", e);
         }
-        
+
         // Default to light theme if detection fails
         return LIGHT_THEME;
     }
@@ -150,13 +150,13 @@ public class ThemeManager {
     private String detectWindowsTheme() {
         try {
             Process process = Runtime.getRuntime().exec(
-                "reg query HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize /v AppsUseLightTheme"
+                    "reg query HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize /v AppsUseLightTheme"
             );
-            
+
             java.io.BufferedReader reader = new java.io.BufferedReader(
-                new java.io.InputStreamReader(process.getInputStream())
+                    new java.io.InputStreamReader(process.getInputStream())
             );
-            
+
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.contains("AppsUseLightTheme")) {
@@ -169,7 +169,7 @@ public class ThemeManager {
         } catch (Exception e) {
             logger.debug("Could not detect Windows theme", e);
         }
-        
+
         return LIGHT_THEME;
     }
 
@@ -179,13 +179,13 @@ public class ThemeManager {
     private String detectMacOSTheme() {
         try {
             Process process = Runtime.getRuntime().exec(
-                new String[]{"defaults", "read", "-g", "AppleInterfaceStyle"}
+                    new String[]{"defaults", "read", "-g", "AppleInterfaceStyle"}
             );
-            
+
             java.io.BufferedReader reader = new java.io.BufferedReader(
-                new java.io.InputStreamReader(process.getInputStream())
+                    new java.io.InputStreamReader(process.getInputStream())
             );
-            
+
             String result = reader.readLine();
             boolean isDark = "Dark".equalsIgnoreCase(result);
             logger.debug("macOS theme detected: {}", isDark ? "Dark" : "Light");
@@ -207,7 +207,7 @@ public class ThemeManager {
                 logger.debug("Linux theme detected from GTK_THEME: Dark");
                 return DARK_THEME;
             }
-            
+
             // Check color scheme preference
             String colorScheme = System.getenv("GTK_COLOR_SCHEME");
             if (colorScheme != null && colorScheme.toLowerCase().contains("dark")) {
@@ -217,7 +217,7 @@ public class ThemeManager {
         } catch (Exception e) {
             logger.debug("Could not detect Linux theme", e);
         }
-        
+
         return LIGHT_THEME;
     }
 
@@ -252,10 +252,10 @@ public class ThemeManager {
             logger.warn("Could not apply theme: {}", e.getMessage());
         }
     }
-    
+
     private void updateLogo() {
         if (logoImageView == null) return;
-        
+
         try {
             String logoPath = currentTheme.equals(DARK_THEME) ? LOGO_DARK : LOGO_LIGHT;
             var logoUrl = getClass().getResource(logoPath);
@@ -290,21 +290,21 @@ public class ThemeManager {
     public String getCurrentThemeCssPath() {
         return currentTheme;
     }
-    
+
     /**
      * Sets the theme menu items for automatic updates.
      */
-    public void setThemeMenuItems(RadioMenuItem systemThemeItem, 
-                                 RadioMenuItem lightThemeItem, 
-                                 RadioMenuItem darkThemeItem) {
+    public void setThemeMenuItems(RadioMenuItem systemThemeItem,
+                                  RadioMenuItem lightThemeItem,
+                                  RadioMenuItem darkThemeItem) {
         this.systemThemeItem = systemThemeItem;
         this.lightThemeItem = lightThemeItem;
         this.darkThemeItem = darkThemeItem;
-        
+
         // Initial update
         updateThemeMenuGraphics();
     }
-    
+
     /**
      * Updates theme menu graphics with bullet indicators.
      */
@@ -312,12 +312,12 @@ public class ThemeManager {
         if (systemThemeItem == null || lightThemeItem == null || darkThemeItem == null) {
             return;
         }
-        
+
         // Create bullet graphic for selected item
         Circle systemBullet = systemThemeItem.isSelected() ? new Circle(3, Color.web("#0A84FF")) : null;
         Circle lightBullet = lightThemeItem.isSelected() ? new Circle(3, Color.web("#0A84FF")) : null;
         Circle darkBullet = darkThemeItem.isSelected() ? new Circle(3, Color.web("#0A84FF")) : null;
-        
+
         // Set graphics - bullet for selected, null for others
         systemThemeItem.setGraphic(systemBullet);
         lightThemeItem.setGraphic(lightBullet);

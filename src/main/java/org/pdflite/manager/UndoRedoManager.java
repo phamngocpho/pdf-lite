@@ -11,47 +11,47 @@ import org.slf4j.LoggerFactory;
  */
 public class UndoRedoManager {
     private static final Logger logger = LoggerFactory.getLogger(UndoRedoManager.class);
-    
+
     private final CommandManager commandManager;
     private final UIStateManager uiStateManager;
     private Button undoButton;
     private Button redoButton;
-    
+
     /**
      * Creates a new UndoRedoManager.
-     * 
+     *
      * @param uiStateManager the UI state manager for status updates
      */
     public UndoRedoManager(UIStateManager uiStateManager) {
         this.uiStateManager = uiStateManager;
         this.commandManager = new CommandManager();
-        
+
         // Setup listeners for button states
         commandManager.setUndoStateListener(canUndo -> {
             if (undoButton != null) {
                 undoButton.setDisable(!canUndo);
             }
         });
-        
+
         commandManager.setRedoStateListener(canRedo -> {
             if (redoButton != null) {
                 redoButton.setDisable(!canRedo);
             }
         });
-        
+
         logger.info("UndoRedoManager initialized");
     }
-    
+
     /**
      * Sets the undo and redo buttons for state management.
-     * 
+     *
      * @param undoButton the undo button
      * @param redoButton the redo button
      */
     public void setButtons(Button undoButton, Button redoButton) {
         this.undoButton = undoButton;
         this.redoButton = redoButton;
-        
+
         // Update initial button states
         if (undoButton != null) {
             undoButton.setDisable(!commandManager.canUndo());
@@ -60,16 +60,16 @@ public class UndoRedoManager {
             redoButton.setDisable(!commandManager.canRedo());
         }
     }
-    
+
     /**
      * Gets the command manager.
-     * 
+     *
      * @return the command manager
      */
     public CommandManager getCommandManager() {
         return commandManager;
     }
-    
+
     /**
      * Handles undo operation.
      */
@@ -89,7 +89,7 @@ public class UndoRedoManager {
             logger.debug("Nothing to undo");
         }
     }
-    
+
     /**
      * Handles redo operation.
      */
@@ -109,7 +109,7 @@ public class UndoRedoManager {
             logger.debug("Nothing to redo");
         }
     }
-    
+
     /**
      * Clears all command history.
      */

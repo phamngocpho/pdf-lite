@@ -21,7 +21,7 @@ import java.util.Map;
  */
 public class MetadataDialog {
     private static final Logger logger = LoggerFactory.getLogger(MetadataDialog.class);
-    
+
     private final Stage dialog;
     private final Map<String, TextField> fields = new HashMap<>();
     private boolean confirmed = false;
@@ -37,7 +37,7 @@ public class MetadataDialog {
 
         // Custom title bar using DialogTitleBar utility
         DialogTitleBar titleBar = new DialogTitleBar("Document Properties", dialog);
-        
+
         // Content area with scroll pane
         VBox content = createContent(currentMetadata);
         ScrollPane scrollPane = new ScrollPane(content);
@@ -45,7 +45,7 @@ public class MetadataDialog {
         scrollPane.setStyle("-fx-background-color: transparent;");
         scrollPane.setPrefViewportHeight(350);
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
-        
+
         // Button bar
         HBox buttonBar = createButtonBar();
 
@@ -53,12 +53,12 @@ public class MetadataDialog {
 
         Scene scene = new Scene(root, 500, 480);
         scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
-        
+
         // Apply theme
         if (themeManager != null) {
             themeManager.applyThemeToScene(scene);
         }
-        
+
         dialog.setScene(scene);
         dialog.setResizable(false);
     }
@@ -74,7 +74,7 @@ public class MetadataDialog {
         addField(content, "Subject:", "subject", currentMetadata.getOrDefault("subject", ""));
         addField(content, "Keywords:", "keywords", currentMetadata.getOrDefault("keywords", ""));
         addField(content, "Creator:", "creator", currentMetadata.getOrDefault("creator", ""));
-        
+
         // Read-only fields
         addReadOnlyField(content, "Producer:", currentMetadata.getOrDefault("producer", ""));
         addReadOnlyField(content, "Created:", currentMetadata.getOrDefault("creationDate", ""));
@@ -85,32 +85,32 @@ public class MetadataDialog {
 
     private void addField(VBox container, String labelText, String fieldKey, String value) {
         VBox fieldBox = new VBox(4);
-        
+
         Label label = new Label(labelText);
         label.getStyleClass().add("dialog-label");
-        
+
         TextField textField = new TextField(value);
         textField.getStyleClass().add("dialog-text-field");
         textField.setPrefWidth(460);
-        
+
         fields.put(fieldKey, textField);
-        
+
         fieldBox.getChildren().addAll(label, textField);
         container.getChildren().add(fieldBox);
     }
 
     private void addReadOnlyField(VBox container, String labelText, String value) {
         VBox fieldBox = new VBox(4);
-        
+
         Label label = new Label(labelText);
         label.getStyleClass().add("dialog-label");
-        
+
         TextField textField = new TextField(value);
         textField.getStyleClass().add("dialog-text-field");
         textField.setPrefWidth(460);
         textField.setEditable(false);
         textField.setStyle("-fx-opacity: 0.7;");
-        
+
         fieldBox.getChildren().addAll(label, textField);
         container.getChildren().add(fieldBox);
     }

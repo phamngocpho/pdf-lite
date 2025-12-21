@@ -645,8 +645,8 @@ public class PDFService {
      * to deleted pages and adjusting the page numbers of the remaining annotations
      * to account for the removal of the deleted pages.
      *
-     * @param pdfDoc the PDF document whose annotations are to be updated
-     * @param deletedPages a list of page numbers that have been deleted
+     * @param pdfDoc        the PDF document whose annotations are to be updated
+     * @param deletedPages  a list of page numbers that have been deleted
      * @param originalTotal the original total number of pages in the PDF document
      */
     private void updateAnnotations(PDFDocument pdfDoc, List<Integer> deletedPages,

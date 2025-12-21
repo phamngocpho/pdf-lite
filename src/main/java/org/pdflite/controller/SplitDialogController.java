@@ -118,7 +118,7 @@ public class SplitDialogController {
         updateButtonStates();
         rangesListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) ->
                 updateButtonStates());
-        
+
         // Listen to changes in pagesPerFileTextField for option 2
         pagesPerFileTextField.textProperty().addListener((obs, oldVal, newVal) -> updateButtonStates());
 
@@ -135,14 +135,14 @@ public class SplitDialogController {
      */
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
-        
+
         // Create and add a custom title bar
         String title = dialogStage.getTitle() != null ? dialogStage.getTitle() : "Split PDF File";
         DialogTitleBar titleBar = new DialogTitleBar(title, dialogStage);
         if (dialogTitleBar != null) {
             dialogTitleBar.getChildren().setAll(titleBar.getTitleBar().getChildren());
         }
-        
+
         // Ensure FlowPane layout is calculated correctly after the dialog is shown
         // This fixes the issue where FlowPane doesn't calculate the correct column count initially
         // Use a small delay to ensure the dialog is fully rendered
@@ -542,7 +542,7 @@ public class SplitDialogController {
         boolean hasSelection = rangesListView.getSelectionModel().getSelectedItem() != null;
 
         removeRangeButton.setDisable(!hasSelection);
-        
+
         // Enable split button based on selected mode and validation
         boolean canSplit = false;
         if (sourceFile == null) {
@@ -565,7 +565,7 @@ public class SplitDialogController {
             // For individual pages, always enabled if the file exists
             canSplit = true;
         }
-        
+
         splitButton.setDisable(!canSplit);
     }
 
@@ -607,10 +607,10 @@ public class SplitDialogController {
      */
     private void showError(String title, String message) {
         Platform.runLater(() -> CustomInfoDialog.show(
-            title,
-            "Error",
-            message,
-            themeManager
+                title,
+                "Error",
+                message,
+                themeManager
         ));
     }
 
@@ -620,10 +620,10 @@ public class SplitDialogController {
     private void showInfo(String message) {
         Platform.runLater(() -> {
             CustomInfoDialog.show(
-                "Split Complete",
-                "Success",
-                message,
-                themeManager
+                    "Split Complete",
+                    "Success",
+                    message,
+                    themeManager
             );
         });
     }

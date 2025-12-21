@@ -18,7 +18,7 @@ import java.util.function.Supplier;
  * Manages file operations for PDF documents.
  * Handles opening, saving, and deleting pages.
  */
-public record FileManager(PDFService pdfService, FileOperationListener fileOperationListener, 
+public record FileManager(PDFService pdfService, FileOperationListener fileOperationListener,
                           Supplier<ThemeManager> themeManagerSupplier) {
     private static final Logger logger = LoggerFactory.getLogger(FileManager.class);
 
@@ -123,10 +123,10 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
                 } catch (IOException passwordError) {
                     // Wrong password or other error
                     org.pdflite.dialog.CustomInfoDialog.show(
-                        "Lỗi mở file",
-                        "Không thể mở file PDF",
-                        "Mật khẩu không đúng hoặc file bị lỗi.",
-                        themeManager
+                            "Lỗi mở file",
+                            "Không thể mở file PDF",
+                            "Mật khẩu không đúng hoặc file bị lỗi.",
+                            themeManager
                     );
                     throw passwordError;
                 }
@@ -155,10 +155,10 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
         }
 
         pdfService.save(document);
-        
+
         // Mark document as saved after successful save
         document.markAsSaved();
-        
+
         if (fileOperationListener != null) {
             fileOperationListener.onFileSaved(document.getFileName());
         }

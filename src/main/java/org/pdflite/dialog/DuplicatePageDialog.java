@@ -15,7 +15,7 @@ import org.pdflite.util.DialogTitleBar;
  * Dialog for duplicating pages in a PDF document.
  */
 public class DuplicatePageDialog {
-    
+
     private final Stage dialog;
     private boolean confirmed = false;
     private int sourcePageIndex;

@@ -9,13 +9,13 @@ import java.io.File;
  * on a PDF page, including its position, size, and source file.
  * </p>
  *
- * @param pageIndex  the zero-based page index where the image is placed
- * @param x          the X coordinate in PDF space (points)
- * @param y          the Y coordinate in PDF space (points)
- * @param width      the width of the image in points
- * @param height     the height of the image in points
- * @param imageFile  the source image file
- * @param isStamp    whether this is a rubber stamp annotation
+ * @param pageIndex the zero-based page index where the image is placed
+ * @param x         the X coordinate in PDF space (points)
+ * @param y         the Y coordinate in PDF space (points)
+ * @param width     the width of the image in points
+ * @param height    the height of the image in points
+ * @param imageFile the source image file
+ * @param isStamp   whether this is a rubber stamp annotation
  * @author PDF Lite Team
  * @version 1.0.0
  * @since 1.0.0

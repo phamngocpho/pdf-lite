@@ -9,16 +9,10 @@ import org.slf4j.LoggerFactory;
 /**
  * Manages keyboard shortcuts for the application.
  */
-public class KeyboardShortcutManager {
-    
+public record KeyboardShortcutManager(UndoRedoManager undoRedoManager) {
+
     private static final Logger logger = LoggerFactory.getLogger(KeyboardShortcutManager.class);
-    
-    private final UndoRedoManager undoRedoManager;
-    
-    public KeyboardShortcutManager(UndoRedoManager undoRedoManager) {
-        this.undoRedoManager = undoRedoManager;
-    }
-    
+
     /**
      * Sets up keyboard shortcuts for the given scene.
      */
@@ -26,11 +20,11 @@ public class KeyboardShortcutManager {
         if (scene == null) {
             return;
         }
-        
+
         scene.addEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyboardShortcuts);
         logger.info("Keyboard shortcuts initialized");
     }
-    
+
     /**
      * Removes keyboard shortcuts from the given scene.
      */
@@ -38,10 +32,10 @@ public class KeyboardShortcutManager {
         if (scene == null) {
             return;
         }
-        
+
         scene.removeEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyboardShortcuts);
     }
-    
+
     /**
      * Handles keyboard shortcuts for undo/redo operations.
      */
@@ -56,7 +50,7 @@ public class KeyboardShortcutManager {
             }
         }
     }
-    
+
     /**
      * Handles undo operation.
      */
@@ -65,7 +59,7 @@ public class KeyboardShortcutManager {
             undoRedoManager.handleUndo();
         }
     }
-    
+
     /**
      * Handles redo operation.
      */

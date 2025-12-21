@@ -28,14 +28,14 @@ public record TextEdit(
         String oldText,
         String newText
 ) implements EditOperation {
-    
+
     /**
      * Creates a new TextEdit with the current timestamp.
      *
-     * @param pageIndex   the zero-based page index
-     * @param region      the text region that was edited
-     * @param oldText     the original text
-     * @param newText     the new text
+     * @param pageIndex the zero-based page index
+     * @param region    the text region that was edited
+     * @param oldText   the original text
+     * @param newText   the new text
      * @return a new TextEdit instance
      */
     public static TextEdit create(int pageIndex, TextRegion region, String oldText, String newText) {

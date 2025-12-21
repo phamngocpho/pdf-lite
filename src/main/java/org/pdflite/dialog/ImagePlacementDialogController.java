@@ -100,7 +100,7 @@ public class ImagePlacementDialogController {
      */
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
-        
+
         // Create and add a custom title bar
         String title = dialogStage.getTitle() != null ? dialogStage.getTitle() : "Insert Image";
         DialogTitleBar titleBar = new DialogTitleBar(title, dialogStage);

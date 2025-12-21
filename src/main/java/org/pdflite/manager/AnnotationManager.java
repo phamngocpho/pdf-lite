@@ -59,7 +59,7 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
 
         uiStateManager.updateStatus("Drawing style updated");
     }
-    
+
     /**
      * Updates highlight color for all pages.
      *
@@ -192,7 +192,7 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
         } else if (selectedBtn == btnDrawArrow) {
             updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.ARROW);
         }
-        
+
         if (updateDrawingStyle != null) {
             updateDrawingStyle.run();
         }

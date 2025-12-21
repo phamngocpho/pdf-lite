@@ -24,7 +24,7 @@ public class MetadataManager {
      */
     public Map<String, String> getMetadata(PDFDocument pdfDocument) {
         Map<String, String> metadata = new HashMap<>();
-        
+
         if (pdfDocument == null || pdfDocument.getDocument() == null) {
             logger.warn("Cannot get metadata: document is null");
             return metadata;
@@ -32,32 +32,32 @@ public class MetadataManager {
 
         try {
             PDDocumentInformation info = pdfDocument.getDocument().getDocumentInformation();
-            
+
             metadata.put("title", info.getTitle() != null ? info.getTitle() : "");
             metadata.put("author", info.getAuthor() != null ? info.getAuthor() : "");
             metadata.put("subject", info.getSubject() != null ? info.getSubject() : "");
             metadata.put("keywords", info.getKeywords() != null ? info.getKeywords() : "");
             metadata.put("creator", info.getCreator() != null ? info.getCreator() : "");
             metadata.put("producer", info.getProducer() != null ? info.getProducer() : "");
-            
+
             // Format dates
             if (info.getCreationDate() != null) {
                 metadata.put("creationDate", formatDate(info.getCreationDate()));
             } else {
                 metadata.put("creationDate", "");
             }
-            
+
             if (info.getModificationDate() != null) {
                 metadata.put("modificationDate", formatDate(info.getModificationDate()));
             } else {
                 metadata.put("modificationDate", "");
             }
-            
+
             logger.debug("Retrieved metadata for document");
         } catch (Exception e) {
             logger.error("Error retrieving metadata", e);
         }
-        
+
         return metadata;
     }
 
@@ -65,7 +65,7 @@ public class MetadataManager {
      * Updates metadata in a PDF document.
      *
      * @param pdfDocument the PDF document
-     * @param metadata map of metadata key-value pairs to update
+     * @param metadata    map of metadata key-value pairs to update
      * @return true if successful, false otherwise
      */
     public boolean updateMetadata(PDFDocument pdfDocument, Map<String, String> metadata) {
@@ -76,7 +76,7 @@ public class MetadataManager {
 
         try {
             PDDocumentInformation info = pdfDocument.getDocument().getDocumentInformation();
-            
+
             // Update editable fields
             if (metadata.containsKey("title")) {
                 info.setTitle(metadata.get("title"));
@@ -93,13 +93,13 @@ public class MetadataManager {
             if (metadata.containsKey("creator")) {
                 info.setCreator(metadata.get("creator"));
             }
-            
+
             // Update modification date to now
             info.setModificationDate(Calendar.getInstance());
-            
+
             pdfDocument.getDocument().setDocumentInformation(info);
             pdfDocument.setHasUnsavedEdits(true);
-            
+
             logger.info("Updated document metadata");
             return true;
         } catch (Exception e) {

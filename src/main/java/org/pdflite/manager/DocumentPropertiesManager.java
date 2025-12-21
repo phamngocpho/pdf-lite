@@ -8,28 +8,14 @@ import org.slf4j.LoggerFactory;
 /**
  * Manages document properties operations including metadata viewing and editing.
  */
-public class DocumentPropertiesManager {
-    
+public record DocumentPropertiesManager(MetadataManager metadataManager, UIStateManager uiStateManager,
+                                        SaveStatusManager saveStatusManager, ThemeManager themeManager) {
+
     private static final Logger logger = LoggerFactory.getLogger(DocumentPropertiesManager.class);
-    
-    private final MetadataManager metadataManager;
-    private final UIStateManager uiStateManager;
-    private final SaveStatusManager saveStatusManager;
-    private final ThemeManager themeManager;
-    
-    public DocumentPropertiesManager(MetadataManager metadataManager,
-                                    UIStateManager uiStateManager,
-                                    SaveStatusManager saveStatusManager,
-                                    ThemeManager themeManager) {
-        this.metadataManager = metadataManager;
-        this.uiStateManager = uiStateManager;
-        this.saveStatusManager = saveStatusManager;
-        this.themeManager = themeManager;
-    }
-    
+
     /**
      * Opens the document properties dialog and handles metadata updates.
-     * 
+     *
      * @param document The current PDF document
      */
     public void openDocumentPropertiesDialog(PDFDocument document) {
@@ -51,7 +37,7 @@ public class DocumentPropertiesManager {
                 if (metadataManager.updateMetadata(document, updatedMetadata)) {
                     uiStateManager.updateStatus("Document properties updated");
                     logger.info("Document metadata updated successfully");
-                    
+
                     // Trigger auto-save
                     if (saveStatusManager != null) {
                         saveStatusManager.triggerAutoSave();

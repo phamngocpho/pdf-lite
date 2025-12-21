@@ -75,10 +75,10 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
         }
 
         org.pdflite.dialog.CustomInfoDialog.show(
-            "Quyền PDF",
-            "Thông tin bảo mật và quyền truy cập",
-            info.toString(),
-            themeManager
+                "Quyền PDF",
+                "Thông tin bảo mật và quyền truy cập",
+                info.toString(),
+                themeManager
         );
     }
 
@@ -121,10 +121,10 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
                 );
 
                 org.pdflite.dialog.CustomInfoDialog.show(
-                    "Thành công",
-                    "PDF đã được mã hóa",
-                    "File đã được lưu tại:\n" + outputFile.getAbsolutePath(),
-                    themeManager
+                        "Thành công",
+                        "PDF đã được mã hóa",
+                        "File đã được lưu tại:\n" + outputFile.getAbsolutePath(),
+                        themeManager
                 );
 
                 logger.info("Successfully encrypted PDF: {}", outputFile.getName());
@@ -151,10 +151,10 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
 
         if (!currentDocument.getDocument().isEncrypted()) {
             org.pdflite.dialog.CustomInfoDialog.show(
-                "Thông tin",
-                "PDF không được mã hóa",
-                "File PDF này không có mật khẩu bảo vệ.",
-                themeManager
+                    "Thông tin",
+                    "PDF không được mã hóa",
+                    "File PDF này không có mật khẩu bảo vệ.",
+                    themeManager
             );
             return;
         }
@@ -165,22 +165,22 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
 
         if (permission == null || !permission.isOwnerPermission()) {
             org.pdflite.dialog.CustomInfoDialog.show(
-                "Không có quyền",
-                "Không thể xóa mật khẩu",
-                "Bạn cần mật khẩu chủ sở hữu (Owner Password) để xóa bảo vệ.\n" +
-                "Hiện tại bạn chỉ có quyền người dùng (User Permission).",
-                themeManager
+                    "Không có quyền",
+                    "Không thể xóa mật khẩu",
+                    "Bạn cần mật khẩu chủ sở hữu (Owner Password) để xóa bảo vệ.\n" +
+                            "Hiện tại bạn chỉ có quyền người dùng (User Permission).",
+                    themeManager
             );
             return;
         }
 
         // Confirm action
         boolean confirmed = org.pdflite.dialog.CustomConfirmDialog.show(
-            "Xác nhận",
-            "Xóa mật khẩu bảo vệ",
-            "Bạn có chắc muốn xóa mật khẩu bảo vệ khỏi file PDF này?\n" +
-            "File mới sẽ không có mật khẩu.",
-            themeManager
+                "Xác nhận",
+                "Xóa mật khẩu bảo vệ",
+                "Bạn có chắc muốn xóa mật khẩu bảo vệ khỏi file PDF này?\n" +
+                        "File mới sẽ không có mật khẩu.",
+                themeManager
         );
 
         if (confirmed) {
@@ -203,10 +203,10 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
                 pdfService.saveAs(currentDocument, outputFile);
 
                 org.pdflite.dialog.CustomInfoDialog.show(
-                    "Thành công",
-                    "Đã xóa mật khẩu",
-                    "File không có mật khẩu đã được lưu tại:\n" + outputFile.getAbsolutePath(),
-                    themeManager
+                        "Thành công",
+                        "Đã xóa mật khẩu",
+                        "File không có mật khẩu đã được lưu tại:\n" + outputFile.getAbsolutePath(),
+                        themeManager
                 );
 
                 logger.info("Successfully removed encryption from PDF: {}", outputFile.getName());

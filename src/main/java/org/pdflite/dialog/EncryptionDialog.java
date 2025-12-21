@@ -27,7 +27,7 @@ public class EncryptionDialog {
     private final CheckBox allowModifyCheck;
     private final CheckBox allowCopyCheck;
     private final CheckBox allowAnnotationsCheck;
-    
+
     private Stage dialogStage;
     private EncryptionResult result;
 
@@ -47,15 +47,15 @@ public class EncryptionDialog {
         dialogStage.initStyle(StageStyle.TRANSPARENT);
         dialogStage.initModality(Modality.APPLICATION_MODAL);
         dialogStage.setTitle("Mã hóa PDF");
-        
+
         // Create main container
         VBox mainContainer = new VBox();
         mainContainer.getStyleClass().add("encryption-dialog");
-        
+
         // Create custom title bar
         DialogTitleBar titleBar = new DialogTitleBar("Mã hóa PDF", dialogStage);
         mainContainer.getChildren().add(titleBar.getTitleBar());
-        
+
         // Create content
         VBox vbox = new VBox(15);
         vbox.setPadding(new Insets(20));
@@ -129,14 +129,14 @@ public class EncryptionDialog {
         // Buttons
         ButtonBar buttonBar = new ButtonBar();
         buttonBar.setPadding(new Insets(10, 0, 0, 0));
-        
+
         Button cancelButton = new Button("Hủy");
         cancelButton.setPrefWidth(80);
         cancelButton.setOnAction(e -> {
             result = null;
             dialogStage.close();
         });
-        
+
         Button encryptButton = new Button("Mã hóa");
         encryptButton.setPrefWidth(80);
         encryptButton.setDisable(true);
@@ -157,7 +157,7 @@ public class EncryptionDialog {
                 dialogStage.close();
             }
         });
-        
+
         ButtonBar.setButtonData(cancelButton, ButtonBar.ButtonData.CANCEL_CLOSE);
         ButtonBar.setButtonData(encryptButton, ButtonBar.ButtonData.OK_DONE);
         buttonBar.getButtons().addAll(cancelButton, encryptButton);
@@ -178,7 +178,7 @@ public class EncryptionDialog {
                 permLabel, permBox,
                 buttonBar
         );
-        
+
         mainContainer.getChildren().add(vbox);
 
         Scene scene = new Scene(mainContainer);
@@ -186,7 +186,7 @@ public class EncryptionDialog {
         dialogStage.setScene(scene);
         dialogStage.setMinWidth(500);
         dialogStage.setMinHeight(550);
-        
+
         // Apply theme if available
         if (themeManager != null) {
             themeManager.applyThemeToScene(scene);
@@ -242,7 +242,7 @@ public class EncryptionDialog {
         alert.setContentText(message);
         alert.showAndWait();
     }
-    
+
     public Stage getDialogStage() {
         return dialogStage;
     }

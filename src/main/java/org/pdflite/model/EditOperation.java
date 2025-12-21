@@ -19,21 +19,21 @@ package org.pdflite.model;
  * @since 1.0.0
  */
 public sealed interface EditOperation permits TextEdit, ImageInsert {
-    
+
     /**
      * Gets the zero-based page index where this edit operation was performed.
      *
      * @return the page index
      */
     int pageIndex();
-    
+
     /**
      * Gets the timestamp when this edit operation was performed.
      *
      * @return the timestamp in milliseconds since epoch
      */
     long timestamp();
-    
+
     /**
      * Gets a human-readable description of this edit operation.
      *

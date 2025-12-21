@@ -13,14 +13,14 @@ import org.slf4j.LoggerFactory;
  */
 public class SaveStatusManager {
     private static final Logger logger = LoggerFactory.getLogger(SaveStatusManager.class);
-    
+
     private final StackPane saveStatusIndicator;
     private final AutoSaveManager autoSaveManager;
     private PDFDocument currentDocument;
 
-    public SaveStatusManager(StackPane saveStatusIndicator, 
-                           AutoSaveManager autoSaveManager,
-                           UIStateManager uiStateManager) {
+    public SaveStatusManager(StackPane saveStatusIndicator,
+                             AutoSaveManager autoSaveManager,
+                             UIStateManager uiStateManager) {
         this.saveStatusIndicator = saveStatusIndicator;
         this.autoSaveManager = autoSaveManager;
     }
@@ -48,14 +48,14 @@ public class SaveStatusManager {
             saveStatusIndicator.getChildren().clear();
             saveStatusIndicator.setVisible(true);
             saveStatusIndicator.setManaged(true);
-            
+
             // Set fixed size for the container
             saveStatusIndicator.setMinSize(20, 20);
             saveStatusIndicator.setMaxSize(20, 20);
             saveStatusIndicator.setPrefSize(20, 20);
 
             javafx.scene.shape.SVGPath icon = new javafx.scene.shape.SVGPath();
-            
+
             if (saved) {
                 // Cloud done icon (green)
                 icon.setContent("m414-316 190-190-20-20-170 170-86-86-20 20 106 106ZM260-212q-70 0-119-49T92-380q0-66 47-117t115-51q10-86 74.5-143T480-748q95 0 161.5 66.5T708-520v52h32q54 0 91 37t37 91q0 54-37 91t-91 37H260Z");
@@ -72,13 +72,13 @@ public class SaveStatusManager {
             icon.setScaleY(scale);
 
             saveStatusIndicator.getChildren().add(icon);
-            
+
             // Add tooltip
             Tooltip tooltip = new Tooltip(saved ? "All changes saved" : "Unsaved changes");
             Tooltip.install(saveStatusIndicator, tooltip);
         });
     }
-    
+
     /**
      * Hides the save status indicator.
      */
@@ -90,7 +90,7 @@ public class SaveStatusManager {
             });
         }
     }
-    
+
     /**
      * Triggers auto-save for the current document.
      * Should be called after any edit operation.

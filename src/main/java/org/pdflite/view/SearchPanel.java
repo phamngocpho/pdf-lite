@@ -249,7 +249,7 @@ public class SearchPanel extends VBox {
                     resultsListView.getSelectionModel().selectFirst();
                     nextResultButton.setDisable(results.size() <= 1);
                 }
-                
+
                 // Trigger highlighting on pages via MainController -> SearchManager
                 if (getMainController() != null) {
                     getMainController().highlightSearchResults(results);
