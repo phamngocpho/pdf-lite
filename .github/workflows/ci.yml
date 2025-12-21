@@ -37,13 +37,13 @@ jobs:
     
     - name: Run Tests (Windows)
       if: runner.os == 'Windows'
-      run: ./mvnw.cmd test -Dmaven.test.failure.ignore=false
+      run: ./mvnw.cmd test
     
     - name: Run Tests (Unix)
       if: runner.os != 'Windows'
       run: |
         echo "Starting tests on Linux..."
-        ./mvnw test -Djava.awt.headless=true -Dtestfx.robot=glass -Dtestfx.headless=true -Dprism.order=sw -Dmaven.test.failure.ignore=false -B
+        ./mvnw test -Djava.awt.headless=true -Dtestfx.robot=glass -Dtestfx.headless=true -Dprism.order=sw -B
         echo "Tests completed!"
     
     - name: Build (Windows)
