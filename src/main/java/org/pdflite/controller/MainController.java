@@ -126,6 +126,8 @@ public class MainController {
     private RadioMenuItem lightThemeItem;
     @FXML
     private RadioMenuItem darkThemeItem;
+    @FXML
+    private ToggleButton bookmarkToggleButton;
 
 
     // ==================== Services and Managers ====================
@@ -191,6 +193,9 @@ public class MainController {
     // Save Status Manager
     private SaveStatusManager saveStatusManager;
 
+    // Bookmark Manager
+    private BookmarkManager bookmarkManager;
+
     // ==================== Document State ====================
 
     private PDFDocument currentDocument;
@@ -200,6 +205,8 @@ public class MainController {
             Executors.newSingleThreadScheduledExecutor();
     private final Set<Integer> loadingPages = ConcurrentHashMap.newKeySet();
     private boolean highlightModeActive = false;
+    private VBox bookmarkSidebar;
+    private boolean bookmarkSidebarVisible = false;
 
     // ==================== Initialization ====================
 
@@ -292,6 +299,11 @@ public class MainController {
                 // Set theme manager supplier for PageDeletionManager
                 if (pageDeletionManager != null) {
                     pageDeletionManager.setThemeManagerSupplier(() -> themeManager);
+                }
+
+                // Set theme manager for BookmarkManager
+                if (bookmarkManager != null) {
+                    bookmarkManager.setThemeManager(themeManager);
                 }
 
                 // Cập nhật DocumentOperationManager để nó có ThemeManager mới
@@ -500,6 +512,10 @@ public class MainController {
         // Auto-save Manager
         autoSaveManager = new AutoSaveManager(autoSaveExecutor);
 
+        // Bookmark Manager
+        bookmarkManager = new BookmarkManager();
+        bookmarkManager.setOnNavigateToPage(this::navigateToBookmarkedPage);
+
         // Set callback to update icon after auto-save
         autoSaveManager.setOnAutoSaveCallback(() -> {
             if (saveStatusManager != null) {
@@ -576,6 +592,12 @@ public class MainController {
         if (currentDocument != null && pagesContainer != null && documentSetupManager != null) {
             annotationManager = documentSetupManager.setupDocument(
                     currentDocument, pagesContainer, scrollPane, zoomChangeListener, uiStateManager);
+        }
+
+        // Load bookmarks for the new document
+        if (currentDocument != null && bookmarkManager != null) {
+            bookmarkManager.setCurrentDocument(currentDocument);
+            logger.info("Bookmarks loaded for document: {}", file.getName());
         }
     }
 
@@ -1120,6 +1142,87 @@ public class MainController {
             if (pagesContainer != null) {
                 annotationManager = new AnnotationManager(pagesContainer, uiStateManager, currentDocument);
             }
+        }
+    }
+
+    // ==================== BOOKMARK OPERATIONS ====================
+    
+    /**
+     * Toggles the bookmark sidebar visibility.
+     */
+    @FXML
+    private void handleToggleBookmarks() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No Document", "Please open a PDF document first.");
+            return;
+        }
+
+        bookmarkSidebarVisible = !bookmarkSidebarVisible;
+
+        if (bookmarkSidebarVisible) {
+            showBookmarkSidebar();
+        } else {
+            hideBookmarkSidebar();
+        }
+    }
+
+    /**
+     * Adds a bookmark for the current page.
+     */
+    @FXML
+    private void handleAddBookmark() {
+        if (currentDocument == null) {
+            uiStateManager.showError("No Document", "Please open a PDF document first.");
+            return;
+        }
+
+        int currentPage = currentDocument.getCurrentPage();
+        
+        String result = org.pdflite.dialog.BookmarkInputDialog.show(
+                "Add Bookmark",
+                "Add bookmark for page " + (currentPage + 1),
+                "Bookmark title:",
+                "Page " + (currentPage + 1),
+                themeManager
+        );
+
+        if (result != null && !result.trim().isEmpty()) {
+            bookmarkManager.addBookmark(currentPage, result.trim());
+            uiStateManager.updateStatus("Bookmark added for page " + (currentPage + 1));
+        }
+    }
+
+    /**
+     * Shows the bookmark sidebar.
+     */
+    private void showBookmarkSidebar() {
+        if (bookmarkSidebar == null) {
+            bookmarkSidebar = bookmarkManager.createBookmarkSidebar();
+        }
+
+        if (rootPane.getRight() == null) {
+            rootPane.setRight(bookmarkSidebar);
+            logger.info("Bookmark sidebar shown");
+        }
+    }
+
+    /**
+     * Hides the bookmark sidebar.
+     */
+    private void hideBookmarkSidebar() {
+        if (rootPane.getRight() == bookmarkSidebar) {
+            rootPane.setRight(null);
+            logger.info("Bookmark sidebar hidden");
+        }
+    }
+
+    /**
+     * Navigates to a bookmarked page.
+     */
+    private void navigateToBookmarkedPage(int pageNumber) {
+        if (navigationHelper != null) {
+            navigationHelper.navigateToPage(pageNumber);
+            uiStateManager.updateStatus("Navigated to bookmarked page " + (pageNumber + 1));
         }
     }
 }
