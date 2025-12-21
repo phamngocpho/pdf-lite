@@ -7,7 +7,8 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.pdflite.model.SearchResult;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -22,18 +23,29 @@ import static org.junit.jupiter.api.Assertions.*;
 class SearchServiceTest {
 
     private SearchService searchService;
-    private PDDocument document;
+    private static PDDocument sharedDocument;
+    private static boolean initialized = false;
 
     @BeforeEach
     void setUp() throws IOException {
         searchService = new SearchService();
-        document = new PDDocument();
+        
+        // Lazy initialization - only create document once
+        if (!initialized) {
+            initializeSharedDocument();
+            initialized = true;
+        }
+    }
+    
+    private static void initializeSharedDocument() throws IOException {
+        // Create document once for all tests
+        sharedDocument = new PDDocument();
         
         // Create a page with some text
         PDPage page = new PDPage(PDRectangle.A4);
-        document.addPage(page);
+        sharedDocument.addPage(page);
         
-        try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+        try (PDPageContentStream contentStream = new PDPageContentStream(sharedDocument, page)) {
             contentStream.beginText();
             contentStream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
             contentStream.newLineAtOffset(100, 700);
@@ -44,17 +56,17 @@ class SearchServiceTest {
         }
     }
 
-    @AfterEach
-    void tearDown() throws IOException {
-        if (document != null) {
-            document.close();
+    @AfterAll
+    static void tearDownClass() throws IOException {
+        if (sharedDocument != null) {
+            sharedDocument.close();
         }
     }
 
     @Test
     void testSearchInDocumentCaseSensitive() throws IOException {
         List<SearchResult> results = searchService.searchInDocument(
-            document, "Hello", true, false
+            sharedDocument, "Hello", true, false
         );
         
         assertFalse(results.isEmpty());
@@ -64,7 +76,7 @@ class SearchServiceTest {
     @Test
     void testSearchInDocumentCaseInsensitive() throws IOException {
         List<SearchResult> results = searchService.searchInDocument(
-            document, "hello", false, false
+            sharedDocument, "hello", false, false
         );
         
         assertFalse(results.isEmpty());
@@ -73,7 +85,7 @@ class SearchServiceTest {
     @Test
     void testSearchInDocumentWholeWord() throws IOException {
         List<SearchResult> results = searchService.searchInDocument(
-            document, "test", false, true
+            sharedDocument, "test", false, true
         );
         
         assertFalse(results.isEmpty());
@@ -83,7 +95,7 @@ class SearchServiceTest {
     @Test
     void testSearchInDocumentNoResults() throws IOException {
         List<SearchResult> results = searchService.searchInDocument(
-            document, "nonexistent", false, false
+            sharedDocument, "nonexistent", false, false
         );
         
         assertTrue(results.isEmpty());
@@ -100,11 +112,17 @@ class SearchServiceTest {
 
     @Test
     void testSearchMultiplePages() throws IOException {
+        // Create a temporary document for this test
+        PDDocument tempDoc = new PDDocument();
+        
+        // Copy first page from shared document
+        tempDoc.addPage(sharedDocument.getPage(0));
+        
         // Add another page
         PDPage page2 = new PDPage(PDRectangle.A4);
-        document.addPage(page2);
+        tempDoc.addPage(page2);
         
-        try (PDPageContentStream contentStream = new PDPageContentStream(document, page2)) {
+        try (PDPageContentStream contentStream = new PDPageContentStream(tempDoc, page2)) {
             contentStream.beginText();
             contentStream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
             contentStream.newLineAtOffset(100, 700);
@@ -112,18 +130,22 @@ class SearchServiceTest {
             contentStream.endText();
         }
         
-        List<SearchResult> results = searchService.searchInDocument(
-            document, "test", false, false
-        );
-        
-        // Should find "test" in both pages
-        assertTrue(results.size() >= 2);
+        try {
+            List<SearchResult> results = searchService.searchInDocument(
+                tempDoc, "test", false, false
+            );
+            
+            // Should find "test" in both pages
+            assertTrue(results.size() >= 2);
+        } finally {
+            tempDoc.close();
+        }
     }
 
     @Test
     void testSearchResultContainsPageNumber() throws IOException {
         List<SearchResult> results = searchService.searchInDocument(
-            document, "Hello", false, false
+            sharedDocument, "Hello", false, false
         );
         
         assertFalse(results.isEmpty());
@@ -134,7 +156,7 @@ class SearchServiceTest {
     @Test
     void testSearchResultContainsBoundingBox() throws IOException {
         List<SearchResult> results = searchService.searchInDocument(
-            document, "Hello", false, false
+            sharedDocument, "Hello", false, false
         );
         
         assertFalse(results.isEmpty());
