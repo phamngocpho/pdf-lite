@@ -406,6 +406,7 @@ public class MainController {
         pageOperationsManager = new PageOperationsManager(
                 uiStateManager, pageDuplicationManager, renderingManager,
                 pageInfoManager, saveStatusManager, pageRenderer, themeManager);
+        pageOperationsManager.setRenderingManagerSupplier(this::getCurrentRenderingManager);
 
         // Drawing Tools Setup Manager
         drawingToolsSetupManager = new DrawingToolsSetupManager(pageRenderer, uiStateManager);
@@ -514,6 +515,7 @@ public class MainController {
                 pageInfoManager,
                 pageRenderer
         );
+        pageDeletionManager.setRenderingManagerSupplier(this::getCurrentRenderingManager);
 
         // Page Duplication Manager
         pageDuplicationManager = new PageDuplicationManager();
@@ -947,7 +949,8 @@ public class MainController {
     @FXML
     private void handleRotateLeft() {
         PDFDocument currentDocument = getActiveDocument();
-        documentOperationManager.rotateDocument(currentDocument, -90);
+        RenderingManager currentRenderingManager = getCurrentRenderingManager();
+        documentOperationManager.rotateDocument(currentDocument, -90, currentRenderingManager);
         if (saveStatusManager != null) {
             saveStatusManager.triggerAutoSave();
         }
@@ -956,10 +959,19 @@ public class MainController {
     @FXML
     private void handleRotateRight() {
         PDFDocument currentDocument = getActiveDocument();
-        documentOperationManager.rotateDocument(currentDocument, 90);
+        RenderingManager currentRenderingManager = getCurrentRenderingManager();
+        documentOperationManager.rotateDocument(currentDocument, 90, currentRenderingManager);
         if (saveStatusManager != null) {
             saveStatusManager.triggerAutoSave();
         }
+    }
+
+    /**
+     * Gets the current rendering manager from the active tab.
+     */
+    private RenderingManager getCurrentRenderingManager() {
+        org.pdflite.model.DocumentContext context = getCurrentContext();
+        return context != null ? context.getRenderingManager() : renderingManager;
     }
 
     @FXML

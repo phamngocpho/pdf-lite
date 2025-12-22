@@ -19,17 +19,16 @@ public class PageDeletionManager {
 
     private final UIStateManager uiStateManager;
     private final UndoRedoManager undoRedoManager;
-    private final RenderingManager renderingManager;
     private final PageInfoManager pageInfoManager;
     private final PageRenderer pageRenderer;
     private Supplier<ThemeManager> themeManagerSupplier;
+    private Supplier<RenderingManager> renderingManagerSupplier;
 
     /**
      * Creates a new PageDeletionManager.
      *
      * @param uiStateManager   the UI state manager
      * @param undoRedoManager  the undo/redo manager
-     * @param renderingManager the rendering manager
      * @param pageInfoManager  the page info manager
      * @param pageRenderer     the page renderer
      */
@@ -40,7 +39,6 @@ public class PageDeletionManager {
                                PageRenderer pageRenderer) {
         this.uiStateManager = uiStateManager;
         this.undoRedoManager = undoRedoManager;
-        this.renderingManager = renderingManager;
         this.pageInfoManager = pageInfoManager;
         this.pageRenderer = pageRenderer;
 
@@ -54,6 +52,15 @@ public class PageDeletionManager {
      */
     public void setThemeManagerSupplier(Supplier<ThemeManager> themeManagerSupplier) {
         this.themeManagerSupplier = themeManagerSupplier;
+    }
+
+    /**
+     * Sets the rendering manager supplier for multi-tab support.
+     *
+     * @param renderingManagerSupplier supplier that provides the current tab's rendering manager
+     */
+    public void setRenderingManagerSupplier(Supplier<RenderingManager> renderingManagerSupplier) {
+        this.renderingManagerSupplier = renderingManagerSupplier;
     }
 
     /**
@@ -147,8 +154,10 @@ public class PageDeletionManager {
                 pageRenderer.clearCache();
             }
 
-            if (renderingManager != null) {
-                renderingManager.renderAllPages();
+            // Get current tab's rendering manager
+            RenderingManager rm = renderingManagerSupplier != null ? renderingManagerSupplier.get() : null;
+            if (rm != null) {
+                rm.renderAllPages();
             }
 
             // Update page info
