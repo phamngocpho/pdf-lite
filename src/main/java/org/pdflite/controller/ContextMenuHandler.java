@@ -503,7 +503,7 @@ public class ContextMenuHandler {
                     // For text placement, we need the baseline position
                     // Since coverY was extended down by 3 points, add 3 to compensate and keep text position
                     // Then add the original offset (12% of height)
-                    float textY = coverY + 3.0f + (height * 0.05f);
+                    float textY = coverY + 3.0f;
 
                     // Extract font and font size from the first TextPosition
                     PDFont originalFont = null;
@@ -515,9 +515,41 @@ public class ContextMenuHandler {
                         org.apache.pdfbox.text.TextPosition firstPos = positions.getFirst();
                         try {
                             originalFont = firstPos.getFont();
-                            fontSize = firstPos.getFontSizeInPt();
-                            logger.info("Extracted font: {} (size: {})",
-                                    originalFont != null ? originalFont.getName() : "null", fontSize);
+                            
+                            // In PDFBox, there are multiple ways to get font size:
+                            // - getFontSizeInPt(): Returns the font size from PDF dictionary
+                            // - getYScale(): Returns fontSize * textMatrix.scaleY (actual rendered size)
+                            // - getHeight(): Visual height of the glyph
+                            
+                            float yScale = Math.abs(firstPos.getYScale());
+                            float fontSizeInPt = firstPos.getFontSizeInPt();
+                            float textHeight = firstPos.getHeight();
+                            
+                            // Check if fontSizeInPt and yScale are consistent
+                            // On Windows: they are usually equal or close
+                            // On Ubuntu with scaled fonts: fontSizeInPt >> yScale (e.g., 50 vs 12)
+                            boolean hasScaledFont = (fontSizeInPt > yScale * 1.5);
+                            
+                            if (hasScaledFont) {
+                                // Font has text matrix scaling - use height-based calculation
+                                // This gives more accurate results for scaled fonts
+                                if (textHeight > 0 && textHeight < 200) {
+                                    fontSize = textHeight * 1.1f;
+                                } else {
+                                    fontSize = yScale * 0.9f;
+                                }
+                            } else {
+                                // Normal font - use yScale directly (same as fontSizeInPt)
+                                if (yScale > 0 && yScale < 200) {
+                                    fontSize = yScale;
+                                } else if (fontSizeInPt > 0 && fontSizeInPt < 200) {
+                                    fontSize = fontSizeInPt;
+                                }
+                            }
+                            
+                            logger.info("Font metrics: fontSizeInPt={}, yScale={}, height={}, scaled={}, using={}",
+                                    fontSizeInPt, yScale, textHeight, hasScaledFont, fontSize);
+                            logger.info("Extracted font: {}", originalFont != null ? originalFont.getName() : "null");
                         } catch (Exception e) {
                             logger.warn("Could not extract font from TextPosition: {}", e.getMessage());
                         }
