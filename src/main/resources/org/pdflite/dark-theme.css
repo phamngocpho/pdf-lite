@@ -8,7 +8,7 @@
     -fx-text-fill: #e8e8e8;
     -fx-accent: #0A84FF;
     -fx-font-family: "Segoe UI", "SF Pro Display", "Helvetica Neue", "Arial", sans-serif;
-    -fx-font-size: 13px;
+    -fx-font-size: 15px;
 }
 
 .label {
@@ -1157,7 +1157,7 @@
 
 /* ==================== AI CHAT BUTTON ==================== */
 .ai-chat-button {
-    -fx-background-color: linear-gradient(to right, #667eea, #764ba2);
+    -fx-background-color: #5b7cfa;
     -fx-text-fill: white;
     -fx-font-weight: bold;
     -fx-padding: 8 16;
@@ -1167,12 +1167,12 @@
 }
 
 .ai-chat-button:hover {
-    -fx-background-color: linear-gradient(to right, #7b8ef0, #8a5db8);
-    -fx-effect: dropshadow(gaussian, rgba(102, 126, 234, 0.5), 10, 0, 0, 2);
+    -fx-background-color: #7a94fb;
+    -fx-effect: dropshadow(gaussian, rgba(91, 124, 250, 0.4), 8, 0, 0, 2);
 }
 
 .ai-chat-button:pressed {
-    -fx-background-color: linear-gradient(to right, #5a6fd6, #6a4190);
+    -fx-background-color: #4a6cf7;
 }
 
 
