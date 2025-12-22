@@ -8,6 +8,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.pdflite.manager.ChatUIManager;
+import org.pdflite.service.AICommandExecutor;
+import org.pdflite.service.GroqService;
+
 import javafx.scene.control.*;
 import org.pdflite.manager.*;
 import org.pdflite.model.PDFDocument;
@@ -201,6 +205,10 @@ public class MainController {
 
     // Save Manager
     private SaveManager saveManager;
+
+    // AI Chat
+    private GroqService groqService;
+    private ChatUIManager chatUIManager;
 
     // ==================== Document State ====================
     
@@ -1174,6 +1182,46 @@ public class MainController {
         if (bookmarkUIManager != null) {
             bookmarkUIManager.handleAddBookmark(getActiveDocument());
         }
+    }
+
+    // ==================== AI CHAT OPERATIONS ====================
+
+    /**
+     * Toggles the AI Chat sidebar.
+     */
+    @FXML
+    private void handleOpenChat() {
+        if (chatUIManager == null) {
+            // Initialize Groq service
+            if (groqService == null) {
+                groqService = new GroqService();
+            }
+
+            // Create command executor
+            AICommandExecutor commandExecutor = new AICommandExecutor(
+                    this::getActiveDocument,
+                    () -> bookmarkManager,
+                    pageIndex -> navigationHelper.navigateToPage(pageIndex),
+                    status -> uiStateManager.updateStatus(status),
+                    () -> {
+                        PDFDocument doc = getActiveDocument();
+                        if (doc != null) {
+                            doc.clearCache();
+                            pageRenderer.clearCache();
+                            RenderingManager rm = getCurrentRenderingManager();
+                            if (rm != null) {
+                                rm.renderAllPages();
+                            }
+                            pageInfoManager.updatePageInfo(doc);
+                        }
+                    },
+                    () -> (Stage) rootPane.getScene().getWindow()
+            );
+
+            chatUIManager = new ChatUIManager(rootPane, groqService, commandExecutor, this::getActiveDocument);
+        }
+
+        chatUIManager.toggleChat();
     }
 }
 
