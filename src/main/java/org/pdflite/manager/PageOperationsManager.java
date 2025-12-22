@@ -6,15 +6,43 @@ import org.pdflite.model.PDFDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.function.Supplier;
+
 /**
  * Manages page operations such as duplication, deletion, and reordering.
  */
-public record PageOperationsManager(UIStateManager uiStateManager, PageDuplicationManager pageDuplicationManager,
-                                    RenderingManager renderingManager, PageInfoManager pageInfoManager,
-                                    SaveStatusManager saveStatusManager, PageRenderer pageRenderer,
-                                    ThemeManager themeManager) {
+public class PageOperationsManager {
 
     private static final Logger logger = LoggerFactory.getLogger(PageOperationsManager.class);
+
+    private final UIStateManager uiStateManager;
+    private final PageDuplicationManager pageDuplicationManager;
+    private final PageInfoManager pageInfoManager;
+    private final SaveStatusManager saveStatusManager;
+    private final PageRenderer pageRenderer;
+    private final ThemeManager themeManager;
+    private Supplier<RenderingManager> renderingManagerSupplier;
+
+    public PageOperationsManager(UIStateManager uiStateManager, PageDuplicationManager pageDuplicationManager,
+                                 RenderingManager renderingManager, PageInfoManager pageInfoManager,
+                                 SaveStatusManager saveStatusManager, PageRenderer pageRenderer,
+                                 ThemeManager themeManager) {
+        this.uiStateManager = uiStateManager;
+        this.pageDuplicationManager = pageDuplicationManager;
+        this.pageInfoManager = pageInfoManager;
+        this.saveStatusManager = saveStatusManager;
+        this.pageRenderer = pageRenderer;
+        this.themeManager = themeManager;
+    }
+
+    /**
+     * Sets the rendering manager supplier for multi-tab support.
+     *
+     * @param renderingManagerSupplier supplier that provides the current tab's rendering manager
+     */
+    public void setRenderingManagerSupplier(Supplier<RenderingManager> renderingManagerSupplier) {
+        this.renderingManagerSupplier = renderingManagerSupplier;
+    }
 
     /**
      * Handles page duplication operation.
@@ -45,7 +73,12 @@ public record PageOperationsManager(UIStateManager uiStateManager, PageDuplicati
                     // Clear caches and re-render
                     document.clearCache();
                     pageRenderer.clearCache();
-                    renderingManager.renderAllPages();
+                    
+                    // Get current tab's rendering manager
+                    RenderingManager rm = renderingManagerSupplier != null ? renderingManagerSupplier.get() : null;
+                    if (rm != null) {
+                        rm.renderAllPages();
+                    }
 
                     // Update page info
                     pageInfoManager.updatePageInfo(document);

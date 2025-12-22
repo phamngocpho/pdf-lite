@@ -406,6 +406,7 @@ public class MainController {
         pageOperationsManager = new PageOperationsManager(
                 uiStateManager, pageDuplicationManager, renderingManager,
                 pageInfoManager, saveStatusManager, pageRenderer, themeManager);
+        pageOperationsManager.setRenderingManagerSupplier(this::getCurrentRenderingManager);
 
         // Drawing Tools Setup Manager
         drawingToolsSetupManager = new DrawingToolsSetupManager(pageRenderer, uiStateManager);
@@ -514,6 +515,7 @@ public class MainController {
                 pageInfoManager,
                 pageRenderer
         );
+        pageDeletionManager.setRenderingManagerSupplier(this::getCurrentRenderingManager);
 
         // Page Duplication Manager
         pageDuplicationManager = new PageDuplicationManager();
