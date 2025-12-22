@@ -134,8 +134,8 @@
                 <!-- Navigation Group -->
                 <HBox spacing="3" alignment="CENTER">
                     <Button fx:id="prevButton" text="Previous" onAction="#handlePreviousPage"/>
-                    <TextField fx:id="pageNumberField" prefWidth="45" onAction="#handleGoToPage" alignment="CENTER"/>
-                    <Label fx:id="totalPagesLabel" text="/ 0"/>
+                    <TextField fx:id="pageNumberField" prefWidth="70" minWidth="70" maxWidth="70" onAction="#handleGoToPage" alignment="CENTER"/>
+                    <Label fx:id="totalPagesLabel" text="/ 0" minWidth="60" alignment="CENTER_LEFT"/>
                     <Button fx:id="nextButton" text="Next" onAction="#handleNextPage"/>
                 </HBox>
 

@@ -15,10 +15,12 @@ public class RecentFilesManager {
     private static final Logger logger = LoggerFactory.getLogger(RecentFilesManager.class);
     private static final int MAX_RECENT_FILES = 10;
     private static final String RECENT_FILES_FILE = "recent-files.txt";
+    private static final String OPENED_TABS_FILE = "opened-tabs.txt";
     private static final String APP_DATA_DIR = ".pdflite";
 
     private final List<String> recentFiles = new ArrayList<>();
     private final Path recentFilesPath;
+    private final Path openedTabsPath;
 
     public RecentFilesManager() {
         // Store in project directory (current working directory) instead of user home
@@ -30,6 +32,7 @@ public class RecentFilesManager {
                 Files.createDirectories(appDataDir);
             }
             recentFilesPath = appDataDir.resolve(RECENT_FILES_FILE);
+            openedTabsPath = appDataDir.resolve(OPENED_TABS_FILE);
             loadRecentFiles();
         } catch (IOException e) {
             logger.error("Error creating app data directory", e);
@@ -125,6 +128,49 @@ public class RecentFilesManager {
         }
 
         return null;
+    }
+
+    /**
+     * Saves all currently opened tabs to a file.
+     * @param openedFiles list of file paths for all opened tabs
+     */
+    public void saveOpenedTabs(List<String> openedFiles) {
+        try (BufferedWriter writer = Files.newBufferedWriter(openedTabsPath)) {
+            for (String filePath : openedFiles) {
+                writer.write(filePath);
+                writer.newLine();
+            }
+            logger.info("Saved {} opened tabs", openedFiles.size());
+        } catch (IOException e) {
+            logger.error("Error saving opened tabs", e);
+        }
+    }
+
+    /**
+     * Loads all previously opened tabs from file.
+     * @return list of file paths that were opened, or empty list if none
+     */
+    public List<String> getOpenedTabs() {
+        List<String> openedTabs = new ArrayList<>();
+        
+        if (!Files.exists(openedTabsPath)) {
+            return openedTabs;
+        }
+
+        try (BufferedReader reader = Files.newBufferedReader(openedTabsPath)) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (!line.isEmpty() && Files.exists(Paths.get(line))) {
+                    openedTabs.add(line);
+                }
+            }
+            logger.info("Loaded {} opened tabs", openedTabs.size());
+        } catch (IOException e) {
+            logger.error("Error loading opened tabs", e);
+        }
+
+        return openedTabs;
     }
 }
 

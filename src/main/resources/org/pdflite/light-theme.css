@@ -1029,6 +1029,13 @@
     -fx-border-color: transparent;
     -fx-background-radius: 0;
     -fx-padding: 8 16;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.document-tab-pane .tab:focused {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
 }
 
 .document-tab-pane .tab:selected {
@@ -1053,11 +1060,75 @@
 
 .document-tab-pane .tab-close-button {
     -fx-background-color: transparent;
+    -fx-padding: 4 8 4 8;
+    -fx-cursor: hand;
+    visibility: visible !important;
+    -fx-opacity: 1.0;
+    -fx-background-radius: 4;
+}
+
+.document-tab-pane .tab-close-button .tab-close-icon {
+    -fx-background-color: #666666;
+    -fx-shape: "M 0 0 L 10 10 M 10 0 L 0 10";
+    -fx-scale-shape: false;
+    -fx-min-width: 10px;
+    -fx-min-height: 10px;
+    -fx-max-width: 10px;
+    -fx-max-height: 10px;
 }
 
 .document-tab-pane .tab-close-button:hover {
-    -fx-background-color: rgba(0, 0, 0, 0.1);
-    -fx-background-radius: 3;
+    -fx-background-color: #c42b1c;
+    -fx-background-radius: 4;
+}
+
+.document-tab-pane .tab-close-button:hover .tab-close-icon {
+    -fx-background-color: white;
+}
+
+.document-tab-pane .tab-close-button:pressed {
+    -fx-background-color: #a52313;
+}
+
+/* Custom tab close button */
+.tab-close-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #666666;
+    -fx-font-size: 16px;
+    -fx-padding: 0;
+    -fx-cursor: hand;
+    -fx-background-radius: 50%;
+    -fx-border-width: 0;
+    -fx-min-width: 24px;
+    -fx-min-height: 24px;
+    -fx-max-width: 24px;
+    -fx-max-height: 24px;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.tab-close-btn:focused {
+    -fx-background-color: transparent;
+}
+
+.tab-close-btn:hover {
+    -fx-background-color: rgba(0, 0, 0, 0.08);
+    -fx-text-fill: #000000;
+    -fx-background-radius: 50%;
+}
+
+.tab-close-btn:pressed {
+    -fx-background-color: rgba(0, 0, 0, 0.12);
+    -fx-text-fill: #000000;
+}
+
+/* Page number field - fixed width to prevent jumping */
+#pageNumberField {
+    -fx-min-width: 60px;
+    -fx-pref-width: 60px;
+    -fx-max-width: 60px;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-font-size: 13px;
 }
 
 .document-tab-pane .tab-content-area {

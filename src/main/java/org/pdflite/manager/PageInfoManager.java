@@ -40,7 +40,12 @@ public record PageInfoManager(Label totalPagesLabel, TextField pageNumberField, 
         }
 
         if (pageNumberField != null) {
-            pageNumberField.setText(String.valueOf(current));
+            // Only update if value actually changed to prevent flickering
+            String currentText = pageNumberField.getText();
+            String newText = String.valueOf(current);
+            if (!newText.equals(currentText)) {
+                pageNumberField.setText(newText);
+            }
         }
 
         if (prevButton != null) {

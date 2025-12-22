@@ -149,8 +149,10 @@ public class TabManager {
     
     /**
      * Opens a PDF file in a new tab.
+     * @param file the PDF file to open
+     * @param shouldActivate whether to activate and render this tab immediately
      */
-    public void openPDFFile(File file) {
+    public void openPDFFile(File file, boolean shouldActivate) {
         try {
             // Open the document
             PDFDocument newDocument = fileManager.openFile(file);
@@ -185,7 +187,7 @@ public class TabManager {
                 newDocument, scrollPane, pagesContainer, contentPane);
             
             // Create tab FIRST before setting up scroll listener
-            Tab tab = createDocumentTab(newDocument, context);
+            Tab tab = createDocumentTab(newDocument, context, shouldActivate);
             
             // Create per-tab scroll handler
             ScrollHandler tabScrollHandler = new ScrollHandler(pageRenderer, scrollPane);
@@ -208,11 +210,8 @@ public class TabManager {
             tabRenderingManager.setUIComponents(pagesContainer, scrollPane, contentPane);
             context.setRenderingManager(tabRenderingManager);
             
-            // Update page renderer with new document
-            pageRenderer.setDocument(newDocument, initialZoom);
-            
-            // Render all pages
-            tabRenderingManager.renderAllPages();
+            // DON'T render immediately - will render when tab becomes active
+            // This prevents content mixing and speeds up multi-file opening
             
             // Setup document using DocumentSetupManager
             if (documentSetupManager != null) {
@@ -234,26 +233,30 @@ public class TabManager {
                     context.getAnnotationManager());
             }
             
-            // Now switch to the new tab context
-            switchToTabContext(tab);
-            
-            // Scroll to top and enable text selection
-            Platform.runLater(() -> {
-                scrollPane.setVvalue(0.0);
-                if (pagesContainer != null) {
-                    pageRenderer.setSelectionModeActive(pagesContainer, true);
-                }
-            });
+            // Only switch context and render if this tab should be activated
+            if (shouldActivate) {
+                switchToTabContext(tab);
+                
+                // Scroll to top and enable text selection
+                Platform.runLater(() -> {
+                    scrollPane.setVvalue(0.0);
+                    if (pagesContainer != null) {
+                        pageRenderer.setSelectionModeActive(pagesContainer, true);
+                    }
+                });
+            }
 
             // Add to recent files
             recentFilesManager.addRecentFile(file.getAbsolutePath());
             recentFilesMenuManager.updateRecentFilesMenu();
 
             // Update status
-            uiStateManager.updateStatus("Opened: " + file.getName());
+            if (shouldActivate) {
+                uiStateManager.updateStatus("Opened: " + file.getName());
+            }
             
             // Load bookmarks for the new document
-            if (bookmarkManager != null) {
+            if (bookmarkManager != null && shouldActivate) {
                 bookmarkManager.setCurrentDocument(newDocument);
                 logger.info("Bookmarks loaded for document: {}", file.getName());
             }
@@ -269,10 +272,36 @@ public class TabManager {
     }
     
     /**
-     * Creates a new tab for a document.
+     * Opens a PDF file in a new tab (default: activate immediately).
      */
-    private Tab createDocumentTab(PDFDocument document, DocumentContext context) {
-        Tab tab = new Tab(document.getFile().getName());
+    public void openPDFFile(File file) {
+        openPDFFile(file, true);
+    }
+    
+    /**
+     * Creates a new tab for a document.
+     * @param shouldSelect whether to select this tab immediately
+     */
+    private Tab createDocumentTab(PDFDocument document, DocumentContext context, boolean shouldSelect) {
+        Tab tab = new Tab();
+        
+        // Create custom tab header with label and close button
+        javafx.scene.control.Label tabLabel = new javafx.scene.control.Label(document.getFile().getName());
+        tabLabel.setStyle("-fx-padding: 0 8 0 0;");
+        
+        javafx.scene.control.Button closeButton = new javafx.scene.control.Button("✕");
+        closeButton.getStyleClass().addAll("tab-close-btn");
+        closeButton.setFocusTraversable(false);
+        closeButton.setOnAction(e -> {
+            if (handleCloseTab(tab)) {
+                documentTabPane.getTabs().remove(tab);
+            }
+        });
+        
+        javafx.scene.layout.HBox tabHeader = new javafx.scene.layout.HBox(8, tabLabel, closeButton);
+        tabHeader.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        tab.setGraphic(tabHeader);
+        tab.setClosable(false); // Disable default close button since we have custom one
         
         // Create the tab content
         ScrollPane scrollPane = context.getScrollPane();
@@ -281,14 +310,7 @@ public class TabManager {
         // Store context
         tabContextMap.put(tab, context);
         
-        // Handle tab close
-        tab.setOnCloseRequest(event -> {
-            if (!handleCloseTab(tab)) {
-                event.consume(); // Cancel close if user cancels
-            }
-        });
-        
-        // Add tab and select it
+        // Add tab
         if (documentTabPane != null) {
             // Hide welcome tab when first document is opened
             if (welcomeTab != null && documentTabPane.getTabs().contains(welcomeTab)) {
@@ -296,7 +318,11 @@ public class TabManager {
             }
             
             documentTabPane.getTabs().add(tab);
-            documentTabPane.getSelectionModel().select(tab);
+            
+            // Only select if requested
+            if (shouldSelect) {
+                documentTabPane.getSelectionModel().select(tab);
+            }
         }
         
         return tab;
@@ -360,9 +386,16 @@ public class TabManager {
             zoomManager.initialize(null, scrollPane); // ComboBox already initialized
         }
         
-        // Update page renderer
+        // Update page renderer with the correct document BEFORE rendering
         if (pageRenderer != null) {
             pageRenderer.setDocument(document, document.getZoomLevel());
+        }
+        
+        // Render pages for this tab if not already rendered
+        RenderingManager renderingManager = context.getRenderingManager();
+        if (renderingManager != null && pagesContainer.getChildren().isEmpty()) {
+            logger.info("Rendering pages for tab: {}", document.getFile().getName());
+            renderingManager.renderAllPages();
         }
         
         // Update AutoSaveManager to track the correct document
@@ -456,5 +489,28 @@ public class TabManager {
     public RenderingManager getCurrentRenderingManager() {
         DocumentContext context = getCurrentContext();
         return context != null ? context.getRenderingManager() : null;
+    }
+    
+    /**
+     * Gets all currently opened file paths from all tabs.
+     * @return list of file paths for all opened documents
+     */
+    public java.util.List<String> getAllOpenedFilePaths() {
+        java.util.List<String> filePaths = new java.util.ArrayList<>();
+        
+        if (documentTabPane == null) {
+            return filePaths;
+        }
+        
+        for (Tab tab : documentTabPane.getTabs()) {
+            if (tab != welcomeTab) {
+                DocumentContext context = tabContextMap.get(tab);
+                if (context != null && context.getDocument() != null) {
+                    filePaths.add(context.getDocument().getFile().getAbsolutePath());
+                }
+            }
+        }
+        
+        return filePaths;
     }
 }

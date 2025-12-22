@@ -221,6 +221,11 @@ public class MainController {
         pdfService = new PDFService();
         printService = new PDFPrintService(pdfService);
 
+        // Force tab closing policy to show close buttons
+        if (documentTabPane != null) {
+            documentTabPane.setTabClosingPolicy(javafx.scene.control.TabPane.TabClosingPolicy.ALL_TABS);
+        }
+
         // Initialize page renderer and scroll handler
         pageRenderer = new PageRenderer(pdfService, renderExecutor);
         scrollHandler = new ScrollHandler(pageRenderer, null); // Will be set per-tab
@@ -489,7 +494,8 @@ public class MainController {
 
         // Application Lifecycle Manager
         applicationLifecycleManager = new ApplicationLifecycleManager(
-                fileManager, autoSaveManager, recoveryManager, renderExecutor, autoSaveExecutor);
+                fileManager, autoSaveManager, recoveryManager, renderExecutor, autoSaveExecutor,
+                tabManager, recentFilesManager);
 
         // Update DocumentLifecycleManager with ApplicationLifecycleManager
         documentLifecycleManager = new DocumentLifecycleManager(
@@ -594,7 +600,7 @@ public class MainController {
 
         // Recent Files Menu Manager (needs to be initialized after recentFilesManager)
         recentFilesMenuManager = new RecentFilesMenuManager(recentFilesMenu, recentFilesManager, uiStateManager,
-                this::openPDFFile);
+                this::openPDFFile, this::openPDFFileWithActivate);
         recentFilesMenuManager.updateRecentFilesMenu();
 
         // Document Lifecycle Manager
@@ -708,6 +714,12 @@ public class MainController {
     private void openPDFFile(File file) {
         if (tabManager != null) {
             tabManager.openPDFFile(file);
+        }
+    }
+    
+    private void openPDFFileWithActivate(File file, boolean shouldActivate) {
+        if (tabManager != null) {
+            tabManager.openPDFFile(file, shouldActivate);
         }
     }
 

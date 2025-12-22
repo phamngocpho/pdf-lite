@@ -46,9 +46,9 @@
                 </Label>
 
                 <ScrollPane fx:id="previewScrollPane" VBox.vgrow="ALWAYS" fitToWidth="true" hbarPolicy="NEVER">
-                    <FlowPane fx:id="previewPane" hgap="6" vgap="6" alignment="TOP_CENTER" columnHalignment="CENTER">
+                    <FlowPane fx:id="previewPane" hgap="6" vgap="6" alignment="TOP_LEFT" columnHalignment="LEFT">
                         <padding>
-                            <Insets/>
+                            <Insets left="6"/>
                         </padding>
                     </FlowPane>
                 </ScrollPane>

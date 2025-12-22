@@ -87,7 +87,7 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
 
         currentDocument.setCurrentPage(pageIndex);
         scrollToCurrentPage();
-        mainController.updatePageInfo();
+        // Don't update page info here - let scroll handler do it to avoid double update
     }
 
     /**
@@ -128,7 +128,11 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
 
         double start = scrollPane.getVvalue();
         double target = Math.max(0.0, Math.min(1.0, targetVValue));
-        if (Math.abs(target - start) < 1e-4) return;
+        if (Math.abs(target - start) < 1e-4) {
+            // Already at target, update page info immediately
+            mainController.updatePageInfo();
+            return;
+        }
 
         Timeline timeline = new Timeline(
                 new KeyFrame(Duration.ZERO,
@@ -136,6 +140,9 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
                 new KeyFrame(duration,
                         new KeyValue(scrollPane.vvalueProperty(), target, Interpolator.EASE_BOTH))
         );
+        
+        // Update page info after animation completes
+        timeline.setOnFinished(e -> mainController.updatePageInfo());
         timeline.play();
     }
 

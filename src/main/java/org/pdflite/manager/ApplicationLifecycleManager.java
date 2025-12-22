@@ -12,7 +12,9 @@ import org.slf4j.LoggerFactory;
  */
 public record ApplicationLifecycleManager(FileManager fileManager, AutoSaveManager autoSaveManager,
                                           RecoveryManager recoveryManager, ExecutorService renderExecutor,
-                                          ScheduledExecutorService autoSaveExecutor) {
+                                          ScheduledExecutorService autoSaveExecutor,
+                                          TabManager tabManager,
+                                          RecentFilesManager recentFilesManager) {
 
     private static final Logger logger = LoggerFactory.getLogger(ApplicationLifecycleManager.class);
 
@@ -23,6 +25,13 @@ public record ApplicationLifecycleManager(FileManager fileManager, AutoSaveManag
         logger.info("Performing application exit");
 
         try {
+            // Save all opened tabs before closing
+            if (tabManager != null && recentFilesManager != null) {
+                java.util.List<String> openedTabs = tabManager.getAllOpenedFilePaths();
+                recentFilesManager.saveOpenedTabs(openedTabs);
+                logger.info("Saved {} opened tabs", openedTabs.size());
+            }
+            
             // Close document first (important to save state)
             if (currentDocument != null) {
                 // If there are unsaved changes, force an auto-save before exit
