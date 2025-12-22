@@ -5,10 +5,12 @@ import java.util.List;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 
+import javafx.scene.control.ToggleGroup;
 import org.pdflite.controller.PageRenderer;
 import org.pdflite.model.Annotation;
 import org.pdflite.model.HighlightAnnotation;
 import org.pdflite.model.PDFDocument;
+import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,10 +27,13 @@ public class HighlightManager {
     private final ColorPicker highlightColorPicker;
     private final HighlightPersistenceManager persistenceManager;
     private final UIStateManager uiStateManager;
+    private final PageRenderer pageRenderer;
 
     private final Supplier<PDFDocument> documentSupplier;
     private final DoubleSupplier zoomSupplier;
     private final Supplier<AnnotationManager> annotationManagerSupplier;
+
+    private boolean highlightModeActive = false;
 
     private static final double HIGHLIGHT_HEIGHT_MULTIPLIER = 1.35;
     private static final double HIGHLIGHT_EXTRA_PADDING_PX = 2.0;
@@ -38,17 +43,20 @@ public class HighlightManager {
      *
      * @param highlightColorPicker the color picker for highlight color selection
      * @param uiStateManager       the UI state manager
+     * @param pageRenderer         the page renderer
      */
     public HighlightManager(ColorPicker highlightColorPicker,
                             UIStateManager uiStateManager,
                             Supplier<PDFDocument> documentSupplier,
                             DoubleSupplier zoomSupplier,
-                            Supplier<AnnotationManager> annotationManagerSupplier) {
+                            Supplier<AnnotationManager> annotationManagerSupplier,
+                            PageRenderer pageRenderer) {
         this.highlightColorPicker = highlightColorPicker;
         this.uiStateManager = uiStateManager;
         this.documentSupplier = documentSupplier;
         this.zoomSupplier = zoomSupplier;
         this.annotationManagerSupplier = annotationManagerSupplier;
+        this.pageRenderer = pageRenderer;
         this.persistenceManager = new HighlightPersistenceManager();
 
         initializeColorPicker();
@@ -107,9 +115,8 @@ public class HighlightManager {
                             double canvasWidth = region.getWidth() * finalScale;
 
                             double originalHeight = region.getHeight() * finalScale;
-                            double expandedHeight = (originalHeight * HIGHLIGHT_HEIGHT_MULTIPLIER) + HIGHLIGHT_EXTRA_PADDING_PX;
-                            double canvasHeight = expandedHeight;
-                            double canvasYAdjusted = canvasY - ((expandedHeight - originalHeight) / 2.0);
+                            double canvasHeight = (originalHeight * HIGHLIGHT_HEIGHT_MULTIPLIER) + HIGHLIGHT_EXTRA_PADDING_PX;
+                            double canvasYAdjusted = canvasY - ((canvasHeight - originalHeight) / 2.0);
 
                             // Create highlight annotation
                             HighlightAnnotation highlight = new HighlightAnnotation(
@@ -259,12 +266,6 @@ public class HighlightManager {
                 highlightColorPicker.getValue() : Color.YELLOW;
     }
 
-    /**
-     * Sets the current document and zoom level.
-     *
-     * @param document the PDF document
-     * @param zoom the current zoom level
-     */
     // Document and zoom come from suppliers (MainController).
 
     /**
@@ -312,5 +313,53 @@ public class HighlightManager {
             uiStateManager.showError("Save Error",
                     "Failed to save highlights: " + e.getMessage());
         }
+    }
+    
+    /**
+     * Toggles highlight mode on/off.
+     * 
+     * @param drawingToolsGroup the toggle group for drawing tools (to deselect when highlight is active)
+     */
+    public void toggleHighlightMode(ToggleGroup drawingToolsGroup) {
+        highlightModeActive = !highlightModeActive;
+
+        if (highlightModeActive) {
+            // Deselect drawing tools when highlight is active
+            if (drawingToolsGroup != null) {
+                drawingToolsGroup.selectToggle(null);
+            }
+
+            uiStateManager.updateStatus("Highlight mode: Active - Click and drag to highlight");
+            if (pageRenderer != null) {
+                pageRenderer.setHighlightModeActive();
+            }
+            updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.HIGHLIGHT);
+        } else {
+            // Disable highlight mode
+            uiStateManager.updateStatus("Highlight mode: Disabled");
+            if (pageRenderer != null) {
+                pageRenderer.setHighlightModeActive();
+            }
+            updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
+        }
+        
+        logger.debug("Highlight mode toggled: {}", highlightModeActive);
+    }
+    
+    /**
+     * Updates annotation mode for all pages.
+     */
+    private void updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode mode) {
+        AnnotationManager annotationManager = annotationManagerSupplier.get();
+        if (annotationManager != null) {
+            annotationManager.updateAnnotationModeForAllPages(mode);
+        }
+    }
+    
+    /**
+     * Checks if highlight mode is currently active.
+     */
+    public boolean isHighlightModeActive() {
+        return highlightModeActive;
     }
 }

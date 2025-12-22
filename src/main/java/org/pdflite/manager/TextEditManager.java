@@ -15,10 +15,24 @@ import javafx.scene.control.Alert;
 /**
  * Manages text editing operations on PDF documents.
  */
-public record TextEditManager(UIStateManager uiStateManager, ContentStreamManager contentStreamManager,
-                              Supplier<RenderingManager> renderingManagerSupplier, SaveStatusManager saveStatusManager) {
+public class TextEditManager {
 
     private static final Logger logger = LoggerFactory.getLogger(TextEditManager.class);
+    
+    private final UIStateManager uiStateManager;
+    private final ContentStreamManager contentStreamManager;
+    private final Supplier<RenderingManager> renderingManagerSupplier;
+    private final SaveStatusManager saveStatusManager;
+    
+    public TextEditManager(UIStateManager uiStateManager,
+                          ContentStreamManager contentStreamManager,
+                          Supplier<RenderingManager> renderingManagerSupplier,
+                          SaveStatusManager saveStatusManager) {
+        this.uiStateManager = uiStateManager;
+        this.contentStreamManager = contentStreamManager;
+        this.renderingManagerSupplier = renderingManagerSupplier;
+        this.saveStatusManager = saveStatusManager;
+    }
 
     /**
      * Creates a text edit callback for the context menu handler.
@@ -146,5 +160,25 @@ public record TextEditManager(UIStateManager uiStateManager, ContentStreamManage
         void onTextEdit(int pageIndex, float coverX, float coverY, float coverWidth, float coverHeight,
                         float textX, float textY, String newText, float fontSize,
                         PDFont font);
+    }
+
+    /**
+     * Sets up the text edit callback for the page renderer's context menu handler.
+     */
+    public void setupTextEditCallback(org.pdflite.controller.PageRenderer pageRenderer,
+                                     Supplier<PDFDocument> documentSupplier) {
+        if (pageRenderer == null) {
+            logger.warn("PageRenderer is null, cannot setup text edit callback");
+            return;
+        }
+
+        // Create callback that gets the current document dynamically
+        pageRenderer.getContextMenuHandler().setTextEditCallback(
+                (pageIndex, coverX, coverY, coverWidth, coverHeight, textX, textY, newText, fontSize, font) ->
+                        createTextEditCallback(documentSupplier)
+                                .onTextEdit(pageIndex, coverX, coverY, coverWidth, coverHeight,
+                                        textX, textY, newText, fontSize, font));
+
+        logger.info("Text edit callback configured successfully");
     }
 }

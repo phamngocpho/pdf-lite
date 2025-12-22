@@ -1,13 +1,11 @@
 package org.pdflite.controller;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicReference;
 
 import javafx.scene.control.*;
 import org.pdflite.manager.*;
@@ -17,7 +15,6 @@ import org.pdflite.service.PDFPrintService;
 import org.pdflite.service.PDFService;
 import org.pdflite.util.Constants;
 import org.pdflite.util.NavigationHelper;
-import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -197,17 +194,24 @@ public class MainController {
     // Bookmark UI Manager
     private BookmarkUIManager bookmarkUIManager;
 
+    // Tab Manager
+    private TabManager tabManager;
+
+    // Toolbar Manager
+    private ToolbarManager toolbarManager;
+
+    // Highlight Manager
+    private HighlightManager highlightManager;
+
+    // Navigation Manager
+    private NavigationManager navigationManager;
+
     // ==================== Document State ====================
 
-    // Multi-tab support: Map each tab to its document context
-    private final java.util.Map<Tab, org.pdflite.model.DocumentContext> tabContextMap = new java.util.HashMap<>();
-    private Tab welcomeTab; // Reference to the welcome tab
-    
     private final ExecutorService renderExecutor = Executors.newFixedThreadPool(6);
     private final java.util.concurrent.ScheduledExecutorService autoSaveExecutor =
             Executors.newSingleThreadScheduledExecutor();
     private final Set<Integer> loadingPages = ConcurrentHashMap.newKeySet();
-    private boolean highlightModeActive = false;
 
     // ==================== Initialization ====================
 
@@ -216,22 +220,6 @@ public class MainController {
         logger.info("Initializing MainController");
         pdfService = new PDFService();
         printService = new PDFPrintService(pdfService);
-
-        // Initialize page renderer and scroll handler
-        pageRenderer = new PageRenderer(pdfService, renderExecutor);
-        scrollHandler = new ScrollHandler(pageRenderer, null); // Will be set per-tab
-
-        // Store reference to welcome tab
-        if (documentTabPane != null && !documentTabPane.getTabs().isEmpty()) {
-            welcomeTab = documentTabPane.getTabs().get(0);
-            
-            // Setup tab selection listener to switch context
-            documentTabPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
-                if (newTab != null && newTab != welcomeTab) {
-                    switchToTabContext(newTab);
-                }
-            });
-        }
 
         // Initialize page renderer and scroll handler
         pageRenderer = new PageRenderer(pdfService, renderExecutor);
@@ -333,9 +321,11 @@ public class MainController {
                         pageInfoManager, uiStateManager, themeManager, fileManager);
 
                 // Cập nhật DocumentLifecycleManager
-                documentLifecycleManager = new DocumentLifecycleManager(pdfService, fileManager, zoomManager,
+                documentLifecycleManager = new DocumentLifecycleManager(
+                        pdfService, fileManager, zoomManager,
                         renderingManager, pageInfoManager, uiStateManager, themeManager, recentFilesManager,
-                        recentFilesMenuManager);
+                        recentFilesMenuManager, highlightPersistenceManager, autoSaveManager, saveStatusManager,
+                        dialogManager, null, rootPane); // applicationLifecycleManager will be set later
 
                 recentFilesMenuManager.updateRecentFilesMenu();
 
@@ -381,211 +371,109 @@ public class MainController {
                 keyboardShortcutManager.setupKeyboardShortcuts(newScene);
             }
         });
+
+        // Initialize TabManager after all managers are ready
+        initializeTabManager();
     }
 
-    // ==================== Multi-Tab Management ====================
-    
+    // ==================== Tab Manager Initialization ====================
+
+    /**
+     * Initializes the TabManager after all other managers are ready.
+     */
+    private void initializeTabManager() {
+        tabManager = new TabManager(
+                documentTabPane,
+                pdfService,
+                fileManager,
+                pageRenderer,
+                zoomManager,
+                pageInfoManager,
+                uiStateManager,
+                recentFilesManager,
+                recentFilesMenuManager,
+                documentSetupManager,
+                drawingToolsSetupManager,
+                highlightPersistenceManager,
+                bookmarkManager,
+                autoSaveManager,
+                renderExecutor
+        );
+
+        // Set drawing tool components
+        tabManager.setDrawingToolComponents(
+                drawingToolsGroup,
+                btnDrawRect,
+                btnDrawCircle,
+                btnDrawArrow,
+                colorPicker,
+                highlightColorPicker
+        );
+
+        // Set callback for tab switching to update controller state
+        tabManager.setOnTabSwitched(tab -> {
+            // Update controller's rendering manager reference
+            renderingManager = tabManager.getCurrentRenderingManager();
+
+            // Update annotation manager reference
+            annotationManager = tabManager.getCurrentAnnotationManager();
+
+            // Update zoom change listener context
+            if (zoomChangeListener != null) {
+                PDFDocument doc = tabManager.getCurrentDocument();
+                VBox container = tabManager.getCurrentPagesContainer();
+                ScrollPane scroll = tabManager.getCurrentScrollPane();
+                if (doc != null && container != null && scroll != null) {
+                    zoomChangeListener.updateContext(doc, container, scroll);
+                }
+            }
+
+            // Update scroll handler
+            if (scrollHandler != null) {
+                PDFDocument doc = tabManager.getCurrentDocument();
+                VBox container = tabManager.getCurrentPagesContainer();
+                if (doc != null && container != null) {
+                    scrollHandler.setDocument(doc, container);
+                    scrollHandler.setPageChangeListener(
+                            ListenerFactory.createPageChangeListener(doc, pageInfoManager));
+                }
+            }
+        });
+    }
+
     /**
      * Gets the current active document context.
      */
     private org.pdflite.model.DocumentContext getCurrentContext() {
-        if (documentTabPane == null) return null;
-        Tab selectedTab = documentTabPane.getSelectionModel().getSelectedItem();
-        if (selectedTab == null || selectedTab == welcomeTab) return null;
-        return tabContextMap.get(selectedTab);
+        return tabManager != null ? tabManager.getCurrentContext() : null;
     }
-    
+
     /**
      * Gets the current document from the active tab (internal use).
      */
     private PDFDocument getActiveDocument() {
-        org.pdflite.model.DocumentContext context = getCurrentContext();
-        return context != null ? context.getDocument() : null;
+        return tabManager != null ? tabManager.getCurrentDocument() : null;
     }
-    
+
     /**
      * Gets the current pages container from the active tab.
      */
     private VBox getCurrentPagesContainer() {
-        org.pdflite.model.DocumentContext context = getCurrentContext();
-        return context != null ? context.getPagesContainer() : null;
+        return tabManager != null ? tabManager.getCurrentPagesContainer() : null;
     }
-    
+
     /**
      * Gets the current scroll pane from the active tab.
      */
     private ScrollPane getCurrentScrollPane() {
-        org.pdflite.model.DocumentContext context = getCurrentContext();
-        return context != null ? context.getScrollPane() : null;
+        return tabManager != null ? tabManager.getCurrentScrollPane() : null;
     }
-    
+
     /**
      * Gets the current annotation manager from the active tab.
      */
     private AnnotationManager getCurrentAnnotationManager() {
-        org.pdflite.model.DocumentContext context = getCurrentContext();
-        return context != null ? context.getAnnotationManager() : null;
-    }
-    
-    /**
-     * Switches the active context when a tab is selected.
-     */
-    private void switchToTabContext(Tab tab) {
-        org.pdflite.model.DocumentContext context = tabContextMap.get(tab);
-        if (context == null) return;
-        
-        PDFDocument document = context.getDocument();
-        VBox pagesContainer = context.getPagesContainer();
-        ScrollPane scrollPane = context.getScrollPane();
-        
-        // Update managers with the new context
-        if (zoomManager != null) {
-            zoomManager.setDocument(document);
-            zoomManager.setCurrentZoom(document.getZoomLevel());
-            zoomManager.initialize(zoomComboBox, scrollPane);
-        }
-        
-        // CRITICAL: Use the RenderingManager from the context, not the global one
-        if (context.getRenderingManager() != null) {
-            renderingManager = context.getRenderingManager();
-            renderingManager.setDocument(document);
-            renderingManager.setUIComponents(pagesContainer, scrollPane, context.getContentPane());
-        }
-        
-        // Update zoom change listener context
-        if (zoomChangeListener != null) {
-            zoomChangeListener.updateContext(document, pagesContainer, scrollPane);
-        }
-        
-        if (scrollHandler != null) {
-            scrollHandler.setDocument(document, pagesContainer);
-            scrollHandler.setPageChangeListener(ListenerFactory.createPageChangeListener(document, pageInfoManager));
-        }
-        
-        if (pageRenderer != null) {
-            pageRenderer.setDocument(document, document.getZoomLevel());
-        }
-        
-        // Update navigation helper
-        if (navigationHelper != null) {
-            // NavigationHelper uses getCurrentDocument() so it will automatically use the new context
-        }
-        
-        // Update search manager
-        if (searchManager != null) {
-            // SearchManager uses getCurrentDocument() so it will automatically use the new context
-        }
-        
-        // CRITICAL FIX: Update AutoSaveManager to track the correct document
-        // This prevents auto-save from saving the wrong document when switching tabs
-        if (autoSaveManager != null) {
-            autoSaveManager.setDocument(document);
-            logger.debug("AutoSaveManager updated to track document: {}", document.getFile().getName());
-        }
-        
-        // Update UI
-        if (pageInfoManager != null) {
-            pageInfoManager.updatePageInfo(document);
-        }
-        
-        if (uiStateManager != null) {
-            uiStateManager.updateUIState(true);
-            uiStateManager.updateStatus("Switched to: " + document.getFile().getName());
-        }
-        
-        // Update annotation manager reference
-        annotationManager = context.getAnnotationManager();
-        
-        // Sync drawing colors from UI to the new tab's annotation layers
-        if (annotationManager != null) {
-            if (colorPicker != null && strokeWidthSlider != null) {
-                annotationManager.updateDrawingStyleForAllPages(
-                    colorPicker.getValue(), strokeWidthSlider.getValue());
-            }
-            if (highlightColorPicker != null) {
-                annotationManager.updateHighlightColorForAllPages(
-                    highlightColorPicker.getValue());
-            }
-        }
-        
-        // Update bookmark manager
-        if (bookmarkManager != null) {
-            bookmarkManager.setCurrentDocument(document);
-        }
-        
-        logger.info("Switched to tab: {} (page {}/{})", 
-            document.getFile().getName(), 
-            document.getCurrentPage() + 1, 
-            document.getTotalPages());
-    }
-    
-    /**
-     * Creates a new tab for a document.
-     */
-    private Tab createDocumentTab(PDFDocument document, org.pdflite.model.DocumentContext context) {
-        Tab tab = new Tab(document.getFile().getName());
-        
-        // Create the tab content
-        ScrollPane scrollPane = context.getScrollPane();
-        tab.setContent(scrollPane);
-        
-        // Store context
-        tabContextMap.put(tab, context);
-        
-        // Handle tab close
-        tab.setOnCloseRequest(event -> {
-            if (!handleCloseTab(tab)) {
-                event.consume(); // Cancel close if user cancels
-            }
-        });
-        
-        // Add tab and select it
-        if (documentTabPane != null) {
-            // Hide welcome tab when first document is opened
-            if (welcomeTab != null && documentTabPane.getTabs().contains(welcomeTab)) {
-                documentTabPane.getTabs().remove(welcomeTab);
-            }
-            
-            documentTabPane.getTabs().add(tab);
-            documentTabPane.getSelectionModel().select(tab);
-        }
-        
-        return tab;
-    }
-    
-    /**
-     * Handles closing a tab.
-     * @return true if tab was closed, false if cancelled
-     */
-    private boolean handleCloseTab(Tab tab) {
-        org.pdflite.model.DocumentContext context = tabContextMap.get(tab);
-        if (context == null) return true;
-        
-        PDFDocument document = context.getDocument();
-        
-        // TODO: Check if document has unsaved changes and prompt user
-        
-        // Close the document
-        if (fileManager != null) {
-            fileManager.close(document);
-        }
-        
-        // Remove from map
-        tabContextMap.remove(tab);
-        
-        // If no more tabs, show welcome tab
-        if (documentTabPane != null && documentTabPane.getTabs().size() == 1) {
-            documentTabPane.getTabs().add(0, welcomeTab);
-            documentTabPane.getSelectionModel().select(welcomeTab);
-            
-            // Update UI to disabled state
-            if (uiStateManager != null) {
-                uiStateManager.updateUIState(false);
-            }
-        }
-        
-        logger.info("Closed tab: {}", document.getFile().getName());
-        return true;
+        return tabManager != null ? tabManager.getCurrentAnnotationManager() : null;
     }
 
     /**
@@ -602,6 +490,18 @@ public class MainController {
         // Application Lifecycle Manager
         applicationLifecycleManager = new ApplicationLifecycleManager(
                 fileManager, autoSaveManager, recoveryManager, renderExecutor, autoSaveExecutor);
+
+        // Update DocumentLifecycleManager with ApplicationLifecycleManager
+        documentLifecycleManager = new DocumentLifecycleManager(
+                pdfService, fileManager, zoomManager,
+                renderingManager, pageInfoManager, uiStateManager, themeManager, recentFilesManager,
+                recentFilesMenuManager, highlightPersistenceManager, autoSaveManager, saveStatusManager,
+                dialogManager, applicationLifecycleManager, rootPane);
+
+        // Set context suppliers for DocumentLifecycleManager
+        documentLifecycleManager.setContextSuppliers(
+                this::getCurrentDocument,
+                this::getCurrentContext);
 
         // Keyboard Shortcut Manager
         keyboardShortcutManager = new KeyboardShortcutManager(undoRedoManager);
@@ -622,7 +522,15 @@ public class MainController {
         // Page Operations Manager
         pageOperationsManager = new PageOperationsManager(
                 uiStateManager, pageDuplicationManager, renderingManager,
-                pageInfoManager, saveStatusManager, pageRenderer, themeManager);
+                pageInfoManager, saveStatusManager, pageRenderer, themeManager,
+                documentOperationManager, dialogManager, scrollHandler, loadingPages);
+
+        // Set context suppliers for PageOperationsManager
+        pageOperationsManager.setContextSuppliers(
+                this::getCurrentDocument,
+                this::getCurrentPagesContainer,
+                this::getCurrentScrollPane,
+                this::getCurrentContext);
 
         // Drawing Tools Setup Manager
         drawingToolsSetupManager = new DrawingToolsSetupManager(pageRenderer, uiStateManager);
@@ -690,9 +598,11 @@ public class MainController {
         recentFilesMenuManager.updateRecentFilesMenu();
 
         // Document Lifecycle Manager
-        documentLifecycleManager = new DocumentLifecycleManager(pdfService, fileManager, zoomManager,
+        documentLifecycleManager = new DocumentLifecycleManager(
+                pdfService, fileManager, zoomManager,
                 renderingManager, pageInfoManager, uiStateManager, themeManager, recentFilesManager,
-                recentFilesMenuManager);
+                recentFilesMenuManager, highlightPersistenceManager, autoSaveManager, saveStatusManager,
+                dialogManager, null, rootPane); // applicationLifecycleManager will be set later
 
         // Document Operation Manager
         documentOperationManager = new DocumentOperationManager(pdfService, renderingManager, zoomManager,
@@ -739,16 +649,21 @@ public class MainController {
         // Save Status Manager (needs to be created after saveStatusIndicator is injected)
         // Will be initialized in rootPane.sceneProperty listener
 
-        // Set text edit callback for context menu
-        setupTextEditCallback();
+        // Navigation Manager
+        navigationManager = new NavigationManager(
+                navigationHelper, pageInfoManager, uiStateManager, this::getCurrentDocument);
 
-        // Highlight handling lives in HighlightManager (keeps MainController smaller)
-        HighlightManager highlightManager = new HighlightManager(
+        // Toolbar Manager
+        toolbarManager = new ToolbarManager(toolbar, toggleToolbarMenuItem);
+
+        // Highlight Manager (keeps MainController smaller)
+        highlightManager = new HighlightManager(
                 highlightColorPicker,
                 uiStateManager,
                 this::getCurrentDocument,
                 this::getCurrentZoom,
-                this::getCurrentAnnotationManager
+                this::getCurrentAnnotationManager,
+                pageRenderer
         );
         highlightManager.setupHighlightCallback(pageRenderer);
         highlightManager.setupDeleteHighlightCallback(pageRenderer);
@@ -769,17 +684,9 @@ public class MainController {
      * This callback is invoked when the user edits text and clicks OK in the text edit dialog.
      */
     private void setupTextEditCallback() {
-        if (textEditManager == null || pageRenderer == null) {
-            return;
+        if (textEditManager != null && pageRenderer != null) {
+            textEditManager.setupTextEditCallback(pageRenderer, this::getCurrentDocument);
         }
-
-        // Create callback that gets the current document dynamically
-        pageRenderer.getContextMenuHandler().setTextEditCallback(
-                (pageIndex, coverX, coverY, coverWidth, coverHeight, textX, textY, newText, fontSize, font) -> textEditManager.createTextEditCallback(this::getCurrentDocument)
-                        .onTextEdit(pageIndex, coverX, coverY, coverWidth, coverHeight,
-                                textX, textY, newText, fontSize, font));
-
-        logger.info("Text edit callback configured successfully");
     }
 
     // ==================== File Operations ====================
@@ -799,170 +706,22 @@ public class MainController {
     }
 
     private void openPDFFile(File file) {
-        try {
-            // Open the document
-            PDFDocument newDocument = fileManager.openFile(file);
-            if (newDocument == null) {
-                return;
-            }
-
-            // CRITICAL: Reset to page 1 (index 0) when opening a new file
-            newDocument.setCurrentPage(0);
-
-            // Set initial zoom to 100% (1.0) for consistent display
-            double initialZoom = 1.0;
-            newDocument.setZoomLevel(initialZoom);
-
-            // Create new UI components for this tab
-            ScrollPane scrollPane = new ScrollPane();
-            scrollPane.setFitToWidth(true);
-            scrollPane.setFitToHeight(true);
-            scrollPane.getStyleClass().add("pdf-scroll-pane");
-            
-            StackPane contentPane = new StackPane();
-            contentPane.getStyleClass().add("pdf-content-area");
-            scrollPane.setContent(contentPane);
-            
-            VBox pagesContainer = new VBox(10);
-            pagesContainer.setAlignment(javafx.geometry.Pos.TOP_CENTER);
-            pagesContainer.setStyle("-fx-background-color: #808080; -fx-padding: 20;");
-            contentPane.getChildren().add(pagesContainer);
-            
-            // Create document context
-            org.pdflite.model.DocumentContext context = new org.pdflite.model.DocumentContext(
-                newDocument, scrollPane, pagesContainer, contentPane);
-            
-            // Create tab FIRST before setting up scroll listener
-            Tab tab = createDocumentTab(newDocument, context);
-            
-            // Create per-tab scroll handler
-            ScrollHandler tabScrollHandler = new ScrollHandler(pageRenderer, scrollPane);
-            tabScrollHandler.setDocument(newDocument, pagesContainer);
-            tabScrollHandler.setPageChangeListener(ListenerFactory.createPageChangeListener(newDocument, pageInfoManager));
-            
-            // Setup scroll listener for this tab
-            scrollPane.vvalueProperty().addListener((obs, oldVal, newVal) -> {
-                // Only handle scroll if this is the active tab
-                if (documentTabPane.getSelectionModel().getSelectedItem() == tab) {
-                    tabScrollHandler.handleScroll();
-                }
-            });
-            
-            // Create per-tab rendering manager
-            RenderingManager tabRenderingManager = new RenderingManager(pdfService, pageRenderer, tabScrollHandler, zoomManager);
-            tabRenderingManager.setDocument(newDocument);
-            tabRenderingManager.setUIComponents(pagesContainer, scrollPane, contentPane);
-            context.setRenderingManager(tabRenderingManager); // Store in context
-            
-            // Update page renderer with new document
-            pageRenderer.setDocument(newDocument, initialZoom);
-            
-            // Render all pages
-            tabRenderingManager.renderAllPages();
-            
-            // Setup document using DocumentSetupManager
-            if (documentSetupManager != null) {
-                AnnotationManager tabAnnotationManager = documentSetupManager.setupDocument(
-                    newDocument, pagesContainer, scrollPane, zoomChangeListener, uiStateManager);
-                context.setAnnotationManager(tabAnnotationManager);
-            }
-            
-            // Setup drawing tools for this tab
-            if (drawingToolsSetupManager != null && context.getAnnotationManager() != null) {
-                drawingToolsSetupManager.setupDrawingToolSelection(
-                    drawingToolsGroup, btnDrawRect, btnDrawCircle, btnDrawArrow,
-                    pagesContainer, context.getAnnotationManager());
-                
-                drawingToolsSetupManager.makeToggleButtonsDeselectable(
-                    btnDrawRect, btnDrawCircle, btnDrawArrow, drawingToolsGroup, context.getAnnotationManager());
-            }
-            
-            // Now switch to the new tab context (this will update all managers including AutoSaveManager)
-            switchToTabContext(tab);
-            
-            // Scroll to top and enable text selection
-            Platform.runLater(() -> {
-                scrollPane.setVvalue(0.0);
-                if (pagesContainer != null) {
-                    pageRenderer.setSelectionModeActive(pagesContainer, true);
-                }
-            });
-
-            // Add to recent files
-            recentFilesManager.addRecentFile(file.getAbsolutePath());
-            recentFilesMenuManager.updateRecentFilesMenu();
-
-            // Update status
-            uiStateManager.updateStatus("Opened: " + file.getName());
-            
-            // Load bookmarks for the new document
-            if (bookmarkManager != null) {
-                bookmarkManager.setCurrentDocument(newDocument);
-                logger.info("Bookmarks loaded for document: {}", file.getName());
-            }
-
-            logger.info("Successfully opened PDF in new tab: {} ({} pages)",
-                    file.getName(), newDocument.getTotalPages());
-                    
-        } catch (IOException e) {
-            logger.error("Error opening PDF file", e);
-            uiStateManager.showError("Error Opening PDF", "Could not open the PDF file: " + e.getMessage());
+        if (tabManager != null) {
+            tabManager.openPDFFile(file);
         }
     }
 
     @FXML
     private void handleSave() {
-        PDFDocument currentDocument = getActiveDocument();
-        if (currentDocument == null) {
-            return;
-        }
-
-        // Save highlights to PDF before saving document
-        if (highlightPersistenceManager != null) {
-            try {
-                highlightPersistenceManager.saveHighlightsToPDF(
-                        currentDocument.getDocument(),
-                        currentDocument.getAnnotations());
-                logger.info("Highlights saved to PDF");
-            } catch (Exception e) {
-                logger.error("Error saving highlights to PDF", e);
-                uiStateManager.showError("Save Error",
-                        "Failed to save highlights: " + e.getMessage());
-            }
-        }
-
-        documentLifecycleManager.saveDocument(currentDocument);
-
-        // Clear auto-save after a successful save
-        if (autoSaveManager != null) {
-            autoSaveManager.clearAutoSave(currentDocument);
-        }
-
-        // Update save status indicator
-        if (saveStatusManager != null) {
-            saveStatusManager.updateSaveStatusIndicator(true);
+        if (documentLifecycleManager != null) {
+            documentLifecycleManager.handleSave();
         }
     }
 
     @FXML
     private void handleSaveAs() {
-        PDFDocument currentDocument = getActiveDocument();
-        if (currentDocument == null)
-            return;
-
-        // Warn the user if the document is encrypted
-        if (currentDocument.getDocument().isEncrypted()) {
-            if (!dialogManager.showEncryptedSaveWarning()) {
-                return; // User cancelled
-            }
-        }
-
-        try {
-            Stage stage = (Stage) rootPane.getScene().getWindow();
-            fileManager.saveAs(currentDocument, stage);
-        } catch (IOException e) {
-            logger.error("Error saving document as", e);
-            uiStateManager.showError("Save As Error", "Could not save the document: " + e.getMessage());
+        if (documentLifecycleManager != null) {
+            documentLifecycleManager.handleSaveAs();
         }
     }
 
@@ -984,13 +743,11 @@ public class MainController {
     }
 
     public void performExit() {
-        if (applicationLifecycleManager != null) {
-            // Close all open documents
-            for (org.pdflite.model.DocumentContext context : tabContextMap.values()) {
-                applicationLifecycleManager.performExit(context.getDocument());
-            }
+        if (documentLifecycleManager != null) {
+            documentLifecycleManager.performExit();
+        } else {
+            System.exit(0);
         }
-        System.exit(0);
     }
 
     /**
@@ -1031,28 +788,8 @@ public class MainController {
 
     @FXML
     private void handleToggleToolbar() {
-        if (toolbar == null) return;
-
-        boolean isToolbarVisible = toolbar.isVisible();
-
-        if (isToolbarVisible) {
-            // Hide toolbar
-            toolbar.setManaged(false);
-            toolbar.setVisible(false);
-
-            // Update menu item text
-            if (toggleToolbarMenuItem != null) {
-                toggleToolbarMenuItem.setText("Show Toolbar");
-            }
-        } else {
-            // Show toolbar
-            toolbar.setManaged(true);
-            toolbar.setVisible(true);
-
-            // Update menu item text
-            if (toggleToolbarMenuItem != null) {
-                toggleToolbarMenuItem.setText("Hide Toolbar");
-            }
+        if (toolbarManager != null) {
+            toolbarManager.toggleToolbar();
         }
     }
 
@@ -1101,30 +838,22 @@ public class MainController {
 
     @FXML
     private void handlePreviousPage() {
-        PDFDocument currentDocument = getActiveDocument();
-        if (currentDocument != null && currentDocument.getCurrentPage() > 0) {
-            navigationHelper.navigateToPage(currentDocument.getCurrentPage() - 1);
+        if (navigationManager != null) {
+            navigationManager.handlePreviousPage();
         }
     }
 
     @FXML
     private void handleNextPage() {
-        PDFDocument currentDocument = getActiveDocument();
-        if (currentDocument != null
-                && currentDocument.getCurrentPage() < currentDocument.getTotalPages() - 1) {
-            navigationHelper.navigateToPage(currentDocument.getCurrentPage() + 1);
+        if (navigationManager != null) {
+            navigationManager.handleNextPage();
         }
     }
 
     @FXML
     private void handleGoToPage() {
-        PDFDocument currentDocument = getActiveDocument();
-        int pageNum = pageInfoManager.getPageNumberFromField();
-        if (pageNum > 0) {
-            navigationHelper.jumpToPage(pageNum);
-        } else {
-            uiStateManager.showError("Invalid Input", "Please enter a valid page number");
-            pageInfoManager.resetPageFieldToCurrentPage(currentDocument);
+        if (navigationManager != null) {
+            navigationManager.handleGoToPage();
         }
     }
 
@@ -1132,22 +861,8 @@ public class MainController {
 
     @FXML
     private void handleHighlight() {
-        highlightModeActive = !highlightModeActive;
-
-        if (highlightModeActive) {
-            // Tắt nhóm vẽ hình khi bật Highlight
-            if (drawingToolsGroup != null) {
-                drawingToolsGroup.selectToggle(null);
-            }
-
-            uiStateManager.updateStatus("Highlight mode: Active - Click and drag to highlight");
-            pageRenderer.setHighlightModeActive();
-            updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.HIGHLIGHT);
-        } else {
-            // Tắt Highlight
-            uiStateManager.updateStatus("Highlight mode: Disabled");
-            pageRenderer.setHighlightModeActive();
-            updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
+        if (highlightManager != null) {
+            highlightManager.toggleHighlightMode(drawingToolsGroup);
         }
     }
 
@@ -1315,28 +1030,9 @@ public class MainController {
 
     @FXML
     private void handleReorderPages() {
-        PDFDocument currentDocument = getActiveDocument();
-        dialogManager.openPageReorderDialog(currentDocument, () -> {
-            // Callback: Refresh view after successful reorder
-            Platform.runLater(() -> {
-                // Clear all caches to force re-render with a new page order
-                currentDocument.clearCache();
-                pageRenderer.clearCache();
-
-                // Re-render all pages
-                renderingManager.renderAllPages();
-
-                // Update status
-                uiStateManager.updateStatus("Pages reordered - Don't forget to save!");
-
-                // Trigger auto-save
-                if (saveStatusManager != null) {
-                    saveStatusManager.triggerAutoSave();
-                }
-
-                logger.info("View refreshed after page reorder");
-            });
-        });
+        if (pageOperationsManager != null) {
+            pageOperationsManager.handleReorderPages();
+        }
     }
 
 
@@ -1363,7 +1059,7 @@ public class MainController {
     }
 
     public boolean isHighlightModeActive() {
-        return highlightModeActive;
+        return highlightManager != null && highlightManager.isHighlightModeActive();
     }
 
     public int getTotalPages() {
@@ -1397,13 +1093,6 @@ public class MainController {
         recentFilesMenuManager.openLastFile();
     }
 
-    private void updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode mode) {
-        AnnotationManager currentAnnotationManager = getCurrentAnnotationManager();
-        if (currentAnnotationManager != null) {
-            currentAnnotationManager.updateAnnotationModeForAllPages(mode);
-        }
-    }
-
     private void updateDrawingStyleForAllPages() {
         AnnotationManager currentAnnotationManager = getCurrentAnnotationManager();
         if (currentAnnotationManager != null && colorPicker != null && strokeWidthSlider != null) {
@@ -1419,14 +1108,7 @@ public class MainController {
     }
 
     public javafx.scene.paint.Color getHighlightColor() {
-        return highlightColorPicker != null ? highlightColorPicker.getValue() : javafx.scene.paint.Color.YELLOW;
-    }
-
-    private void makeToggleButtonDeselectable(ToggleButton btn) {
-        AnnotationManager currentAnnotationManager = getCurrentAnnotationManager();
-        if (currentAnnotationManager != null && drawingToolsGroup != null) {
-            currentAnnotationManager.makeToggleButtonDeselectable(btn, drawingToolsGroup);
-        }
+        return highlightManager != null ? highlightManager.getHighlightColor() : javafx.scene.paint.Color.YELLOW;
     }
 
     @FXML
@@ -1446,40 +1128,13 @@ public class MainController {
     // ==================== INSERT PAGE ====================
     @FXML
     private void handleInsertPage() {
-        PDFDocument currentDocument = getActiveDocument();
-        VBox pagesContainer = getCurrentPagesContainer();
-        ScrollPane scrollPane = getCurrentScrollPane();
-        
-        if (currentDocument == null) {
-            uiStateManager.showError("No PDF", "Please open a PDF file first.");
-            return;
-        }
-
-        InsertDialogController controller = dialogManager.openInsertDialog(currentDocument);
-        if (controller == null || controller.isInsertClicked()) {
-            return;
-        }
-
-        AtomicReference<VBox> pagesContainerRef = new AtomicReference<>(pagesContainer);
-
-        PDFDocument updatedDocument = documentOperationManager.insertBlankPages(
-                currentDocument, controller, pagesContainerRef, loadingPages,
-                pageRenderer, scrollHandler, scrollPane);
-
-        if (updatedDocument != null) {
-            VBox updatedContainer = pagesContainerRef.get();
-            // Update context with new container
-            org.pdflite.model.DocumentContext context = getCurrentContext();
-            if (context != null && updatedContainer != null) {
-                // Recreate annotation manager with updated container
-                AnnotationManager newAnnotationManager = new AnnotationManager(updatedContainer, uiStateManager, currentDocument);
-                context.setAnnotationManager(newAnnotationManager);
-            }
+        if (pageOperationsManager != null) {
+            pageOperationsManager.handleInsertPage();
         }
     }
 
     // ==================== BOOKMARK OPERATIONS ====================
-    
+
     /**
      * Toggles the bookmark sidebar visibility.
      */

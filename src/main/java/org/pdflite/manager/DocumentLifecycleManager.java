@@ -3,10 +3,13 @@ package org.pdflite.manager;
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
+import javafx.stage.Stage;
 import org.pdflite.controller.PageRenderer;
 import org.pdflite.dialog.CustomConfirmDialog;
 import org.pdflite.dialog.CustomInfoDialog;
+import org.pdflite.model.DocumentContext;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
 import org.slf4j.Logger;
@@ -14,32 +17,75 @@ import org.slf4j.LoggerFactory;
 
 import javafx.application.Platform;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 
 /**
- * Manages document lifecycle operations including opening and saving PDF files.
+ * Manages document lifecycle operations including opening, saving, and closing PDF files.
  */
-public record DocumentLifecycleManager(PDFService pdfService, FileManager fileManager, ZoomManager zoomManager,
-                                       RenderingManager renderingManager, PageInfoManager pageInfoManager,
-                                       UIStateManager uiStateManager, ThemeManager themeManager,
-                                       RecentFilesManager recentFilesManager,
-                                       RecentFilesMenuManager recentFilesMenuManager) {
+public class DocumentLifecycleManager {
+    
     private static final Logger logger = LoggerFactory.getLogger(DocumentLifecycleManager.class);
+    
+    private final PDFService pdfService;
+    private final FileManager fileManager;
+    private final ZoomManager zoomManager;
+    private final RenderingManager renderingManager;
+    private final PageInfoManager pageInfoManager;
+    private final UIStateManager uiStateManager;
+    private final ThemeManager themeManager;
+    private final RecentFilesManager recentFilesManager;
+    private final RecentFilesMenuManager recentFilesMenuManager;
+    private final HighlightPersistenceManager highlightPersistenceManager;
+    private final AutoSaveManager autoSaveManager;
+    private final SaveStatusManager saveStatusManager;
+    private final DialogManager dialogManager;
+    private final ApplicationLifecycleManager applicationLifecycleManager;
+    private final BorderPane rootPane;
+    
+    // Suppliers for dynamic context
+    private Supplier<PDFDocument> currentDocumentSupplier;
+    private Supplier<DocumentContext> currentContextSupplier;
 
+    public DocumentLifecycleManager(PDFService pdfService,
+                                   FileManager fileManager,
+                                   ZoomManager zoomManager,
+                                   RenderingManager renderingManager,
+                                   PageInfoManager pageInfoManager,
+                                   UIStateManager uiStateManager,
+                                   ThemeManager themeManager,
+                                   RecentFilesManager recentFilesManager,
+                                   RecentFilesMenuManager recentFilesMenuManager,
+                                   HighlightPersistenceManager highlightPersistenceManager,
+                                   AutoSaveManager autoSaveManager,
+                                   SaveStatusManager saveStatusManager,
+                                   DialogManager dialogManager,
+                                   ApplicationLifecycleManager applicationLifecycleManager,
+                                   BorderPane rootPane) {
+        this.pdfService = pdfService;
+        this.fileManager = fileManager;
+        this.zoomManager = zoomManager;
+        this.renderingManager = renderingManager;
+        this.pageInfoManager = pageInfoManager;
+        this.uiStateManager = uiStateManager;
+        this.themeManager = themeManager;
+        this.recentFilesManager = recentFilesManager;
+        this.recentFilesMenuManager = recentFilesMenuManager;
+        this.highlightPersistenceManager = highlightPersistenceManager;
+        this.autoSaveManager = autoSaveManager;
+        this.saveStatusManager = saveStatusManager;
+        this.dialogManager = dialogManager;
+        this.applicationLifecycleManager = applicationLifecycleManager;
+        this.rootPane = rootPane;
+    }
+    
     /**
-     * Creates a new DocumentLifecycleManager.
-     *
-     * @param pdfService             the PDF service
-     * @param fileManager            the file manager
-     * @param zoomManager            the zoom manager
-     * @param renderingManager       the rendering manager
-     * @param pageInfoManager        the page info manager
-     * @param uiStateManager         the UI state manager
-     * @param themeManager           the theme manager
-     * @param recentFilesManager     the recent files manager
-     * @param recentFilesMenuManager the recent files menu manager
+     * Sets suppliers for dynamic context retrieval.
      */
-    public DocumentLifecycleManager {
+    public void setContextSuppliers(Supplier<PDFDocument> currentDocumentSupplier,
+                                    Supplier<DocumentContext> currentContextSupplier) {
+        this.currentDocumentSupplier = currentDocumentSupplier;
+        this.currentContextSupplier = currentContextSupplier;
     }
 
     /**
@@ -182,5 +228,79 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
             }
         }
     }
-}
 
+    /**
+     * Handles save operation with highlight persistence.
+     */
+    public void handleSave() {
+        PDFDocument currentDocument = currentDocumentSupplier != null ? currentDocumentSupplier.get() : null;
+        if (currentDocument == null) {
+            return;
+        }
+
+        // Save highlights to PDF before saving document
+        if (highlightPersistenceManager != null) {
+            try {
+                highlightPersistenceManager.saveHighlightsToPDF(
+                        currentDocument.getDocument(),
+                        currentDocument.getAnnotations());
+                logger.info("Highlights saved to PDF");
+            } catch (Exception e) {
+                logger.error("Error saving highlights to PDF", e);
+                uiStateManager.showError("Save Error",
+                        "Failed to save highlights: " + e.getMessage());
+            }
+        }
+
+        saveDocument(currentDocument);
+
+        // Clear auto-save after a successful save
+        if (autoSaveManager != null) {
+            autoSaveManager.clearAutoSave(currentDocument);
+        }
+
+        // Update save status indicator
+        if (saveStatusManager != null) {
+            saveStatusManager.updateSaveStatusIndicator(true);
+        }
+    }
+    
+    /**
+     * Handles save as operation.
+     */
+    public void handleSaveAs() {
+        PDFDocument currentDocument = currentDocumentSupplier != null ? currentDocumentSupplier.get() : null;
+        if (currentDocument == null) {
+            return;
+        }
+
+        // Warn the user if the document is encrypted
+        if (currentDocument.getDocument().isEncrypted()) {
+            if (!dialogManager.showEncryptedSaveWarning()) {
+                return; // User cancelled
+            }
+        }
+
+        try {
+            Stage stage = (Stage) rootPane.getScene().getWindow();
+            fileManager.saveAs(currentDocument, stage);
+        } catch (IOException e) {
+            logger.error("Error saving document as", e);
+            uiStateManager.showError("Save As Error", "Could not save the document: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Performs application exit with cleanup.
+     */
+    public void performExit() {
+        if (applicationLifecycleManager != null) {
+            // Get current context to close document
+            DocumentContext context = currentContextSupplier != null ? currentContextSupplier.get() : null;
+            if (context != null) {
+                applicationLifecycleManager.performExit(context.getDocument());
+            }
+        }
+        System.exit(0);
+    }
+}
