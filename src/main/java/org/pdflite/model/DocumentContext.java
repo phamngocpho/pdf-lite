@@ -3,6 +3,7 @@ package org.pdflite.model;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import org.pdflite.controller.ScrollHandler;
 import org.pdflite.manager.AnnotationManager;
 import org.pdflite.manager.RenderingManager;
 import org.pdflite.view.AnnotationLayer;
@@ -19,6 +20,7 @@ public class DocumentContext {
     private AnnotationLayer.AnnotationMode annotationMode;
     private AnnotationManager annotationManager;
     private RenderingManager renderingManager;
+    private ScrollHandler scrollHandler;
     
     public DocumentContext(PDFDocument document, ScrollPane scrollPane, VBox pagesContainer, StackPane contentPane) {
         this.document = document;
@@ -66,5 +68,13 @@ public class DocumentContext {
     
     public void setRenderingManager(RenderingManager renderingManager) {
         this.renderingManager = renderingManager;
+    }
+    
+    public ScrollHandler getScrollHandler() {
+        return scrollHandler;
+    }
+    
+    public void setScrollHandler(ScrollHandler scrollHandler) {
+        this.scrollHandler = scrollHandler;
     }
 }
