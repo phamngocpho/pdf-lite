@@ -283,6 +283,17 @@ public class RenderingManager {
     }
 
     /**
+     * Invalidates the PDFRenderer cache for the current document.
+     * This should be called after modifying the PDF content (e.g., inserting images, stamps).
+     */
+    public void invalidateRendererCache() {
+        if (pdfService != null && currentDocument != null) {
+            pdfService.invalidateRenderer(currentDocument);
+            logger.info("Invalidated PDFRenderer cache for current document");
+        }
+    }
+
+    /**
      * Clears cache and reloads only the visible pages without recreating all placeholders.
      * This is more efficient than renderAllPages() for single page edits.
      */

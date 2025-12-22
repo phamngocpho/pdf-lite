@@ -73,6 +73,24 @@ public class PDFService {
     private final Map<PDDocument, PDFRenderer> rendererCache = new ConcurrentHashMap<>();
 
     /**
+     * Invalidates the cached PDFRenderer for a document.
+     * <p>
+     * This should be called after modifying the PDF content (e.g., inserting images,
+     * stamps, or editing text) to ensure the next render reflects the changes.
+     * </p>
+     *
+     * @param pdfDoc the PDF document whose renderer should be invalidated
+     */
+    public void invalidateRenderer(PDFDocument pdfDoc) {
+        if (pdfDoc != null && pdfDoc.getDocument() != null) {
+            PDFRenderer removed = rendererCache.remove(pdfDoc.getDocument());
+            if (removed != null) {
+                logger.info("Invalidated PDFRenderer cache for document");
+            }
+        }
+    }
+
+    /**
      * Opens a PDF file and creates a PDFDocument wrapper.
      * <p>
      * This method loads the PDF file using Apache PDFBox and wraps it

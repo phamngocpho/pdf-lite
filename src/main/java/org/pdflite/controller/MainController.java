@@ -246,7 +246,8 @@ public class MainController {
         exportManager = new ExportManager(rootPane, uiStateManager);
 
         // Initialize image insertion manager
-        imageInsertionManager = new ImageInsertionManager(rootPane, uiStateManager, renderingManager, pageRenderer, null);
+        imageInsertionManager = new ImageInsertionManager(rootPane, uiStateManager, pageRenderer, null);
+        imageInsertionManager.setRenderingManagerSupplier(this::getCurrentRenderingManager);
 
         // Initialize highlight persistence manager
         highlightPersistenceManager = new HighlightPersistenceManager();
@@ -280,7 +281,8 @@ public class MainController {
                 if (encryptionManager != null)
                     encryptionManager = new EncryptionManager(rootPane, pdfService, themeManager, uiStateManager);
 
-                imageInsertionManager = new ImageInsertionManager(rootPane, uiStateManager, renderingManager, pageRenderer, themeManager);
+                imageInsertionManager = new ImageInsertionManager(rootPane, uiStateManager, pageRenderer, themeManager);
+                imageInsertionManager.setRenderingManagerSupplier(this::getCurrentRenderingManager);
 
                 if (exportManager != null) {
                     exportManager.setThemeManager(themeManager);

@@ -20,27 +20,53 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.function.Supplier;
 
 /**
  * Manager for image and stamp insertion operations.
  * Handles inserting images, stamps, and watermarks into PDF documents.
  */
-public record ImageInsertionManager(BorderPane rootPane, UIStateManager uiStateManager,
-                                    RenderingManager renderingManager, PageRenderer pageRenderer,
-                                    ThemeManager themeManager) {
+public class ImageInsertionManager {
 
     private static final Logger logger = LoggerFactory.getLogger(ImageInsertionManager.class);
+
+    private final BorderPane rootPane;
+    private final UIStateManager uiStateManager;
+    private final PageRenderer pageRenderer;
+    private final ThemeManager themeManager;
+    private Supplier<RenderingManager> renderingManagerSupplier;
 
     /**
      * Creates a new ImageInsertionManager.
      *
      * @param rootPane         the root pane for dialog ownership
      * @param uiStateManager   the UI state manager
-     * @param renderingManager the rendering manager
      * @param pageRenderer     the page renderer
      * @param themeManager     the theme manager
      */
-    public ImageInsertionManager {
+    public ImageInsertionManager(BorderPane rootPane, UIStateManager uiStateManager,
+                                 PageRenderer pageRenderer, ThemeManager themeManager) {
+        this.rootPane = rootPane;
+        this.uiStateManager = uiStateManager;
+        this.pageRenderer = pageRenderer;
+        this.themeManager = themeManager;
+    }
+
+    /**
+     * Sets the supplier for getting the current RenderingManager.
+     * This is needed for multi-tab support where each tab has its own RenderingManager.
+     *
+     * @param supplier the supplier for RenderingManager
+     */
+    public void setRenderingManagerSupplier(Supplier<RenderingManager> supplier) {
+        this.renderingManagerSupplier = supplier;
+    }
+
+    /**
+     * Gets the current RenderingManager from the supplier.
+     */
+    private RenderingManager getRenderingManager() {
+        return renderingManagerSupplier != null ? renderingManagerSupplier.get() : null;
     }
 
     /**
@@ -304,6 +330,15 @@ public record ImageInsertionManager(BorderPane rootPane, UIStateManager uiStateM
      * @param currentDocument the current PDF document
      */
     private void refreshDisplay(PDFDocument currentDocument) {
+        RenderingManager renderingManager = getRenderingManager();
+        if (renderingManager == null) {
+            logger.warn("No RenderingManager available for refresh");
+            return;
+        }
+
+        // CRITICAL: Invalidate PDFRenderer cache first to ensure fresh render from modified PDDocument
+        renderingManager.invalidateRendererCache();
+
         // Clear ALL caches to force re-render from modified PDDocument
         currentDocument.clearCache();  // Clear PDFDocument cache
         pageRenderer.clearCache();      // Clear PageRenderer cache
