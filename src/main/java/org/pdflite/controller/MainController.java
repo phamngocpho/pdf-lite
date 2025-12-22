@@ -1002,6 +1002,10 @@ public class MainController {
         return getCurrentScrollPane();
     }
 
+    public ScrollHandler getScrollHandler() {
+        return tabManager != null ? tabManager.getCurrentScrollHandler() : scrollHandler;
+    }
+
     public VBox getPagesContainer() {
         return getCurrentPagesContainer();
     }

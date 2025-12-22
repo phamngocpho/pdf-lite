@@ -31,6 +31,7 @@ public class ScrollHandler {
     private static final Logger logger = LoggerFactory.getLogger(ScrollHandler.class);
 
     private static final long SCROLL_DEBOUNCE_MS = 100; // Wait 100 ms after scroll stops (increased to reduce load frequency)
+    private static final long NAVIGATION_LOCK_MS = 500; // Lock page updates during navigation animation
 
     private final PageRenderer pageRenderer;
     private final ScrollPane scrollPane;
@@ -39,6 +40,7 @@ public class ScrollHandler {
     private VBox pagesContainer;
     private Timer scrollTimer;
     private volatile long lastScrollTime = 0;
+    private volatile long navigationLockUntil = 0; // Timestamp until which page updates are locked
     private PageChangeListener pageChangeListener;
 
     /**
@@ -80,6 +82,22 @@ public class ScrollHandler {
     }
 
     /**
+     * Locks page updates from scroll for a short duration.
+     * This should be called when programmatically navigating to prevent
+     * scroll events from overriding the navigation.
+     */
+    public void lockPageUpdates() {
+        this.navigationLockUntil = System.currentTimeMillis() + NAVIGATION_LOCK_MS;
+    }
+
+    /**
+     * Checks if page updates are currently locked.
+     */
+    private boolean isPageUpdateLocked() {
+        return System.currentTimeMillis() < navigationLockUntil;
+    }
+
+    /**
      * Handles scroll events with debouncing.
      * This should be called when the scroll value changes.
      */
@@ -103,7 +121,10 @@ public class ScrollHandler {
         }, SCROLL_DEBOUNCE_MS);
 
         // Update current page indicator on JavaFX thread to ensure UI is updated
-        Platform.runLater(this::updateCurrentPageFromScroll);
+        // Skip if page updates are locked (during programmatic navigation)
+        if (!isPageUpdateLocked()) {
+            Platform.runLater(this::updateCurrentPageFromScroll);
+        }
     }
 
     /**
@@ -295,6 +316,11 @@ public class ScrollHandler {
      * Updates the current page indicator based on scroll position.
      */
     private void updateCurrentPageFromScroll() {
+        // Skip if page updates are locked (during programmatic navigation)
+        if (isPageUpdateLocked()) {
+            return;
+        }
+
         if (currentDocument == null || pagesContainer == null || scrollPane == null) {
             return;
         }

@@ -68,6 +68,12 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
 
         currentDocument.setCurrentPage(pageIndex);
 
+        // Lock scroll-based page updates during navigation animation
+        org.pdflite.controller.ScrollHandler scrollHandler = mainController.getScrollHandler();
+        if (scrollHandler != null) {
+            scrollHandler.lockPageUpdates();
+        }
+
         Platform.runLater(() -> {
             scrollToPage(pageIndex);
             mainController.updatePageInfo();
@@ -86,6 +92,13 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
         }
 
         currentDocument.setCurrentPage(pageIndex);
+        
+        // Lock scroll-based page updates during navigation animation
+        org.pdflite.controller.ScrollHandler scrollHandler = mainController.getScrollHandler();
+        if (scrollHandler != null) {
+            scrollHandler.lockPageUpdates();
+        }
+        
         scrollToCurrentPage();
         mainController.updatePageInfo();
     }

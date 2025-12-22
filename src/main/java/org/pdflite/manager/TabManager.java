@@ -177,6 +177,14 @@ public class TabManager {
         return context != null ? context.getAnnotationManager() : null;
     }
 
+    /**
+     * Gets the current scroll handler from the active tab.
+     */
+    public ScrollHandler getCurrentScrollHandler() {
+        DocumentContext context = getCurrentContext();
+        return context != null ? context.getScrollHandler() : null;
+    }
+
     public Map<Tab, DocumentContext> getTabContextMap() {
         return tabContextMap;
     }
@@ -225,6 +233,9 @@ public class TabManager {
             tabScrollHandler.setDocument(newDocument, pagesContainer);
             tabScrollHandler.setPageChangeListener(
                     ListenerFactory.createPageChangeListener(newDocument, pageInfoManager));
+            
+            // Store scroll handler in context
+            context.setScrollHandler(tabScrollHandler);
 
             // Setup scroll listener for this tab
             scrollPane.vvalueProperty().addListener((obs, oldVal, newVal) -> {
