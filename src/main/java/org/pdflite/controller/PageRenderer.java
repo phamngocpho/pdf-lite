@@ -253,7 +253,7 @@ public class PageRenderer {
                 // Show error in UI
                 Platform.runLater(() -> {
                     if (!pageBox.getChildren().isEmpty() &&
-                            pageBox.getChildren().getFirst() instanceof StackPane stackPane) {
+                            pageBox.getChildren().get(0) instanceof StackPane stackPane) {
                         Label errorLabel = new Label("Error loading page " + (pageIndex + 1));
                         errorLabel.setStyle("-fx-text-fill: red;");
                         stackPane.getChildren().clear();
@@ -403,7 +403,7 @@ public class PageRenderer {
         }
 
         // Only unload if it's actually rendered (has ImageView)
-        Object firstChild = pageBox.getChildren().getFirst();
+        Object firstChild = pageBox.getChildren().get(0);
         if (!(firstChild instanceof StackPane stackPane)) {
             return;
         }
@@ -440,7 +440,7 @@ public class PageRenderer {
         pagesContainer.getChildren().forEach(node -> {
             if (node instanceof VBox pageBox && !pageBox.getChildren().isEmpty()) {
                 // Lấy StackPane (chứa Ảnh, Annotation, ContextMenu)
-                if (pageBox.getChildren().getFirst() instanceof StackPane stack) {
+                if (pageBox.getChildren().get(0) instanceof StackPane stack) {
                     stack.getChildren().forEach(layer -> {
 
                         // Xử lý lớp chọn Text (ContextMenuPane)

@@ -9,7 +9,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javafx.application.Platform;
+import javafx.geometry.Bounds;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
@@ -32,6 +34,10 @@ public class RenderingManager {
     private Pane contentPane;
     // Two-page mode flag
     private boolean twoPageMode = false;
+
+    // Zoom operations can be triggered rapidly; use a sequence guard so only the latest
+    // request applies its scroll restoration.
+    private long zoomSequence = 0;
 
     /**
      * Creates a new RenderingManager.
@@ -138,11 +144,54 @@ public class RenderingManager {
         }
 
         try {
-            // Lưu vị trí scroll trước khi zoom
-            javafx.geometry.Bounds viewportBounds = scrollPane.getViewportBounds();
-            javafx.geometry.Bounds contentBounds = pagesContainer.getBoundsInLocal();
+            final long zoomRequestId = ++zoomSequence;
+
+            // Ensure layout is up-to-date before capturing scroll/anchor.
+            scrollPane.applyCss();
+            scrollPane.layout();
+            pagesContainer.applyCss();
+            pagesContainer.layout();
+
+            Node scrollContent = scrollPane.getContent();
+            if (scrollContent == null) {
+                return;
+            }
+            scrollContent.applyCss();
+            if (scrollContent instanceof javafx.scene.Parent parent) {
+                parent.layout();
+            }
+
+            // Capture an anchor point (viewport center) within the current page so zoom keeps the same spot visible.
+            int totalPages = currentDocument.getTotalPages();
+            double viewportHeight = scrollPane.getViewportBounds().getHeight();
+            double oldContentHeight = scrollContent.getBoundsInLocal().getHeight();
             double oldVValue = scrollPane.getVvalue();
-            double oldContentHeight = contentBounds.getHeight();
+            double oldScrollY = (oldContentHeight > viewportHeight)
+                    ? oldVValue * (oldContentHeight - viewportHeight)
+                    : 0;
+            double oldAnchorYInContent = oldScrollY + (viewportHeight / 2.0);
+
+            Bounds pagesBoundsInContent = pagesContainer.getBoundsInParent();
+            double oldAnchorYInPagesContainer = oldAnchorYInContent - pagesBoundsInContent.getMinY();
+
+            AnchorInfo anchorInfo = findAnchorInfoFromLayout(oldAnchorYInPagesContainer, totalPages);
+            int anchorPageIndex = anchorInfo.pageIndex;
+            double relativeOffsetInPage = anchorInfo.relativeOffset;
+
+            if (anchorPageIndex < 0) {
+                anchorPageIndex = Math.max(0, Math.min(totalPages - 1, currentDocument.getCurrentPage()));
+                relativeOffsetInPage = 0.5;
+            }
+
+            final int anchorPageIndexFinal = anchorPageIndex;
+            final double relativeOffsetInPageFinal = relativeOffsetInPage;
+            // totalPages is captured above; no need to capture again.
+
+            // Switch layout mode based on the threshold (70% => 0.7)
+            boolean shouldTwoPage = newZoom < 0.7;
+            if (shouldTwoPage != this.twoPageMode) {
+                applyTwoPageModeLayout(shouldTwoPage);
+            }
 
             // CRITICAL: Clear cache trước để không dùng image cũ
             pageRenderer.clearCache();
@@ -183,19 +232,47 @@ public class RenderingManager {
 
             // Khôi phục vị trí scroll (tỷ lệ tương đối)
             Platform.runLater(() -> {
+                if (zoomRequestId != zoomSequence) {
+                    // A newer zoom request has superseded this one.
+                    return;
+                }
+
+                scrollPane.applyCss();
+                scrollPane.layout();
                 pagesContainer.applyCss();
                 pagesContainer.layout();
 
-                javafx.geometry.Bounds newContentBounds = pagesContainer.getBoundsInLocal();
-                double newContentHeight = newContentBounds.getHeight();
-
-                if (newContentHeight > 0 && oldContentHeight > 0) {
-                    // Giữ nguyên tỷ lệ scroll
-                    double oldScrollY = oldVValue * (oldContentHeight - viewportBounds.getHeight());
-                    double newScrollY = oldScrollY * (newContentHeight / oldContentHeight);
-                    double newVValue = newScrollY / (newContentHeight - viewportBounds.getHeight());
-                    scrollPane.setVvalue(Math.max(0, Math.min(1, newVValue)));
+                Node newScrollContent = scrollPane.getContent();
+                if (newScrollContent == null) {
+                    return;
                 }
+                newScrollContent.applyCss();
+                if (newScrollContent instanceof javafx.scene.Parent parent) {
+                    parent.layout();
+                }
+
+                double newViewportHeight = scrollPane.getViewportBounds().getHeight();
+                double newContentHeight = newScrollContent.getBoundsInLocal().getHeight();
+
+                Bounds newPagesBoundsInContent = pagesContainer.getBoundsInParent();
+
+                Bounds pageBoundsInPages = getPageBoundsInPagesContainer(anchorPageIndexFinal);
+                if (pageBoundsInPages == null || pageBoundsInPages.getHeight() <= 0) {
+                    return;
+                }
+
+                double newAnchorYInPages = pageBoundsInPages.getMinY()
+                        + (relativeOffsetInPageFinal * pageBoundsInPages.getHeight());
+                double newAnchorYInContent = newPagesBoundsInContent.getMinY() + newAnchorYInPages;
+
+                double newScrollY = newAnchorYInContent - (newViewportHeight / 2.0);
+                double newVValue;
+                if (newContentHeight <= newViewportHeight) {
+                    newVValue = 0;
+                } else {
+                    newVValue = newScrollY / (newContentHeight - newViewportHeight);
+                }
+                scrollPane.setVvalue(clamp(newVValue, 0.0, 1.0));
 
                 // Trigger lazy loading for visible pages
                 if (scrollHandler != null) {
@@ -203,8 +280,71 @@ public class RenderingManager {
                 }
             });
 
-        } catch (Exception e) {
+        } catch (NumberFormatException e) {
+            logger.error("Invalid page placeholder id format during zoom", e);
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid page index during zoom", e);
+        } catch (RuntimeException e) {
             logger.error("Error preserving scroll position during zoom", e);
+        }
+    }
+
+    private record AnchorInfo(int pageIndex, double relativeOffset) {
+    }
+
+    private AnchorInfo findAnchorInfoFromLayout(double anchorYInPagesContainer, int totalPages) {
+        int bestIndex = -1;
+        double bestDistance = Double.POSITIVE_INFINITY;
+        double bestRelativeOffset = 0.5;
+
+        for (int i = 0; i < totalPages; i++) {
+            Bounds bounds = getPageBoundsInPagesContainer(i);
+            if (bounds == null) continue;
+
+            double start = bounds.getMinY();
+            double end = bounds.getMaxY();
+
+            double distance;
+            if (anchorYInPagesContainer < start) {
+                distance = start - anchorYInPagesContainer;
+            } else if (anchorYInPagesContainer > end) {
+                distance = anchorYInPagesContainer - end;
+            } else {
+                distance = 0;
+            }
+
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                bestIndex = i;
+
+                double height = bounds.getHeight();
+                if (height > 0) {
+                    bestRelativeOffset = (anchorYInPagesContainer - start) / height;
+                } else {
+                    bestRelativeOffset = 0.5;
+                }
+                bestRelativeOffset = clamp(bestRelativeOffset, 0.0, 1.0);
+
+                if (distance == 0) {
+                    break;
+                }
+            }
+        }
+
+        return new AnchorInfo(bestIndex, bestRelativeOffset);
+    }
+
+    private Bounds getPageBoundsInPagesContainer(int pageIndex) {
+        if (pagesContainer == null) return null;
+        VBox pageBox = PageContainerUtils.findPageBox(pagesContainer, pageIndex);
+        if (pageBox == null) return null;
+
+        try {
+            Bounds sceneBounds = pageBox.localToScene(pageBox.getBoundsInLocal());
+            return pagesContainer.sceneToLocal(sceneBounds);
+        } catch (RuntimeException e) {
+            // Fallback: may be less accurate in nested layouts, but better than null.
+            return pageBox.getBoundsInParent();
         }
     }
 
@@ -216,9 +356,22 @@ public class RenderingManager {
         if (pagesContainer == null || currentDocument == null) return;
         if (this.twoPageMode == enable) return;
 
-        // Remember the current page and scroll position
+        // Remember the current page to keep the user roughly on the same page.
         int currentPage = (scrollHandler != null) ? scrollHandler.getCurrentPageFromScroll() : currentDocument.getCurrentPage();
 
+        applyTwoPageModeLayout(enable);
+
+        Platform.runLater(() -> {
+            pagesContainer.applyCss();
+            pagesContainer.layout();
+            if (scrollHandler != null) {
+                scrollHandler.scrollToPage(Math.max(0, currentPage));
+                scrollHandler.handleScroll();
+            }
+        });
+    }
+
+    private void applyTwoPageModeLayout(boolean enable) {
         // Collect existing page boxes (whether currently single or arranged in rows)
         java.util.List<javafx.scene.layout.VBox> pageBoxes = PageContainerUtils.collectPageBoxes(pagesContainer);
 
@@ -232,7 +385,6 @@ public class RenderingManager {
                 javafx.scene.layout.HBox row = new javafx.scene.layout.HBox(20);
                 row.setAlignment(javafx.geometry.Pos.CENTER);
                 javafx.scene.layout.VBox left = pageBoxes.get(i);
-                // Ensure widths/heights preserved
                 row.getChildren().add(left);
                 if (i + 1 < pageBoxes.size()) {
                     javafx.scene.layout.VBox right = pageBoxes.get(i + 1);
@@ -242,24 +394,15 @@ public class RenderingManager {
             }
         } else {
             // Flatten back to single page VBoxes
-            for (javafx.scene.layout.VBox box : pageBoxes) {
-                pagesContainer.getChildren().add(box);
-            }
+            pagesContainer.getChildren().addAll(pageBoxes);
         }
 
-        // Mark property for helpers
         pagesContainer.getProperties().put("twoPageMode", enable);
         this.twoPageMode = enable;
+    }
 
-        // Layout and restore view to the current page
-        Platform.runLater(() -> {
-            pagesContainer.applyCss();
-            pagesContainer.layout();
-            if (scrollHandler != null) {
-                scrollHandler.scrollToPage(Math.max(0, currentPage));
-                scrollHandler.handleScroll();
-            }
-        });
+    private static double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     /**

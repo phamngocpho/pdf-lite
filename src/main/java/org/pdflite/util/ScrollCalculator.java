@@ -30,7 +30,7 @@ public class ScrollCalculator {
      * @return the Y position in pixels
      */
     public static double calculatePageYPosition(VBox pagesContainer, int targetPageIndex) {
-        double currentY = 0;
+        double currentY = getTopInset(pagesContainer);
 
         Object twoMode = pagesContainer.getProperties().get("twoPageMode");
         boolean twoPage = twoMode instanceof Boolean && (Boolean) twoMode;
@@ -66,21 +66,52 @@ public class ScrollCalculator {
         Object twoMode = pagesContainer.getProperties().get("twoPageMode");
         boolean twoPage = twoMode instanceof Boolean && (Boolean) twoMode;
 
-        double calculatedHeight = 0;
+        double calculatedHeight;
 
         if (!twoPage) {
             calculatedHeight = calculatePageYPosition(pagesContainer, totalPages);
+            // calculatePageYPosition(totalPages) adds PAGE_SPACING after the last page; remove it.
+            if (totalPages > 0) {
+                calculatedHeight -= PAGE_SPACING;
+            }
+            calculatedHeight += getBottomInset(pagesContainer);
         } else {
-            // total rows = ceil(totalPages / 2)
+            // Two-page mode: pagesContainer children are rows
+            calculatedHeight = getTopInset(pagesContainer);
             int rows = pagesContainer.getChildren().size();
             for (int r = 0; r < rows; r++) {
                 double rowHeight = calculateRowHeight(pagesContainer, r);
                 calculatedHeight += rowHeight + PAGE_SPACING;
             }
+            // Remove trailing spacing after the last row
+            if (rows > 0) {
+                calculatedHeight -= PAGE_SPACING;
+            }
+            calculatedHeight += getBottomInset(pagesContainer);
         }
+
+        calculatedHeight = Math.max(0, calculatedHeight);
 
         // Use the larger of calculated height or actual container height
         return Math.max(calculatedHeight, pagesContainer.getHeight());
+    }
+
+    private static double getTopInset(VBox pagesContainer) {
+        if (pagesContainer == null) return 0;
+        try {
+            return pagesContainer.getInsets() != null ? pagesContainer.getInsets().getTop() : 0;
+        } catch (Exception ignored) {
+            return 0;
+        }
+    }
+
+    private static double getBottomInset(VBox pagesContainer) {
+        if (pagesContainer == null) return 0;
+        try {
+            return pagesContainer.getInsets() != null ? pagesContainer.getInsets().getBottom() : 0;
+        } catch (Exception ignored) {
+            return 0;
+        }
     }
 
     /**

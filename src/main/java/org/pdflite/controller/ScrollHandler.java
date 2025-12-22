@@ -271,7 +271,7 @@ public class ScrollHandler {
             return true;
         }
 
-        Object firstChild = pageBox.getChildren().isEmpty() ? null : pageBox.getChildren().getFirst();
+        Object firstChild = pageBox.getChildren().isEmpty() ? null : pageBox.getChildren().get(0);
         if (firstChild instanceof javafx.scene.layout.StackPane stackPane) {
             // If StackPane contains an ImageView, it's rendered
             boolean hasImageView = stackPane.getChildren().stream()
@@ -322,19 +322,34 @@ public class ScrollHandler {
             double visibleStart = scrollValue * (contentHeight - viewportHeight);
             double visibleCenter = visibleStart + (viewportHeight / 2);
 
-
+            int bestIndex = 0;
+            double bestDistance = Double.POSITIVE_INFINITY;
             for (int i = 0; i < totalPages; i++) {
                 ScrollCalculator.PageBounds bounds = ScrollCalculator.calculatePageBounds(pagesContainer, i);
 
                 if (bounds.contains(visibleCenter)) {
-                    if (currentDocument.getCurrentPage() != i) {
-                        currentDocument.setCurrentPage(i);
-                        // Notify listener about page change
-                        if (pageChangeListener != null) {
-                            pageChangeListener.onPageChanged(i);
-                        }
-                    }
+                    bestIndex = i;
                     break;
+                }
+
+                double distance;
+                if (visibleCenter < bounds.start()) {
+                    distance = bounds.start() - visibleCenter;
+                } else if (visibleCenter > bounds.end()) {
+                    distance = visibleCenter - bounds.end();
+                } else {
+                    distance = 0;
+                }
+                if (distance < bestDistance) {
+                    bestDistance = distance;
+                    bestIndex = i;
+                }
+            }
+
+            if (currentDocument.getCurrentPage() != bestIndex) {
+                currentDocument.setCurrentPage(bestIndex);
+                if (pageChangeListener != null) {
+                    pageChangeListener.onPageChanged(bestIndex);
                 }
             }
         } catch (Exception e) {
@@ -356,7 +371,8 @@ public class ScrollHandler {
         try {
             double viewportHeight = scrollPane.getViewportBounds().getHeight();
             double scrollValue = scrollPane.getVvalue();
-            double contentHeight = pagesContainer.getHeight();
+            int totalPages = currentDocument.getTotalPages();
+            double contentHeight = getContentHeight(totalPages);
 
             if (contentHeight <= viewportHeight) {
                 return 0;
@@ -364,8 +380,6 @@ public class ScrollHandler {
 
             double visibleStart = scrollValue * (contentHeight - viewportHeight);
             double visibleCenter = visibleStart + (viewportHeight / 2);
-
-            int totalPages = currentDocument.getTotalPages();
 
             for (int i = 0; i < totalPages; i++) {
                 ScrollCalculator.PageBounds bounds = ScrollCalculator.calculatePageBounds(pagesContainer, i);
@@ -395,7 +409,8 @@ public class ScrollHandler {
             try {
                 double currentY = ScrollCalculator.calculatePageYPosition(pagesContainer, pageIndex);
 
-                double contentHeight = pagesContainer.getHeight();
+                int totalPages = currentDocument.getTotalPages();
+                double contentHeight = getContentHeight(totalPages);
                 double viewportHeight = scrollPane.getViewportBounds().getHeight();
 
                 if (contentHeight > viewportHeight) {

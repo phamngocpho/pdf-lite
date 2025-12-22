@@ -207,7 +207,7 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
                             pageBox.layout();
 
                             if (!pageBox.getChildren().isEmpty()
-                                    && pageBox.getChildren().getFirst() instanceof StackPane stackPane) {
+                                    && pageBox.getChildren().get(0) instanceof StackPane stackPane) {
                                 stackPane.layout();
                             }
 
@@ -287,7 +287,7 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
 
                 Platform.runLater(() -> {
                     if (!pageBox.getChildren().isEmpty()
-                            && pageBox.getChildren().getFirst() instanceof StackPane stackPane) {
+                            && pageBox.getChildren().get(0) instanceof StackPane stackPane) {
                         Label errorLabel = new Label("Error loading page");
                         errorLabel.setStyle("-fx-text-fill: red;");
                         stackPane.getChildren().set(0, errorLabel);
@@ -305,11 +305,11 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
             return false;
         }
 
-        Node firstChild = pageBox.getChildren().getFirst();
+        Node firstChild = pageBox.getChildren().get(0);
 
         if (firstChild instanceof StackPane stackPane) {
             if (!stackPane.getChildren().isEmpty()) {
-                Node content = stackPane.getChildren().getFirst();
+                Node content = stackPane.getChildren().get(0);
                 return content instanceof ImageView;
             }
         }

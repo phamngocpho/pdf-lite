@@ -5,10 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javafx.collections.ListChangeListener;
-import javafx.scene.layout.HBox;
-
-
 import org.pdflite.controller.MainController;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
@@ -20,9 +16,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javafx.application.Platform;
+import javafx.collections.ListChangeListener;
 import javafx.scene.Node;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
@@ -314,7 +312,7 @@ public class SearchManager {
         if (pageBox.getChildren().isEmpty()) {
             return null;
         }
-        if (pageBox.getChildren().getFirst() instanceof StackPane stackPane) {
+        if (pageBox.getChildren().get(0) instanceof StackPane stackPane) {
             for (Node node : stackPane.getChildren()) {
                 if (node instanceof AnnotationLayer layer) {
                     syncLayerWithImage(stackPane, layer);
@@ -327,7 +325,7 @@ public class SearchManager {
 
     private void syncLayerWithImage(StackPane stackPane, AnnotationLayer layer) {
         if (!stackPane.getChildren().isEmpty()
-                && stackPane.getChildren().getFirst() instanceof ImageView imageView) {
+                && stackPane.getChildren().get(0) instanceof ImageView imageView) {
             Image image = imageView.getImage();
             if (image != null) {
                 double imageWidth = image.getWidth();

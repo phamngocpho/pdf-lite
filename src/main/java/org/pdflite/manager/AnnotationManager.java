@@ -3,7 +3,6 @@ package org.pdflite.manager;
 import java.util.List;
 import java.util.function.Consumer;
 
-import javafx.scene.paint.Color;
 import org.pdflite.model.Annotation;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.util.PageContainerUtils;
@@ -14,6 +13,7 @@ import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 
 /**
  * Manages annotation operations for PDF pages.
@@ -125,7 +125,7 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
         VBox pageBox = PageContainerUtils.findPageBox(pagesContainer, pageIndex);
         if (pageBox == null || pageBox.getChildren().isEmpty()) return;
 
-        if (pageBox.getChildren().getFirst() instanceof StackPane stack) {
+        if (pageBox.getChildren().get(0) instanceof StackPane stack) {
             stack.getChildren().stream()
                     .filter(node -> node instanceof AnnotationLayer)
                     .map(node -> (AnnotationLayer) node)
@@ -142,7 +142,7 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
     private void processAllAnnotationLayers(Consumer<AnnotationLayer> action) {
         for (VBox pageBox : PageContainerUtils.collectPageBoxes(pagesContainer)) {
             if (pageBox == null || pageBox.getChildren().isEmpty()) continue;
-            if (pageBox.getChildren().getFirst() instanceof StackPane stack) {
+            if (pageBox.getChildren().get(0) instanceof StackPane stack) {
                 stack.getChildren().stream()
                         .filter(child -> child instanceof AnnotationLayer)
                         .map(child -> (AnnotationLayer) child)

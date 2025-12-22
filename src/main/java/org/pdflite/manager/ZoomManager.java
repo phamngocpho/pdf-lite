@@ -1,15 +1,16 @@
 package org.pdflite.manager;
 
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.image.Image;
+import java.io.IOException;
+
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
 import org.pdflite.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.image.Image;
 
 /**
  * Manages all zoom-related operations for the PDF viewer.
@@ -25,6 +26,9 @@ public class ZoomManager {
     private ComboBox<String> zoomComboBox;
     private ScrollPane scrollPane;
     private PDFDocument currentDocument;
+
+    // Programmatic updates to the zoom combo box should not trigger zoom-change handling.
+    private boolean suppressZoomComboBoxEvent = false;
 
     /**
      * Interface for listening to zoom changes.
@@ -67,7 +71,7 @@ public class ZoomManager {
 
         if (zoomComboBox != null) {
             zoomComboBox.getItems().addAll("50%", "75%", "100%", "125%", "150%", "200%");
-            zoomComboBox.setValue("100%");
+            setZoomComboBoxValueSafely("100%");
         }
     }
 
@@ -101,7 +105,7 @@ public class ZoomManager {
         // Update the zoom combo box display immediately for better visibility
         if (currentDocument != null && zoomComboBox != null) {
             String zoomValue = String.format("%.0f%%", zoom * 100);
-            zoomComboBox.setValue(zoomValue);
+            setZoomComboBoxValueSafely(zoomValue);
         }
     }
 
@@ -129,11 +133,19 @@ public class ZoomManager {
      * Handles zoom combo box change.
      */
     public void handleZoomComboBoxChange() {
+        if (suppressZoomComboBoxEvent) {
+            return;
+        }
         if (zoomComboBox != null && currentDocument != null) {
             String value = zoomComboBox.getValue();
             if (value != null) {
                 try {
-                    currentZoom = Double.parseDouble(value.replace("%", "")) / 100.0;
+                    double newZoom = Double.parseDouble(value.replace("%", "")) / 100.0;
+                    // Avoid re-applying the same zoom due to programmatic value changes or rounding.
+                    if (Math.abs(newZoom - currentZoom) < 1e-9) {
+                        return;
+                    }
+                    currentZoom = newZoom;
                     applyZoom(null);
                 } catch (NumberFormatException e) {
                     logger.error("Invalid zoom value: {}", value);
@@ -212,7 +224,7 @@ public class ZoomManager {
             // Update zoom combo box with clear percentage display
             if (zoomComboBox != null) {
                 String zoomValue = String.format("%.0f%%", currentZoom * 100);
-                zoomComboBox.setValue(zoomValue);
+                setZoomComboBoxValueSafely(zoomValue);
             }
 
             // Display zoom level clearly in status messages
@@ -229,6 +241,23 @@ public class ZoomManager {
             }
         } else {
             logger.warn("currentDocument is null - cannot apply zoom!");
+        }
+    }
+
+    private void setZoomComboBoxValueSafely(String zoomValue) {
+        if (zoomComboBox == null || zoomValue == null) {
+            return;
+        }
+
+        // Avoid firing action/value-change handlers when we set the value programmatically.
+        try {
+            suppressZoomComboBoxEvent = true;
+            String currentValue = zoomComboBox.getValue();
+            if (!zoomValue.equals(currentValue)) {
+                zoomComboBox.setValue(zoomValue);
+            }
+        } finally {
+            suppressZoomComboBoxEvent = false;
         }
     }
 

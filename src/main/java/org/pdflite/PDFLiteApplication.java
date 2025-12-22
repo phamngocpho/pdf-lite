@@ -1,5 +1,12 @@
 package org.pdflite;
 
+import java.io.IOException;
+
+import org.pdflite.controller.MainController;
+import org.pdflite.manager.TitleBarManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javafx.animation.FadeTransition;
 import javafx.animation.Interpolator;
 import javafx.application.Application;
@@ -8,13 +15,6 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.util.Duration;
-import org.pdflite.controller.MainController;
-import org.pdflite.manager.TitleBarManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.Objects;
 
 /**
  * Main JavaFX Application class for PDF Lite.
@@ -75,14 +75,20 @@ public class PDFLiteApplication extends Application {
         stage.setMinWidth(MIN_WIDTH);
         stage.setMinHeight(MIN_HEIGHT);
 
-        FXMLLoader fxmlLoader = new FXMLLoader(PDFLiteApplication.class.getResource("main-view.fxml"));
+        var fxmlUrl = PDFLiteApplication.class.getResource("/org/pdflite/main-view.fxml");
+        if (fxmlUrl == null) {
+            throw new IllegalStateException("Cannot find FXML on classpath: /org/pdflite/main-view.fxml");
+        }
+        FXMLLoader fxmlLoader = new FXMLLoader(fxmlUrl);
         // Don’t set an explicit size; let maximizing handle it to avoid window flashing
         Scene scene = new Scene(fxmlLoader.load());
 
         // Add CSS stylesheet
-        scene.getStylesheets().add(
-                Objects.requireNonNull(PDFLiteApplication.class.getResource("styles.css")).toExternalForm()
-        );
+        var cssUrl = PDFLiteApplication.class.getResource("/org/pdflite/styles.css");
+        if (cssUrl == null) {
+            throw new IllegalStateException("Cannot find CSS on classpath: /org/pdflite/styles.css");
+        }
+        scene.getStylesheets().add(cssUrl.toExternalForm());
 
         stage.setTitle("PDF Lite - PDF Viewer & Editor");
         stage.setScene(scene);

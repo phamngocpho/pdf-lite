@@ -113,17 +113,6 @@ public class ListenerFactory {
                 renderingManager != null ? "set" : "null");
 
         if (currentDocument != null && pagesContainer != null && scrollPane != null) {
-            // Switch layout mode based on the threshold (70% => 0.7)
-            try {
-                if (renderingManager != null) {
-                    boolean shouldTwoPage = newZoom < 0.7;
-                    logger.info("Setting two-page mode: {}", shouldTwoPage);
-                    renderingManager.setTwoPageMode(shouldTwoPage);
-                }
-            } catch (Exception e) {
-                logger.error("Error switching page layout mode", e);
-            }
-
             if (renderingManager != null) {
                 logger.info("Calling renderingManager.preserveScrollPositionAndApplyZoom({})", newZoom);
                 renderingManager.preserveScrollPositionAndApplyZoom(newZoom);
