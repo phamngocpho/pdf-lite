@@ -401,6 +401,7 @@ public class MainController {
         // PDF Optimization Manager
         pdfOptimizationManager = new PDFOptimizationManager(
                 uiStateManager, renderingManager, saveStatusManager, themeManager);
+        pdfOptimizationManager.setRenderingManagerSupplier(this::getCurrentRenderingManager);
 
         // Page Operations Manager
         pageOperationsManager = new PageOperationsManager(
@@ -982,6 +983,7 @@ public class MainController {
     @FXML
     private void handleReorderPages() {
         PDFDocument currentDocument = getActiveDocument();
+        RenderingManager currentRenderingManager = getCurrentRenderingManager();
         dialogManager.openPageReorderDialog(currentDocument, () -> {
             // Callback: Refresh view after successful reorder
             Platform.runLater(() -> {
@@ -989,8 +991,10 @@ public class MainController {
                 currentDocument.clearCache();
                 pageRenderer.clearCache();
 
-                // Re-render all pages
-                renderingManager.renderAllPages();
+                // Re-render all pages using current tab's rendering manager
+                if (currentRenderingManager != null) {
+                    currentRenderingManager.renderAllPages();
+                }
 
                 // Update status
                 uiStateManager.updateStatus("Pages reordered - Don't forget to save!");

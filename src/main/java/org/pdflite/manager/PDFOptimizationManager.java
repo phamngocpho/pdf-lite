@@ -8,13 +8,33 @@ import org.slf4j.LoggerFactory;
 
 import javafx.concurrent.Task;
 
+import java.util.function.Supplier;
+
 /**
  * Manages PDF optimization operations including compression and file size reduction.
  */
-public record PDFOptimizationManager(UIStateManager uiStateManager, RenderingManager renderingManager,
-                                     SaveStatusManager saveStatusManager, ThemeManager themeManager) {
+public class PDFOptimizationManager {
 
     private static final Logger logger = LoggerFactory.getLogger(PDFOptimizationManager.class);
+
+    private final UIStateManager uiStateManager;
+    private final SaveStatusManager saveStatusManager;
+    private final ThemeManager themeManager;
+    private Supplier<RenderingManager> renderingManagerSupplier;
+
+    public PDFOptimizationManager(UIStateManager uiStateManager, RenderingManager renderingManager,
+                                  SaveStatusManager saveStatusManager, ThemeManager themeManager) {
+        this.uiStateManager = uiStateManager;
+        this.saveStatusManager = saveStatusManager;
+        this.themeManager = themeManager;
+    }
+
+    /**
+     * Sets the rendering manager supplier for multi-tab support.
+     */
+    public void setRenderingManagerSupplier(Supplier<RenderingManager> renderingManagerSupplier) {
+        this.renderingManagerSupplier = renderingManagerSupplier;
+    }
 
     /**
      * Opens the PDF optimization dialog and handles compression.
@@ -101,8 +121,9 @@ public record PDFOptimizationManager(UIStateManager uiStateManager, RenderingMan
     private void handleCompressionSuccess(Boolean result, CompressionManager.CompressionLevel level) {
         if (result) {
             // Re-render all pages to show compressed version
-            if (renderingManager != null) {
-                renderingManager.renderAllPages();
+            RenderingManager rm = renderingManagerSupplier != null ? renderingManagerSupplier.get() : null;
+            if (rm != null) {
+                rm.renderAllPages();
             }
 
             uiStateManager.updateStatus("PDF optimized - Don't forget to save!");
