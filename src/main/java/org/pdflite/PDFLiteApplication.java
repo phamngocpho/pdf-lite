@@ -83,6 +83,9 @@ public class PDFLiteApplication extends Application {
         scene.getStylesheets().add(
                 Objects.requireNonNull(PDFLiteApplication.class.getResource("styles.css")).toExternalForm()
         );
+        scene.getStylesheets().add(
+                Objects.requireNonNull(PDFLiteApplication.class.getResource("chat-styles.css")).toExternalForm()
+        );
 
         stage.setTitle("PDF Lite - PDF Viewer & Editor");
         stage.setScene(scene);

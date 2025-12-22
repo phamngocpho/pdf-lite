@@ -105,6 +105,8 @@
                 </Menu>
 
                 <Menu text="Help">
+                    <MenuItem text="AI Assistant..." onAction="#handleOpenChat" accelerator="Ctrl+Shift+A"/>
+                    <SeparatorMenuItem/>
                     <MenuItem text="About" onAction="#handleAbout"/>
                 </Menu>
                 <Menu text="Theme">
@@ -277,6 +279,11 @@
                 </MenuButton>
 
                 <Region HBox.hgrow="ALWAYS"/>
+
+                <!-- AI Chat Button -->
+                <Button text="🤖 AI Chat" onAction="#handleOpenChat" styleClass="ai-chat-button">
+                    <tooltip><Tooltip text="AI Assistant (Ctrl+Shift+A)"/></tooltip>
+                </Button>
             </ToolBar>
         </VBox>
     </top>
