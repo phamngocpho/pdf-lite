@@ -47,20 +47,31 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
      *
      * @param currentDocument the current PDF document
      * @param angle           the rotation angle in degrees (positive for clockwise, negative for counter-clockwise)
+     * @param currentRenderingManager the rendering manager for the current tab
      */
-    public void rotateDocument(PDFDocument currentDocument, int angle) {
+    public void rotateDocument(PDFDocument currentDocument, int angle, RenderingManager currentRenderingManager) {
         if (currentDocument == null) return;
 
         // Calculate a new rotation angle
         int currentRot = currentDocument.getRotation();
         currentDocument.setRotation(currentRot + angle);
 
-        // Re-render the screen
-        if (renderingManager != null && zoomManager != null) {
-            renderingManager.preserveScrollPositionAndApplyZoom(zoomManager.getCurrentZoom());
+        // Re-render the screen using the tab's rendering manager
+        RenderingManager rm = currentRenderingManager != null ? currentRenderingManager : renderingManager;
+        if (rm != null && zoomManager != null) {
+            rm.preserveScrollPositionAndApplyZoom(zoomManager.getCurrentZoom());
         }
 
         uiStateManager.updateStatus("Rotated document " + (angle > 0 ? "Right" : "Left"));
+    }
+
+    /**
+     * Rotates the document by the specified angle (uses global rendering manager).
+     * @deprecated Use {@link #rotateDocument(PDFDocument, int, RenderingManager)} instead for multi-tab support.
+     */
+    @Deprecated
+    public void rotateDocument(PDFDocument currentDocument, int angle) {
+        rotateDocument(currentDocument, angle, renderingManager);
     }
 
     /**

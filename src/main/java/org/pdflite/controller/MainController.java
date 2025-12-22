@@ -947,7 +947,8 @@ public class MainController {
     @FXML
     private void handleRotateLeft() {
         PDFDocument currentDocument = getActiveDocument();
-        documentOperationManager.rotateDocument(currentDocument, -90);
+        RenderingManager currentRenderingManager = getCurrentRenderingManager();
+        documentOperationManager.rotateDocument(currentDocument, -90, currentRenderingManager);
         if (saveStatusManager != null) {
             saveStatusManager.triggerAutoSave();
         }
@@ -956,10 +957,19 @@ public class MainController {
     @FXML
     private void handleRotateRight() {
         PDFDocument currentDocument = getActiveDocument();
-        documentOperationManager.rotateDocument(currentDocument, 90);
+        RenderingManager currentRenderingManager = getCurrentRenderingManager();
+        documentOperationManager.rotateDocument(currentDocument, 90, currentRenderingManager);
         if (saveStatusManager != null) {
             saveStatusManager.triggerAutoSave();
         }
+    }
+
+    /**
+     * Gets the current rendering manager from the active tab.
+     */
+    private RenderingManager getCurrentRenderingManager() {
+        org.pdflite.model.DocumentContext context = getCurrentContext();
+        return context != null ? context.getRenderingManager() : renderingManager;
     }
 
     @FXML
