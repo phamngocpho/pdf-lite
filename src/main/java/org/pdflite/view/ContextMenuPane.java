@@ -407,12 +407,22 @@ public class ContextMenuPane extends StackPane {
         if (currentDocument == null) {
             return false;
         }
+
+        double finalScale = currentZoom * org.pdflite.util.Constants.LOW_RENDER_SCALE;
+        if (finalScale <= 0) {
+            return false;
+        }
+
+        // Convert cursor from canvas space to PDF space
+        double pdfX = x / finalScale;
+        double pdfY = y / finalScale;
+
         List<org.pdflite.model.Annotation> pageAnnotations = currentDocument.getAnnotationsForPage(currentPageIndex);
         for (org.pdflite.model.Annotation annotation : pageAnnotations) {
             if (annotation instanceof org.pdflite.model.HighlightAnnotation highlight) {
                 double x2 = highlight.getX() + highlight.getWidth();
                 double y2 = highlight.getY() + highlight.getHeight();
-                if (x >= highlight.getX() && x <= x2 && y >= highlight.getY() && y <= y2) {
+                if (pdfX >= highlight.getX() && pdfX <= x2 && pdfY >= highlight.getY() && pdfY <= y2) {
                     return true;
                 }
             }

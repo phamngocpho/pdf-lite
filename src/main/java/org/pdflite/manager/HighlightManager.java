@@ -97,27 +97,28 @@ public class HighlightManager {
                         // Create highlight annotations for each region
                         for (Rectangle2D region : highlightRegions) {
                             // highlightRegions are in PDF coordinates (from SmartTextSelector)
-                            // Need to convert to canvas coordinates for AnnotationLayer
+                            // Store in PDF coordinate space so it remains correct when zoom changes.
+                            // We keep the "extra padding" as pixels by converting it back into PDF units.
 
-                            // Convert PDF coordinates to canvas coordinates
                             double finalScale = zoom * org.pdflite.util.Constants.LOW_RENDER_SCALE;
+                            double extraPaddingPdf = (finalScale > 0) ? (HIGHLIGHT_EXTRA_PADDING_PX / finalScale) : 0.0;
 
-                            double canvasX = region.getX() * finalScale;
-                            double canvasY = region.getY() * finalScale;
-                            double canvasWidth = region.getWidth() * finalScale;
+                            double pdfX = region.getX();
+                            double pdfY = region.getY();
+                            double pdfWidth = region.getWidth();
 
-                            double originalHeight = region.getHeight() * finalScale;
-                            double expandedHeight = (originalHeight * HIGHLIGHT_HEIGHT_MULTIPLIER) + HIGHLIGHT_EXTRA_PADDING_PX;
-                            double canvasHeight = expandedHeight;
-                            double canvasYAdjusted = canvasY - ((expandedHeight - originalHeight) / 2.0);
+                            double originalHeightPdf = region.getHeight();
+                            double expandedHeightPdf = (originalHeightPdf * HIGHLIGHT_HEIGHT_MULTIPLIER) + extraPaddingPdf;
+                            double pdfHeight = expandedHeightPdf;
+                            double pdfYAdjusted = pdfY - ((expandedHeightPdf - originalHeightPdf) / 2.0);
 
                             // Create highlight annotation
                             HighlightAnnotation highlight = new HighlightAnnotation(
                                     pageIndex,
-                                    canvasX,
-                                    canvasYAdjusted,
-                                    canvasWidth,
-                                    canvasHeight,
+                                    pdfX,
+                                    pdfYAdjusted,
+                                    pdfWidth,
+                                    pdfHeight,
                                     highlightColor,
                                     batchId);
 
@@ -125,7 +126,7 @@ public class HighlightManager {
                             currentDocument.addAnnotation(highlight);
 
                             logger.debug("Added highlight: page={}, pdfX={}, pdfY={}, canvasX={}, canvasY={}, w={}, h={}",
-                                    pageIndex, region.getX(), region.getY(), canvasX, canvasY, canvasWidth, canvasHeight);
+                                    pageIndex, region.getX(), region.getY(), pdfX, pdfY, pdfWidth, pdfHeight);
                         }
 
                         // Mark document as modified
@@ -175,6 +176,17 @@ public class HighlightManager {
                             return;
                         }
 
+                        double zoom = zoomSupplier.getAsDouble();
+                        double finalScale = zoom * org.pdflite.util.Constants.LOW_RENDER_SCALE;
+                        if (finalScale <= 0) {
+                            uiStateManager.updateStatus("Invalid zoom/scale");
+                            return;
+                        }
+
+                        // Convert cursor position from canvas space to PDF space
+                        double pdfX = canvasX / finalScale;
+                        double pdfY = canvasY / finalScale;
+
                         // Find topmost highlight at cursor (reverse order)
                         HighlightAnnotation target = null;
                         List<Annotation> all = currentDocument.getAnnotations();
@@ -186,7 +198,7 @@ public class HighlightManager {
                             if (annotation instanceof HighlightAnnotation highlight) {
                                 double x2 = highlight.getX() + highlight.getWidth();
                                 double y2 = highlight.getY() + highlight.getHeight();
-                                if (canvasX >= highlight.getX() && canvasX <= x2 && canvasY >= highlight.getY() && canvasY <= y2) {
+                                if (pdfX >= highlight.getX() && pdfX <= x2 && pdfY >= highlight.getY() && pdfY <= y2) {
                                     target = highlight;
                                     break;
                                 }

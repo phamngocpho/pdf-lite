@@ -14,9 +14,7 @@ import org.pdflite.model.RectangleAnnotation;
 import org.pdflite.model.SearchResult;
 import org.pdflite.model.ShapeAnnotation;
 import org.pdflite.util.Constants;
-
 import static org.pdflite.util.Constants.LOW_RENDER_SCALE;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -326,7 +324,19 @@ public class AnnotationLayer extends Canvas {
         double height = Math.abs(y2 - y1);
 
         if (width > 5 && height > 5) {
-            HighlightAnnotation annotation = new HighlightAnnotation(pageIndex, x, y, width, height, currentColor);
+            double finalScale = this.scale * LOW_RENDER_SCALE;
+            if (finalScale <= 0) {
+                logger.warn("Cannot add highlight: invalid scale={} (finalScale={})", this.scale, finalScale);
+                return;
+            }
+
+            // Store in PDF coordinate space so highlights remain correct when zoom changes
+            double pdfX = x / finalScale;
+            double pdfY = y / finalScale;
+            double pdfWidth = width / finalScale;
+            double pdfHeight = height / finalScale;
+
+            HighlightAnnotation annotation = new HighlightAnnotation(pageIndex, pdfX, pdfY, pdfWidth, pdfHeight, currentColor);
 
             // Don't add to local list - let the callback/command handle it
             // annotations.add(annotation);
@@ -370,9 +380,14 @@ public class AnnotationLayer extends Canvas {
             drawTextRegionHighlights(gc);
             for (Annotation annotation : annotations) {
                 if (annotation instanceof HighlightAnnotation highlight) {
+                    double finalScale = this.scale * LOW_RENDER_SCALE;
                     gc.setFill(getColorWithAlpha(highlight.getColor(), 0.4));
-                    gc.fillRect(highlight.getX(), highlight.getY(),
-                            highlight.getWidth(), highlight.getHeight());
+                    gc.fillRect(
+                            highlight.getX() * finalScale,
+                            highlight.getY() * finalScale,
+                            highlight.getWidth() * finalScale,
+                            highlight.getHeight() * finalScale
+                    );
                 } else if (annotation instanceof CommentAnnotation comment) {
                     drawCommentIcon(gc, comment);
                 } else if (annotation instanceof ShapeAnnotation shape) {
@@ -817,9 +832,18 @@ public class AnnotationLayer extends Canvas {
             Annotation annotation = annotations.get(i);
 
             if (annotation instanceof HighlightAnnotation highlight) {
+                double finalScale = this.scale * LOW_RENDER_SCALE;
+                if (finalScale <= 0) {
+                    continue;
+                }
+
+                // Incoming coordinates are in canvas space; highlights are stored in PDF space
+                double pdfX = x / finalScale;
+                double pdfY = y / finalScale;
+
                 // Check if point is within highlight bounds
-                if (x >= highlight.getX() && x <= (highlight.getX() + highlight.getWidth()) &&
-                        y >= highlight.getY() && y <= (highlight.getY() + highlight.getHeight())) {
+                if (pdfX >= highlight.getX() && pdfX <= (highlight.getX() + highlight.getWidth()) &&
+                        pdfY >= highlight.getY() && pdfY <= (highlight.getY() + highlight.getHeight())) {
                     return annotation;
                 }
             } else if (annotation instanceof ShapeAnnotation shape) {

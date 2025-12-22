@@ -1,14 +1,13 @@
 package org.pdflite.manager;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.pdflite.model.Annotation;
 import org.pdflite.model.HighlightAnnotation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Manager for persisting highlight annotations to PDF using PDFBox.

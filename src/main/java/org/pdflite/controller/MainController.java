@@ -9,8 +9,48 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
-import javafx.scene.control.*;
-import org.pdflite.manager.*;
+import org.pdflite.manager.AnnotationManager;
+import org.pdflite.manager.ApplicationLifecycleManager;
+import org.pdflite.manager.AutoSaveManager;
+import org.pdflite.manager.BookmarkManager;
+import org.pdflite.manager.BookmarkUIManager;
+import org.pdflite.manager.CommentManager;
+import org.pdflite.manager.DialogManager;
+import org.pdflite.manager.DocumentLifecycleManager;
+import org.pdflite.manager.DocumentOperationManager;
+import org.pdflite.manager.DocumentPropertiesManager;
+import org.pdflite.manager.DocumentSetupManager;
+import org.pdflite.manager.DrawingToolIconManager;
+import org.pdflite.manager.DrawingToolsSetupManager;
+import org.pdflite.manager.EncryptionManager;
+import org.pdflite.manager.ExportManager;
+import org.pdflite.manager.FileManager;
+import org.pdflite.manager.FullscreenManager;
+import org.pdflite.manager.HighlightManager;
+import org.pdflite.manager.HighlightPersistenceManager;
+import org.pdflite.manager.ImageInsertionManager;
+import org.pdflite.manager.KeyboardShortcutManager;
+import org.pdflite.manager.ListenerFactory;
+import org.pdflite.manager.MetadataManager;
+import org.pdflite.manager.PDFOptimizationManager;
+import org.pdflite.manager.PageDeletionManager;
+import org.pdflite.manager.PageDuplicationManager;
+import org.pdflite.manager.PageInfoManager;
+import org.pdflite.manager.PageOperationsManager;
+import org.pdflite.manager.RecentFilesManager;
+import org.pdflite.manager.RecentFilesMenuManager;
+import org.pdflite.manager.RecoveryManager;
+import org.pdflite.manager.RenderingManager;
+import org.pdflite.manager.SaveStatusManager;
+import org.pdflite.manager.SearchDialogManager;
+import org.pdflite.manager.SearchManager;
+import org.pdflite.manager.TextEditManager;
+import org.pdflite.manager.ThemeManager;
+import org.pdflite.manager.TitleBarManager;
+import org.pdflite.manager.UIStateManager;
+import org.pdflite.manager.UndoRedoManager;
+import org.pdflite.manager.WindowResizeManager;
+import org.pdflite.manager.ZoomManager;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
 import org.pdflite.service.PDFPrintService;
@@ -29,6 +69,7 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuButton;
+import javafx.scene.control.RadioMenuItem;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
@@ -628,12 +669,12 @@ public class MainController {
         // Save highlights to PDF before saving document
         if (highlightPersistenceManager != null) {
             try {
-                highlightPersistenceManager.saveHighlightsToPDF(
-                        currentDocument.getDocument(),
-                        currentDocument.getAnnotations());
-                logger.info("Highlights saved to PDF");
+            highlightPersistenceManager.saveHighlightsToPDF(
+                currentDocument.getDocument(),
+                currentDocument.getAnnotations());
+            logger.info("Highlights saved to PDF");
             } catch (Exception e) {
-                logger.error("Error saving highlights to PDF", e);
+            logger.error("Error saving highlights to PDF", e);
                 uiStateManager.showError("Save Error",
                         "Failed to save highlights: " + e.getMessage());
             }

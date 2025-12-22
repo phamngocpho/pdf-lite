@@ -1,7 +1,10 @@
 package org.pdflite.manager;
 
-import javafx.stage.FileChooser;
-import javafx.stage.Stage;
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.function.Supplier;
+
 import org.pdflite.dialog.CustomPasswordDialog;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
@@ -9,10 +12,8 @@ import org.pdflite.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.function.Supplier;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
 
 /**
  * Manages file operations for PDF documents.
