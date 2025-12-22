@@ -137,7 +137,7 @@
                 <HBox spacing="3" alignment="CENTER">
                     <Button fx:id="prevButton" text="Previous" onAction="#handlePreviousPage"/>
                     <TextField fx:id="pageNumberField" prefWidth="55" minWidth="55" maxWidth="55" onAction="#handleGoToPage" alignment="CENTER"/>
-                    <Label fx:id="totalPagesLabel" text="/ 0" minWidth="50" alignment="CENTER_LEFT"/>
+                    <Label fx:id="totalPagesLabel" text="/ 0" minWidth="50"/>
                     <Button fx:id="nextButton" text="Next" onAction="#handleNextPage"/>
                 </HBox>
 
@@ -281,7 +281,7 @@
                 <Region HBox.hgrow="ALWAYS"/>
 
                 <!-- AI Chat Button -->
-                <Button text="🤖 AI Chat" onAction="#handleOpenChat" styleClass="ai-chat-button">
+                <Button text="AI Chat" onAction="#handleOpenChat" styleClass="ai-chat-button">
                     <tooltip><Tooltip text="AI Assistant (Ctrl+Shift+A)"/></tooltip>
                 </Button>
             </ToolBar>
