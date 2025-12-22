@@ -16,7 +16,7 @@ import javafx.scene.control.Alert;
  * Manages text editing operations on PDF documents.
  */
 public record TextEditManager(UIStateManager uiStateManager, ContentStreamManager contentStreamManager,
-                              RenderingManager renderingManager, SaveStatusManager saveStatusManager) {
+                              Supplier<RenderingManager> renderingManagerSupplier, SaveStatusManager saveStatusManager) {
 
     private static final Logger logger = LoggerFactory.getLogger(TextEditManager.class);
 
@@ -60,7 +60,7 @@ public record TextEditManager(UIStateManager uiStateManager, ContentStreamManage
                 refreshCurrentPage(currentDocument, pageIndex);
 
                 // Update status
-                uiStateManager.updateStatus("Text replaced successfully - Save to persist changes");
+                uiStateManager.updateStatus("Text replaced successfully");
 
             } catch (IOException e) {
                 logger.error("Error adding text to PDF", e);
@@ -89,22 +89,40 @@ public record TextEditManager(UIStateManager uiStateManager, ContentStreamManage
         // Clear document cache
         document.clearCache();
 
-        // Clear PageRenderer cache and re-render all pages
-        // Note: renderAllPages() only renders visible pages, others are placeholders
-        Platform.runLater(() -> {
-            if (renderingManager != null) {
-                renderingManager.clearPageRendererCache();
-                renderingManager.renderAllPages();
-                logger.info("Cleared cache and re-rendered pages after text edit");
-            } else {
-                logger.warn("RenderingManager is null, cannot refresh page");
-            }
-        });
-
-        // Trigger auto-save after edit
-        if (saveStatusManager != null) {
-            saveStatusManager.triggerAutoSave();
+        // CRITICAL: Get RenderingManager BEFORE Platform.runLater()
+        // because user might switch tabs before runLater executes
+        RenderingManager currentRenderingManager = renderingManagerSupplier.get();
+        
+        if (currentRenderingManager == null) {
+            logger.error("RenderingManager is null, cannot refresh page after text edit");
+            return;
         }
+
+        // Clear PageRenderer cache and re-render all pages
+        Platform.runLater(() -> {
+            logger.info("Clearing cache and re-rendering pages for document: {}", 
+                document.getFile() != null ? document.getFile().getName() : "unknown");
+            currentRenderingManager.clearPageRendererCache();
+            currentRenderingManager.renderAllPages();
+            logger.info("Cleared cache and re-rendered all pages after text edit");
+            
+            // CRITICAL: Wait for rendering to complete before triggering auto-save
+            // This ensures the document is in a stable state before saving
+            // Use another Platform.runLater to ensure rendering tasks complete first
+            Platform.runLater(() -> {
+                // Add a small delay to ensure all rendering is truly complete
+                try {
+                    Thread.sleep(500); // 500ms delay
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                
+                if (saveStatusManager != null) {
+                    saveStatusManager.triggerAutoSave();
+                    logger.info("Auto-save scheduled after text edit and rendering completed");
+                }
+            });
+        });
     }
 
     /**

@@ -71,9 +71,14 @@ public class AnnotationLayer extends Canvas {
     private AnnotationMode currentMode = AnnotationMode.NONE;
 
     /**
-     * The current color to use for new annotations.
+     * The current color to use for new highlight annotations.
      */
-    private Color currentColor = Color.YELLOW;
+    private Color highlightColor = Color.YELLOW;
+
+    /**
+     * The current color to use for new drawing/shape annotations.
+     */
+    private Color drawingColor = Color.WHITE;
 
     /**
      * Starting X coordinate for drag operations.
@@ -159,9 +164,9 @@ public class AnnotationLayer extends Canvas {
         this.currentLineWidth = width;
     }
 
-    // Hàm này dùng chung để set màu cho cả Highlight và Vẽ hình
+    // Hàm này dùng để set màu cho Vẽ hình (shapes)
     public void setDrawingColor(Color color) {
-        this.currentColor = color;
+        this.drawingColor = color;
     }
 
     public void setScale(double scale) {
@@ -246,7 +251,7 @@ public class AnnotationLayer extends Canvas {
                         logger.warn("Cannot draw highlight - GraphicsContext is null (canvas too large)");
                         return;
                     }
-                    gc.setFill(getColorWithAlpha(currentColor, 0.4));
+                    gc.setFill(getColorWithAlpha(highlightColor, 0.4));
                     double x = Math.min(startX, event.getX());
                     double y = Math.min(startY, event.getY());
                     double w = Math.abs(event.getX() - startX);
@@ -258,13 +263,13 @@ public class AnnotationLayer extends Canvas {
             } else {
                 switch (currentMode) {
                     case RECTANGLE:
-                        tempAnnotation = new RectangleAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY, currentColor, currentLineWidth);
+                        tempAnnotation = new RectangleAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY, drawingColor, currentLineWidth);
                         break;
                     case CIRCLE:
-                        tempAnnotation = new CircleAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY, currentColor, currentLineWidth);
+                        tempAnnotation = new CircleAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY, drawingColor, currentLineWidth);
                         break;
                     case ARROW:
-                        tempAnnotation = new ArrowAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY, currentColor, currentLineWidth);
+                        tempAnnotation = new ArrowAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY, drawingColor, currentLineWidth);
                         break;
                 }
                 redraw();
@@ -326,7 +331,7 @@ public class AnnotationLayer extends Canvas {
         double height = Math.abs(y2 - y1);
 
         if (width > 5 && height > 5) {
-            HighlightAnnotation annotation = new HighlightAnnotation(pageIndex, x, y, width, height, currentColor);
+            HighlightAnnotation annotation = new HighlightAnnotation(pageIndex, x, y, width, height, highlightColor);
 
             // Don't add to local list - let the callback/command handle it
             // annotations.add(annotation);
@@ -439,7 +444,7 @@ public class AnnotationLayer extends Canvas {
      * @param color the color to set
      */
     public void setHighlightColor(Color color) {
-        this.currentColor = color;
+        this.highlightColor = color;
     }
 
     /**

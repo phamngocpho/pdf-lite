@@ -281,13 +281,16 @@
         </VBox>
     </top>
 
-    <!-- Center: PDF Viewer (side panels will be added programmatically) -->
+    <!-- Center: PDF Viewer with TabPane for multiple documents -->
     <center>
-        <ScrollPane fx:id="scrollPane" fitToWidth="true" fitToHeight="true" styleClass="pdf-scroll-pane">
-            <StackPane fx:id="contentPane" styleClass="pdf-content-area">
-                <Label text="Open a PDF file to start" styleClass="welcome-text"/>
-            </StackPane>
-        </ScrollPane>
+        <TabPane fx:id="documentTabPane" tabClosingPolicy="ALL_TABS" styleClass="document-tab-pane">
+            <!-- Welcome tab shown when no documents are open -->
+            <Tab text="Welcome" closable="false">
+                <StackPane styleClass="pdf-content-area">
+                    <Label text="Open a PDF file to start" styleClass="welcome-text"/>
+                </StackPane>
+            </Tab>
+        </TabPane>
     </center>
 
     <!-- Bottom: Status Bar -->
