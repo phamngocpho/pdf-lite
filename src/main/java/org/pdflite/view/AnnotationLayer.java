@@ -318,11 +318,15 @@ public class AnnotationLayer extends Canvas {
      * (x, y) represent the top-left corner. Highlights with dimensions smaller
      * than 5x5 pixels are ignored to prevent accidental tiny highlights.
      * </p>
+     * <p>
+     * IMPORTANT: Coordinates are stored in normalized (unscaled) form so that
+     * highlights remain correctly positioned when zoom level changes.
+     * </p>
      *
-     * @param x1 the X coordinate of the first corner
-     * @param y1 the Y coordinate of the first corner
-     * @param x2 the X coordinate of the opposite corner
-     * @param y2 the Y coordinate of the opposite corner
+     * @param x1 the X coordinate of the first corner (in screen/scaled pixels)
+     * @param y1 the Y coordinate of the first corner (in screen/scaled pixels)
+     * @param x2 the X coordinate of the opposite corner (in screen/scaled pixels)
+     * @param y2 the Y coordinate of the opposite corner (in screen/scaled pixels)
      */
     private void addHighlight(double x1, double y1, double x2, double y2) {
         double x = Math.min(x1, x2);
@@ -331,7 +335,15 @@ public class AnnotationLayer extends Canvas {
         double height = Math.abs(y2 - y1);
 
         if (width > 5 && height > 5) {
-            HighlightAnnotation annotation = new HighlightAnnotation(pageIndex, x, y, width, height, highlightColor);
+            // Convert screen coordinates to normalized (unscaled) coordinates
+            // This ensures highlights stay in correct position when zoom changes
+            double normalizedX = x / scale;
+            double normalizedY = y / scale;
+            double normalizedWidth = width / scale;
+            double normalizedHeight = height / scale;
+
+            HighlightAnnotation annotation = new HighlightAnnotation(
+                    pageIndex, normalizedX, normalizedY, normalizedWidth, normalizedHeight, highlightColor);
 
             // Don't add to local list - let the callback/command handle it
             // annotations.add(annotation);
@@ -344,8 +356,8 @@ public class AnnotationLayer extends Canvas {
                 annotations.add(annotation);
             }
 
-            logger.debug("Added highlight annotation at ({}, {}) with size {}x{} on page {}",
-                    x, y, width, height, pageIndex);
+            logger.debug("Added highlight annotation at ({}, {}) with size {}x{} on page {} (normalized coords)",
+                    normalizedX, normalizedY, normalizedWidth, normalizedHeight, pageIndex);
         }
     }
 
@@ -359,6 +371,10 @@ public class AnnotationLayer extends Canvas {
      * <p>
      * Handles GPU texture overflow gracefully by catching NullPointerException
      * when GraphicsContext cannot be created (canvas too large).
+     * </p>
+     * <p>
+     * IMPORTANT: Highlight annotations are stored in normalized (unscaled) coordinates
+     * and are scaled during rendering based on the current zoom level.
      * </p>
      */
     public void redraw() {
@@ -376,8 +392,12 @@ public class AnnotationLayer extends Canvas {
             for (Annotation annotation : annotations) {
                 if (annotation instanceof HighlightAnnotation highlight) {
                     gc.setFill(getColorWithAlpha(highlight.getColor(), 0.4));
-                    gc.fillRect(highlight.getX(), highlight.getY(),
-                            highlight.getWidth(), highlight.getHeight());
+                    // Scale normalized coordinates to screen coordinates
+                    double scaledX = highlight.getX() * scale;
+                    double scaledY = highlight.getY() * scale;
+                    double scaledWidth = highlight.getWidth() * scale;
+                    double scaledHeight = highlight.getHeight() * scale;
+                    gc.fillRect(scaledX, scaledY, scaledWidth, scaledHeight);
                 } else if (annotation instanceof CommentAnnotation comment) {
                     drawCommentIcon(gc, comment);
                 } else if (annotation instanceof ShapeAnnotation shape) {
@@ -822,9 +842,15 @@ public class AnnotationLayer extends Canvas {
             Annotation annotation = annotations.get(i);
 
             if (annotation instanceof HighlightAnnotation highlight) {
+                // Scale normalized coordinates to screen coordinates for hit detection
+                double scaledX = highlight.getX() * scale;
+                double scaledY = highlight.getY() * scale;
+                double scaledWidth = highlight.getWidth() * scale;
+                double scaledHeight = highlight.getHeight() * scale;
+                
                 // Check if point is within highlight bounds
-                if (x >= highlight.getX() && x <= (highlight.getX() + highlight.getWidth()) &&
-                        y >= highlight.getY() && y <= (highlight.getY() + highlight.getHeight())) {
+                if (x >= scaledX && x <= (scaledX + scaledWidth) &&
+                        y >= scaledY && y <= (scaledY + scaledHeight)) {
                     return annotation;
                 }
             } else if (annotation instanceof ShapeAnnotation shape) {

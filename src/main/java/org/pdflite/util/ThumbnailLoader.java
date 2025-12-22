@@ -23,7 +23,7 @@ import java.util.function.Consumer;
  */
 public class ThumbnailLoader {
     private static final Logger logger = LoggerFactory.getLogger(ThumbnailLoader.class);
-    private static final double THUMBNAIL_SIZE = 110.0;
+    private static final double THUMBNAIL_SIZE = 105.0;
     private static final double PREVIEW_SCALE = 0.3;
 
     /**

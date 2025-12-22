@@ -410,9 +410,14 @@ public class ContextMenuPane extends StackPane {
         List<org.pdflite.model.Annotation> pageAnnotations = currentDocument.getAnnotationsForPage(currentPageIndex);
         for (org.pdflite.model.Annotation annotation : pageAnnotations) {
             if (annotation instanceof org.pdflite.model.HighlightAnnotation highlight) {
-                double x2 = highlight.getX() + highlight.getWidth();
-                double y2 = highlight.getY() + highlight.getHeight();
-                if (x >= highlight.getX() && x <= x2 && y >= highlight.getY() && y <= y2) {
+                // Scale render coordinates to screen coordinates for hit detection
+                double scaledX = highlight.getX() * currentZoom;
+                double scaledY = highlight.getY() * currentZoom;
+                double scaledWidth = highlight.getWidth() * currentZoom;
+                double scaledHeight = highlight.getHeight() * currentZoom;
+                double x2 = scaledX + scaledWidth;
+                double y2 = scaledY + scaledHeight;
+                if (x >= scaledX && x <= x2 && y >= scaledY && y <= y2) {
                     return true;
                 }
             }
