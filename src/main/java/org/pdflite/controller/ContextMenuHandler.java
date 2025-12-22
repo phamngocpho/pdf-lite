@@ -721,7 +721,7 @@ public class ContextMenuHandler {
             if (currentPageImages.isEmpty()) {
                 ImageExtractor extractor = new ImageExtractor();
                 currentPageImages = extractor.extractImages(page, pageIndex);
-                logger.info("║ Extracted {} images from page {}                      ║",
+                logger.info("Extracted {} images from page {}",
                         currentPageImages.size(), pageIndex + 1);
             }
 
