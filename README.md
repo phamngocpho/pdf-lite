@@ -76,11 +76,6 @@ cd pdf-lite
 ./mvnw clean package
 ```
 
-On Windows:
-```cmd
-mvnw.cmd clean package
-```
-
 ## Running
 
 ```bash
