@@ -1133,6 +1133,7 @@ public class MainController {
         PDFDocument currentDocument = getActiveDocument();
         VBox pagesContainer = getCurrentPagesContainer();
         ScrollPane scrollPane = getCurrentScrollPane();
+        RenderingManager currentRenderingManager = getCurrentRenderingManager();
         
         if (currentDocument == null) {
             uiStateManager.showError("No PDF", "Please open a PDF file first.");
@@ -1148,7 +1149,7 @@ public class MainController {
 
         PDFDocument updatedDocument = documentOperationManager.insertBlankPages(
                 currentDocument, controller, pagesContainerRef, loadingPages,
-                pageRenderer, scrollHandler, scrollPane);
+                pageRenderer, scrollHandler, scrollPane, currentRenderingManager);
 
         if (updatedDocument != null) {
             VBox updatedContainer = pagesContainerRef.get();

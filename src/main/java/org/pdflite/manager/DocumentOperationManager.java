@@ -230,12 +230,13 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
      * @param pageRenderer    the page renderer
      * @param scrollHandler   the scroll handler
      * @param scrollPane      the scroll pane
+     * @param currentRenderingManager the rendering manager for the current tab
      * @return the updated PDFDocument, or null if insertion failed
      */
     public PDFDocument insertBlankPages(PDFDocument currentDocument, InsertDialogController controller,
                                         AtomicReference<VBox> pagesContainer, Set<Integer> loadingPages,
                                         PageRenderer pageRenderer, ScrollHandler scrollHandler,
-                                        ScrollPane scrollPane) {
+                                        ScrollPane scrollPane, RenderingManager currentRenderingManager) {
         if (currentDocument == null || controller == null || controller.isInsertClicked()) {
             return null;
         }
@@ -271,7 +272,10 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
             pageRenderer.clearCache();
             pageRenderer.cancelAllPendingRenders();
 
-            renderingManager.renderAllPages();
+            // Use the tab's rendering manager instead of global
+            RenderingManager rm = currentRenderingManager != null ? currentRenderingManager : renderingManager;
+            rm.renderAllPages();
+            pagesContainer.set(rm.getPagesContainer());
             scrollHandler.setDocument(currentDocument, pagesContainer.get());
             pageInfoManager.updatePageInfo(currentDocument);
 
