@@ -49,7 +49,7 @@ Feature suggestions are welcome! Please create an issue with:
 
 5. Commit your changes with clear, descriptive messages:
    ```bash
-   git commit -m "Add feature: description of what you added"
+   git commit -m "feat: description of what you added"
    ```
 
 6. Push to your fork:
