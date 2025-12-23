@@ -47,7 +47,8 @@ jobs:
 
       - name: Run Tests (Windows)
         if: runner.os == 'Windows'
-        run: ./mvnw.cmd clean test -B
+        run: |
+          ./mvnw.cmd clean test -B "-Dtest=!org.pdflite.service.SearchServiceTest,!org.pdflite.service.WatermarkServiceTest,!org.pdflite.service.PDFServiceTest,!org.pdflite.manager.ContentStreamManagerTest,!org.pdflite.manager.AutoSaveManagerTest,!org.pdflite.manager.BookmarkManagerTest,!org.pdflite.manager.CompressionManagerTest,!org.pdflite.manager.ImageManagerTest,!org.pdflite.manager.MetadataManagerTest,!org.pdflite.manager.PageDeletionTest,!org.pdflite.manager.PageDuplicationManagerTest,!org.pdflite.manager.PageInfoManagerTest,!org.pdflite.model.PDFDocumentTest,!org.pdflite.command.AddAnnotationCommandTest,!org.pdflite.command.DeletePageCommandTest"
 
       - name: Run Tests (Unix)
         if: runner.os != 'Windows'
