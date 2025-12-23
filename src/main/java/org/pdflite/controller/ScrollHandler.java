@@ -1,9 +1,7 @@
 package org.pdflite.controller;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -30,8 +28,8 @@ import javafx.scene.layout.VBox;
 public class ScrollHandler {
     private static final Logger logger = LoggerFactory.getLogger(ScrollHandler.class);
 
-    private static final long SCROLL_DEBOUNCE_MS = 100; // Wait 100 ms after scroll stops (increased to reduce load frequency)
-    private static final long NAVIGATION_LOCK_MS = 500; // Lock page updates during navigation animation
+    private static final long SCROLL_THROTTLE_MS = 100; // Minimum time between page loads
+    private static final long NAVIGATION_LOCK_MS = 800; // Lock page updates during navigation
 
     private final PageRenderer pageRenderer;
     private final ScrollPane scrollPane;
@@ -39,8 +37,8 @@ public class ScrollHandler {
     private PDFDocument currentDocument;
     private VBox pagesContainer;
     private Timer scrollTimer;
-    private volatile long lastScrollTime = 0;
-    private volatile long navigationLockUntil = 0; // Timestamp until which page updates are locked
+    private volatile long lastLoadTime = 0;
+    private volatile long navigationLockUntil = 0;
     private PageChangeListener pageChangeListener;
 
     /**
@@ -98,30 +96,41 @@ public class ScrollHandler {
     }
 
     /**
-     * Handles scroll events with debouncing.
-     * This should be called when the scroll value changes.
+     * Handles scroll events with throttling.
+     * Loads pages immediately but limits frequency to prevent lag.
      */
     public void handleScroll() {
         if (currentDocument == null || pagesContainer == null) {
             return;
         }
 
-        // Cancel previous timer
-        if (scrollTimer != null) {
-            scrollTimer.cancel();
+        long currentTime = System.currentTimeMillis();
+        
+        // Adaptive throttle based on zoom level - higher zoom = longer throttle
+        double currentZoom = currentDocument.getZoomLevel();
+        long throttleMs = currentZoom >= 1.75 ? 200 : (currentZoom >= 1.5 ? 150 : SCROLL_THROTTLE_MS);
+        
+        // Throttle: load immediately if enough time has passed
+        if (currentTime - lastLoadTime >= throttleMs) {
+            lastLoadTime = currentTime;
+            loadVisiblePages();
+        } else {
+            // Schedule a load for when throttle period ends
+            if (scrollTimer != null) {
+                scrollTimer.cancel();
+            }
+            scrollTimer = new Timer();
+            long delay = throttleMs - (currentTime - lastLoadTime);
+            scrollTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    lastLoadTime = System.currentTimeMillis();
+                    loadVisiblePages();
+                }
+            }, Math.max(10, delay));
         }
 
-        // Start a new timer to load pages after scroll stops
-        scrollTimer = new Timer();
-        scrollTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                loadVisiblePages();
-            }
-        }, SCROLL_DEBOUNCE_MS);
-
-        // Update current page indicator on JavaFX thread to ensure UI is updated
-        // Skip if page updates are locked (during programmatic navigation)
+        // Update current page indicator
         if (!isPageUpdateLocked()) {
             Platform.runLater(this::updateCurrentPageFromScroll);
         }
@@ -129,17 +138,11 @@ public class ScrollHandler {
 
     /**
      * Loads pages that are currently visible or near the viewport.
-     * Optimized for high zoom levels to prevent lag.
      */
     private void loadVisiblePages() {
         if (currentDocument == null || pagesContainer == null || scrollPane == null) {
             return;
         }
-
-        // Detect fast scrolling
-        long currentTime = System.currentTimeMillis();
-        boolean isFastScrolling = (currentTime - lastScrollTime) < SCROLL_DEBOUNCE_MS;
-        lastScrollTime = currentTime;
 
         Platform.runLater(() -> {
             try {
@@ -169,12 +172,8 @@ public class ScrollHandler {
                 double visibleStart = scrollValue * (contentHeight - viewportHeight);
                 double visibleEnd = visibleStart + viewportHeight;
 
-                // Adaptive buffer zone: reduce buffer to prevent lag
-                // Smaller buffer = fewer pages loaded = less lag
-                // At 100% zoom: 0.5 viewport buffer (reduced from 1.0)
-                // At 120%+ zoom: 0.3 viewport buffer
-                // At 150%+ zoom: 0.2 viewport buffer
-                double bufferMultiplier = currentZoom >= 1.5 ? 0.2 : (currentZoom >= 1.2 ? 0.3 : 0.5);
+                // Buffer zone - smaller at high zoom to reduce load
+                double bufferMultiplier = currentZoom >= 1.75 ? 0.5 : (currentZoom >= 1.5 ? 1.0 : (currentZoom >= 1.2 ? 1.5 : 2.0));
                 double bufferSize = viewportHeight * bufferMultiplier;
 
                 double loadStart = Math.max(0, visibleStart - bufferSize);
@@ -183,14 +182,11 @@ public class ScrollHandler {
                 // Priority lists: visible pages first, then nearby pages
                 List<Integer> visiblePages = new ArrayList<>();
                 List<Integer> nearbyPages = new ArrayList<>();
-                Set<Integer> pagesInRange = new HashSet<>();
 
                 for (int i = 0; i < totalPages; i++) {
                     ScrollCalculator.PageBounds bounds = ScrollCalculator.calculatePageBounds(pagesContainer, i);
 
                     if (bounds.overlaps(loadStart, loadEnd)) {
-                        pagesInRange.add(i);
-
                         if (bounds.overlaps(visibleStart, visibleEnd)) {
                             visiblePages.add(i);
                         } else {
@@ -199,50 +195,42 @@ public class ScrollHandler {
                     }
                 }
 
-                // Cancel pending renders outside the load range (fast scroll optimization)
-                if (isFastScrolling) {
-                    pageRenderer.cancelOutOfRangePendingRenders(pagesInRange);
-                }
-
-                // Limit concurrent page loads to prevent lag
-                // Always limit, not just at high zoom
-                int maxConcurrentLoads = currentZoom >= 1.5 ? 2 : (currentZoom >= 1.2 ? 3 : 5);
-                int loadedCount = 0;
-
-                // Load visible pages first (high priority)
-                loadedCount = loadPagesInList(visiblePages, maxConcurrentLoads, loadedCount);
-
-                // Then load nearby pages (lower priority) - only if we haven't hit the limit
-                loadedCount = loadPagesInList(nearbyPages, maxConcurrentLoads, loadedCount);
-
-                // Always unload pages far from the viewport to prevent lag
-                // Adaptive unload distance based on zoom
-                double unloadDistance = currentZoom >= 1.5 ? viewportHeight :
-                        (currentZoom >= 1.2 ? viewportHeight * 1.5 : viewportHeight * 2.0);
-                double unloadStart = Math.max(0, visibleStart - unloadDistance);
-                double unloadEnd = Math.min(contentHeight, visibleEnd + unloadDistance);
-
-                // Unload pages outside the keep range
-                for (int i = 0; i < totalPages; i++) {
-                    ScrollCalculator.PageBounds bounds = ScrollCalculator.calculatePageBounds(pagesContainer, i);
-                    if (!bounds.overlaps(unloadStart, unloadEnd)) {
-                        // Page is far from viewport, unload it
-                        VBox pageBox = getPageBox(i);
-                        if (pageBox != null && !isPlaceholder(pageBox)) {
-                            pageRenderer.unloadPage(i, pageBox);
+                // Load visible pages first (no limit for visible pages)
+                for (int pageIndex : visiblePages) {
+                    if (pageRenderer.isPageLoading(pageIndex)) {
+                        VBox pageBox = getPageBox(pageIndex);
+                        if (pageBox != null && isPlaceholder(pageBox)) {
+                            pageRenderer.loadPage(pageIndex, pageBox);
                         }
                     }
                 }
 
-                // Additional safeguard: if we're near the end (last 3 pages), ensure they get loaded
-                if (scrollValue > 0.85 && totalPages > 0 && loadedCount < maxConcurrentLoads) {
-                    int startPage = Math.max(0, totalPages - 3);
-                    for (int i = startPage; i < totalPages; i++) {
-                        if (loadedCount >= maxConcurrentLoads) break;
-                        VBox pageBox = getPageBox(i);
-                        if (pageBox != null && pageRenderer.isPageLoading(i) && isPlaceholder(pageBox)) {
-                            pageRenderer.loadPage(i, pageBox);
+                // Then load nearby pages with limit - fewer at high zoom
+                int maxNearbyLoads = currentZoom >= 1.75 ? 1 : (currentZoom >= 1.5 ? 1 : (currentZoom >= 1.2 ? 2 : 3));
+                int loadedCount = 0;
+                for (int pageIndex : nearbyPages) {
+                    if (loadedCount >= maxNearbyLoads) break;
+                    if (pageRenderer.isPageLoading(pageIndex)) {
+                        VBox pageBox = getPageBox(pageIndex);
+                        if (pageBox != null && isPlaceholder(pageBox)) {
+                            pageRenderer.loadPage(pageIndex, pageBox);
                             loadedCount++;
+                        }
+                    }
+                }
+
+                // Unload pages far from viewport - closer at high zoom to save memory
+                double unloadMultiplier = currentZoom >= 1.75 ? 2.0 : (currentZoom >= 1.5 ? 2.5 : 3.0);
+                double unloadDistance = viewportHeight * unloadMultiplier;
+                double unloadStart = Math.max(0, visibleStart - unloadDistance);
+                double unloadEnd = Math.min(contentHeight, visibleEnd + unloadDistance);
+
+                for (int i = 0; i < totalPages; i++) {
+                    ScrollCalculator.PageBounds bounds = ScrollCalculator.calculatePageBounds(pagesContainer, i);
+                    if (!bounds.overlaps(unloadStart, unloadEnd)) {
+                        VBox pageBox = getPageBox(i);
+                        if (pageBox != null && !isPlaceholder(pageBox)) {
+                            pageRenderer.unloadPage(i, pageBox);
                         }
                     }
                 }
@@ -251,29 +239,6 @@ public class ScrollHandler {
                 logger.error("Error loading visible pages", e);
             }
         });
-    }
-
-    /**
-     * Loads pages from a list up to the maximum concurrent load limit.
-     *
-     * @param pageList           the list of page indices to load
-     * @param maxConcurrentLoads the maximum number of pages to load
-     * @param currentLoadedCount the current count of loaded pages
-     * @return the updated count of loaded pages
-     */
-    private int loadPagesInList(List<Integer> pageList, int maxConcurrentLoads, int currentLoadedCount) {
-        int loadedCount = currentLoadedCount;
-        for (int pageIndex : pageList) {
-            if (loadedCount >= maxConcurrentLoads) break;
-            if (pageRenderer.isPageLoading(pageIndex)) {
-                VBox pageBox = getPageBox(pageIndex);
-                if (pageBox != null && isPlaceholder(pageBox)) {
-                    pageRenderer.loadPage(pageIndex, pageBox);
-                    loadedCount++;
-                }
-            }
-        }
-        return loadedCount;
     }
 
     private double getContentHeight(int totalPages) {

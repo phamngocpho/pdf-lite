@@ -153,7 +153,7 @@
                 <Region prefWidth="20"/>
 
                 <!-- Bookmark Button -->
-                <Button text="📑 Bookmarks" onAction="#handleToggleBookmarks">
+                <Button text="Bookmarks" onAction="#handleToggleBookmarks">
                     <tooltip><Tooltip text="Toggle Bookmarks (Ctrl+B)"/></tooltip>
                 </Button>
 

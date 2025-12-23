@@ -1030,6 +1030,13 @@
     -fx-border-color: transparent;
     -fx-background-radius: 0;
     -fx-padding: 8 16;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.document-tab-pane .tab:focused {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
 }
 
 .document-tab-pane .tab:selected {
@@ -1068,22 +1075,21 @@
 
 /* ==================== AI CHAT BUTTON ==================== */
 .ai-chat-button {
-    -fx-background-color: #4a6cf7;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-    -fx-padding: 8 16;
-    -fx-background-radius: 20;
-    -fx-border-radius: 20;
+    -fx-background-color: transparent;
+    -fx-text-fill: #1a1a1a;
+    -fx-padding: 7 14;
+    -fx-font-size: 13px;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
     -fx-cursor: hand;
 }
 
 .ai-chat-button:hover {
-    -fx-background-color: #3d5ce0;
-    -fx-effect: dropshadow(gaussian, rgba(74, 108, 247, 0.3), 6, 0, 0, 2);
+    -fx-background-color: rgba(0, 0, 0, 0.05);
 }
 
 .ai-chat-button:pressed {
-    -fx-background-color: #3250c9;
+    -fx-background-color: rgba(0, 0, 0, 0.1);
 }
 
 
