@@ -31,7 +31,7 @@ public class ScrollHandler {
     private static final Logger logger = LoggerFactory.getLogger(ScrollHandler.class);
 
     private static final long SCROLL_DEBOUNCE_MS = 100; // Wait 100 ms after scroll stops (increased to reduce load frequency)
-    private static final long NAVIGATION_LOCK_MS = 500; // Lock page updates during navigation animation
+    private static final long NAVIGATION_LOCK_MS = 800; // Lock page updates during navigation (increased to prevent flicker)
 
     private final PageRenderer pageRenderer;
     private final ScrollPane scrollPane;

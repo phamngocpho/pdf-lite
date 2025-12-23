@@ -52,9 +52,18 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
     // ==================== PUBLIC API ====================
 
     /**
-     * Jump to a specific page number (1-based)
+     * Jump to a specific page number (1-based) with instant jump (no animation)
      */
     public void jumpToPage(int pageNumber) {
+        jumpToPage(pageNumber, false);
+    }
+
+    /**
+     * Jump to a specific page number (1-based)
+     * @param pageNumber the page number (1-based)
+     * @param smooth if true, use smooth animation; if false, jump instantly
+     */
+    public void jumpToPage(int pageNumber, boolean smooth) {
         PDFDocument currentDocument = mainController.getCurrentDocument();
         if (currentDocument == null) {
             return;
@@ -68,14 +77,18 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
 
         currentDocument.setCurrentPage(pageIndex);
 
-        // Lock scroll-based page updates during navigation animation
+        // Lock scroll-based page updates during navigation
         org.pdflite.controller.ScrollHandler scrollHandler = mainController.getScrollHandler();
         if (scrollHandler != null) {
             scrollHandler.lockPageUpdates();
         }
 
         Platform.runLater(() -> {
-            scrollToPage(pageIndex);
+            if (smooth) {
+                scrollToPage(pageIndex);
+            } else {
+                scrollToPageInstant(pageIndex);
+            }
             mainController.updatePageInfo();
         });
 
@@ -83,9 +96,18 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
     }
 
     /**
-     * Navigate to the page by index (0-based)
+     * Navigate to the page by index (0-based) with instant jump (no animation)
      */
     public void navigateToPage(int pageIndex) {
+        navigateToPage(pageIndex, false);
+    }
+
+    /**
+     * Navigate to the page by index (0-based)
+     * @param pageIndex the page index (0-based)
+     * @param smooth if true, use smooth animation; if false, jump instantly
+     */
+    public void navigateToPage(int pageIndex, boolean smooth) {
         PDFDocument currentDocument = mainController.getCurrentDocument();
         if (currentDocument == null) {
             return;
@@ -93,13 +115,17 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
 
         currentDocument.setCurrentPage(pageIndex);
         
-        // Lock scroll-based page updates during navigation animation
+        // Lock scroll-based page updates during navigation
         org.pdflite.controller.ScrollHandler scrollHandler = mainController.getScrollHandler();
         if (scrollHandler != null) {
             scrollHandler.lockPageUpdates();
         }
         
-        scrollToCurrentPage();
+        if (smooth) {
+            scrollToCurrentPage();
+        } else {
+            scrollToPageInstant(pageIndex);
+        }
         mainController.updatePageInfo();
     }
 
@@ -196,6 +222,100 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
                 logger.error("Error scrolling to page {}", pageIndex + 1, e);
             }
         });
+    }
+
+    /**
+     * Scroll to a specific page index instantly (no animation)
+     */
+    public void scrollToPageInstant(int pageIndex) {
+        VBox pagesContainer = mainController.getPagesContainer();
+        ScrollPane scrollPane = mainController.getScrollPane();
+
+        if (pagesContainer == null || scrollPane == null) {
+            logger.warn("Cannot scroll - container or scroll pane is null");
+            return;
+        }
+
+        // Ensure target page is loaded before scrolling to prevent flicker
+        VBox targetPageBox = PageContainerUtils.findPageBox(pagesContainer, pageIndex);
+        if (targetPageBox != null && !isPageRendered(targetPageBox)) {
+            // Pre-load the target page synchronously-ish via Platform.runLater chain
+            loadingPages.add(pageIndex);
+            renderExecutor.submit(() -> {
+                try {
+                    PDFDocument currentDocument = mainController.getCurrentDocument();
+                    double currentZoom = mainController.getCurrentZoom();
+                    Image image = pdfService.renderPage(currentDocument, pageIndex, (float) currentZoom);
+                    
+                    Platform.runLater(() -> {
+                        ImageView imageView = new ImageView(image);
+                        imageView.setPreserveRatio(true);
+                        imageView.setSmooth(true);
+                        imageView.setCache(true);
+
+                        AnnotationLayer annotationLayer = new AnnotationLayer(image.getWidth(), image.getHeight());
+                        if (mainController.isHighlightModeActive()) {
+                            annotationLayer.setAnnotationMode(AnnotationLayer.AnnotationMode.HIGHLIGHT);
+                        }
+
+                        StackPane imageStack = new StackPane(imageView, annotationLayer);
+                        imageStack.setAlignment(Pos.CENTER);
+
+                        if (!targetPageBox.getChildren().isEmpty()) {
+                            targetPageBox.getChildren().set(0, imageStack);
+                        }
+                        loadingPages.remove(pageIndex);
+                        
+                        // Now scroll after page is loaded
+                        doInstantScroll(pagesContainer, scrollPane, pageIndex);
+                    });
+                } catch (IOException e) {
+                    logger.error("Error pre-loading page {}", pageIndex + 1, e);
+                    loadingPages.remove(pageIndex);
+                    // Still try to scroll even if load failed
+                    Platform.runLater(() -> doInstantScroll(pagesContainer, scrollPane, pageIndex));
+                }
+            });
+        } else {
+            // Page already loaded, scroll immediately
+            Platform.runLater(() -> doInstantScroll(pagesContainer, scrollPane, pageIndex));
+        }
+    }
+
+    /**
+     * Performs the actual instant scroll to a page
+     */
+    private void doInstantScroll(VBox pagesContainer, ScrollPane scrollPane, int pageIndex) {
+        try {
+            if (pageIndex < 0 || pageIndex >= mainController.getTotalPages()) {
+                logger.warn("Invalid page index for scrolling: {}", pageIndex);
+                return;
+            }
+
+            pagesContainer.layout();
+
+            double currentY = ScrollCalculator.calculatePageYPosition(pagesContainer, pageIndex);
+
+            double contentHeight = pagesContainer.getHeight();
+            double viewportHeight = scrollPane.getViewportBounds().getHeight();
+
+            if (contentHeight > viewportHeight) {
+                double pageHeight = ScrollCalculator.calculatePageBounds(pagesContainer, pageIndex).height();
+                double centerOffset = Math.max(0, (viewportHeight - pageHeight) / 2);
+                double adjustedY = Math.max(0, currentY - centerOffset);
+
+                double maxScroll = contentHeight - viewportHeight;
+                double scrollPosition = Math.max(0.0, Math.min(1.0, adjustedY / maxScroll));
+
+                // Instant jump - no animation
+                scrollPane.setVvalue(scrollPosition);
+
+                logger.debug("Instant jumped to page {} at position {}", pageIndex + 1, scrollPosition);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error scrolling to page {}", pageIndex + 1, e);
+        }
     }
 
     /**
