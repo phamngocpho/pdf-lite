@@ -42,6 +42,19 @@ A lightweight, modern PDF viewer and editor built with JavaFX. PDF Lite provides
 - Extract and analyze text
 - Powered by Groq API
 
+To enable AI features, create `.pdflite/ai-config.json` with your Groq API key:
+
+```json
+{
+  "groqApiKey": "your-api-key-here",
+  "model": "llama-3.3-70b-versatile",
+  "fastModel": "llama-3.1-8b-instant",
+  "enabled": true
+}
+```
+
+Get your API key at: https://console.groq.com/keys
+
 ### Other
 - Image extraction from PDFs
 - Document metadata viewing/editing
