@@ -56,18 +56,36 @@ public class ZoomManager {
     }
 
     /**
+     * Sets the scroll pane for viewport calculations.
+     * This is used when switching tabs without reinitializing the combo box.
+     *
+     * @param scrollPane the scroll pane
+     */
+    public void setScrollPane(ScrollPane scrollPane) {
+        this.scrollPane = scrollPane;
+    }
+
+    /**
      * Initializes the zoom manager with UI components.
      *
      * @param zoomComboBox the zoom combo box
      * @param scrollPane   the scroll pane for viewport calculations
      */
     public void initialize(ComboBox<String> zoomComboBox, ScrollPane scrollPane) {
-        this.zoomComboBox = zoomComboBox;
-        this.scrollPane = scrollPane;
-
+        // Only update zoomComboBox if provided (not null)
         if (zoomComboBox != null) {
-            zoomComboBox.getItems().addAll("50%", "75%", "100%", "125%", "150%", "200%");
+            this.zoomComboBox = zoomComboBox;
+            zoomComboBox.getItems().clear();
+            zoomComboBox.getItems().addAll("50%", "75%", "100%", "125%", "150%", "175%", "200%");
             zoomComboBox.setValue("100%");
+            
+            // Add listener for selection changes (when user selects from dropdown)
+            zoomComboBox.setOnAction(event -> handleZoomComboBoxChange());
+        }
+        
+        // Always update scrollPane if provided
+        if (scrollPane != null) {
+            this.scrollPane = scrollPane;
         }
     }
 

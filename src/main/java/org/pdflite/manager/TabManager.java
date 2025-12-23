@@ -329,8 +329,8 @@ public class TabManager {
         // Update managers with the new context
         if (zoomManager != null) {
             zoomManager.setDocument(document);
+            zoomManager.setScrollPane(scrollPane);
             zoomManager.setCurrentZoom(document.getZoomLevel());
-            zoomManager.initialize(null, scrollPane);
         }
 
         // Use the RenderingManager from the context
