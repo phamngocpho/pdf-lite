@@ -6,6 +6,9 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
+import org.pdflite.config.AIConfig;
+import org.pdflite.dialog.PrivacyConsentDialog;
+import org.pdflite.manager.ThemeManager;
 import org.pdflite.model.AICommand;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.AICommandExecutor;
@@ -35,6 +38,7 @@ public class ChatSidebarPanel extends VBox {
     private final AICommandExecutor commandExecutor;
     private final Supplier<PDFDocument> documentSupplier;
     private final PDFService pdfService;
+    private ThemeManager themeManager;
     
     // Chat history for context
     private final List<ChatMessage> chatHistory = new ArrayList<>();
@@ -142,6 +146,18 @@ public class ChatSidebarPanel extends VBox {
     }
 
     private void sendMessage(String message) {
+        // Check privacy consent first
+        AIConfig config = AIConfig.getInstance();
+        if (!config.isPrivacyConsented()) {
+            boolean accepted = PrivacyConsentDialog.show(themeManager);
+            if (!accepted) {
+                addMessage("Bạn cần đồng ý với chính sách bảo mật để sử dụng tính năng AI.", false);
+                return;
+            }
+            config.setPrivacyConsented(true);
+            config.save();
+        }
+
         // Add user message
         addMessage(message, true);
         inputField.clear();
@@ -354,5 +370,9 @@ public class ChatSidebarPanel extends VBox {
 
     public void focusInput() {
         Platform.runLater(() -> inputField.requestFocus());
+    }
+
+    public void setThemeManager(ThemeManager themeManager) {
+        this.themeManager = themeManager;
     }
 }

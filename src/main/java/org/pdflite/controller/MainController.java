@@ -1219,6 +1219,7 @@ public class MainController {
             );
 
             chatUIManager = new ChatUIManager(rootPane, groqService, commandExecutor, this::getActiveDocument);
+            chatUIManager.setThemeManager(themeManager);
         }
 
         chatUIManager.toggleChat();

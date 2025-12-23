@@ -20,6 +20,7 @@ public class ChatUIManager {
     private final GroqService groqService;
     private final AICommandExecutor commandExecutor;
     private final Supplier<PDFDocument> documentSupplier;
+    private ThemeManager themeManager;
     
     private ChatSidebarPanel chatPanel;
     private boolean isVisible = false;
@@ -30,6 +31,13 @@ public class ChatUIManager {
         this.groqService = groqService;
         this.commandExecutor = commandExecutor;
         this.documentSupplier = documentSupplier;
+    }
+
+    public void setThemeManager(ThemeManager themeManager) {
+        this.themeManager = themeManager;
+        if (chatPanel != null) {
+            chatPanel.setThemeManager(themeManager);
+        }
     }
 
     /**
@@ -49,6 +57,9 @@ public class ChatUIManager {
     public void showChat() {
         if (chatPanel == null) {
             chatPanel = new ChatSidebarPanel(groqService, commandExecutor, documentSupplier);
+            if (themeManager != null) {
+                chatPanel.setThemeManager(themeManager);
+            }
         }
 
         // Remove any existing right panel first

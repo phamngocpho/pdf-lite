@@ -29,6 +29,7 @@
     -fx-background-color: #252525;
     -fx-border-color: transparent;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 2, 0, 0, 1);
+    -fx-spacing: 5;
 }
 
 /* ==================== MODERN BUTTONS - FLAT & MINIMAL ==================== */
@@ -39,7 +40,7 @@
     -fx-text-fill: #e0e0e0;
     -fx-border-color: transparent;
     -fx-border-width: 0;
-    -fx-padding: 8 16;
+    -fx-padding: 7 14;
     -fx-border-radius: 6;
     -fx-background-radius: 6;
     -fx-font-size: 13px;

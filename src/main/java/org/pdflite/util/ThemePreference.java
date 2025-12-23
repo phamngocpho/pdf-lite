@@ -12,26 +12,28 @@ import java.util.Properties;
 
 /**
  * Utility class for saving and loading theme preferences.
+ * Saves to .pdflite folder in project directory.
  */
 public class ThemePreference {
 
     private static final Logger logger = LoggerFactory.getLogger(ThemePreference.class);
-    private static final String PREFERENCE_FILE = ".pdflite/theme.properties";
+    private static final String CONFIG_DIR = ".pdflite";
+    private static final String CONFIG_FILE = "theme.properties";
     private static final String THEME_MODE_KEY = "theme.mode";
 
     /**
-     * Saves the theme preference.
+     * Saves the theme preference to project directory.
      *
      * @param mode the theme mode to save
      */
     public static void saveThemePreference(ThemeManager.ThemeMode mode) {
         try {
-            File configDir = new File(System.getProperty("user.home"), ".pdflite");
+            File configDir = new File(CONFIG_DIR);
             if (!configDir.exists()) {
                 configDir.mkdirs();
             }
 
-            File configFile = new File(configDir, "theme.properties");
+            File configFile = new File(configDir, CONFIG_FILE);
             Properties props = new Properties();
             props.setProperty(THEME_MODE_KEY, mode.name());
 
@@ -46,13 +48,13 @@ public class ThemePreference {
     }
 
     /**
-     * Loads the saved theme preference.
+     * Loads the saved theme preference from project directory.
      *
      * @return the saved theme mode, or SYSTEM if not found
      */
     public static ThemeManager.ThemeMode loadThemePreference() {
         try {
-            File configFile = new File(System.getProperty("user.home"), PREFERENCE_FILE);
+            File configFile = new File(CONFIG_DIR, CONFIG_FILE);
             if (!configFile.exists()) {
                 logger.debug("No theme preference file found, using default: SYSTEM");
                 return ThemeManager.ThemeMode.SYSTEM;
