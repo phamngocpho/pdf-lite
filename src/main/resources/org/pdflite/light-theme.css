@@ -1070,7 +1070,6 @@
 .ai-chat-button {
     -fx-background-color: #4a6cf7;
     -fx-text-fill: white;
-    -fx-font-weight: bold;
     -fx-padding: 8 16;
     -fx-background-radius: 20;
     -fx-border-radius: 20;

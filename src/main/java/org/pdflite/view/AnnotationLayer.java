@@ -736,12 +736,6 @@ public class AnnotationLayer extends Canvas {
                 ));
 
                 gc.fillRect(region.x(), region.y(), region.width(), region.height());
-
-                if (isSelected) {
-                    gc.setStroke(Color.BLUE);
-                    gc.setLineWidth(2);
-                    gc.strokeRect(region.x(), region.y(), region.width(), region.height());
-                }
             }
 
             gc.restore();
