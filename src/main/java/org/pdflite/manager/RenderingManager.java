@@ -115,8 +115,10 @@ public class RenderingManager {
                 scrollHandler.setDocument(currentDocument, pagesContainer);
             }
 
-            // Load the first few visible pages immediately
+            // Pre-load first batch of pages immediately for smooth initial experience
+            // Load more pages upfront to reduce placeholder visibility
             Platform.runLater(() -> {
+                preloadInitialPages(totalPages, currentZoom);
                 if (scrollHandler != null) {
                     scrollHandler.handleScroll();
                 }
@@ -126,6 +128,22 @@ public class RenderingManager {
             logger.error("Error rendering page", e);
             throw new RuntimeException("Could not render the page: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Pre-loads the first batch of pages for smooth initial scrolling.
+     */
+    private void preloadInitialPages(int totalPages, double currentZoom) {
+        // Pre-load first 10 pages or all pages if less than 10
+        int pagesToPreload = Math.min(totalPages, 10);
+        
+        for (int i = 0; i < pagesToPreload; i++) {
+            VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
+            if (pageBox != null) {
+                pageRenderer.loadPage(i, pageBox);
+            }
+        }
+        logger.info("Pre-loaded first {} pages", pagesToPreload);
     }
 
     /**

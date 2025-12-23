@@ -52,11 +52,11 @@ public class PageRenderer {
         this.pendingRenders = new ConcurrentHashMap<>();
         this.contextMenuHandler = new ContextMenuHandler();
 
-        // LRU cache with max 50 pages
-        this.imageCache = new java.util.LinkedHashMap<>(50, 0.75f, true) {
+        // LRU cache with max 100 pages for smoother scrolling
+        this.imageCache = new java.util.LinkedHashMap<>(100, 0.75f, true) {
             @Override
             protected boolean removeEldestEntry(Map.Entry<String, Image> eldest) {
-                return size() > 50;
+                return size() > 100;
             }
         };
 
@@ -99,11 +99,11 @@ public class PageRenderer {
     private void adjustCacheSizeForZoom(double zoom) {
         int maxCacheSize;
         if (zoom >= 1.5) {
-            maxCacheSize = 20; // Very high zoom: small cache
+            maxCacheSize = 40; // Very high zoom: smaller cache
         } else if (zoom >= 1.2) {
-            maxCacheSize = 30; // High zoom: medium cache
+            maxCacheSize = 60; // High zoom: medium cache
         } else {
-            maxCacheSize = 50; // Normal zoom: full cache
+            maxCacheSize = 100; // Normal zoom: full cache
         }
 
         // Trim cache if it exceeds the new limit
