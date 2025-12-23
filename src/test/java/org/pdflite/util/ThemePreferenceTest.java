@@ -5,7 +5,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.pdflite.manager.ThemeManager;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,7 +21,8 @@ class ThemePreferenceTest {
 
     @BeforeEach
     void setUp() {
-        configFile = Paths.get(System.getProperty("user.home"), ".pdflite", "theme.properties");
+        // Project directory, not user home
+        configFile = Paths.get(".pdflite", "theme.properties");
     }
 
     @AfterEach
@@ -34,7 +34,12 @@ class ThemePreferenceTest {
     }
 
     @Test
-    void testLoadThemePreferenceWhenFileDoesNotExist() {
+    void testLoadThemePreferenceWhenFileDoesNotExist() throws IOException {
+        // Ensure file doesn't exist before test
+        if (Files.exists(configFile)) {
+            Files.delete(configFile);
+        }
+        
         ThemeManager.ThemeMode mode = ThemePreference.loadThemePreference();
         assertEquals(ThemeManager.ThemeMode.SYSTEM, mode);
     }
