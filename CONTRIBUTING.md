@@ -6,6 +6,10 @@ Thank you for considering contributing to PDF Lite! This document provides guide
 
 By participating in this project, you agree to maintain a respectful and collaborative environment for everyone.
 
+## License
+
+By contributing to PDF Lite, you agree that your contributions will be licensed under the [Apache License 2.0](LICENSE).
+
 ## How to Contribute
 
 ### Reporting Bugs

@@ -28,13 +28,14 @@
     -fx-background-color: #f8f8f8;
     -fx-border-color: transparent;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 2, 0, 0, 1);
+    -fx-spacing: 5;
 }
 
 /* ==================== MODERN BUTTONS - FLAT & MINIMAL ==================== */
 .button, .toggle-button, .menu-button {
     -fx-background-color: transparent;
     -fx-text-fill: #1a1a1a;
-    -fx-padding: 8 16;
+    -fx-padding: 7 14;
     -fx-border-color: transparent;
     -fx-border-width: 0;
     -fx-border-radius: 6;

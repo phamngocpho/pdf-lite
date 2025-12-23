@@ -301,6 +301,11 @@ public class ThemeManager {
         this.lightThemeItem = lightThemeItem;
         this.darkThemeItem = darkThemeItem;
 
+        // Set selected based on loaded theme mode
+        systemThemeItem.setSelected(themeMode == ThemeMode.SYSTEM);
+        lightThemeItem.setSelected(themeMode == ThemeMode.LIGHT);
+        darkThemeItem.setSelected(themeMode == ThemeMode.DARK);
+
         // Initial update
         updateThemeMenuGraphics();
     }

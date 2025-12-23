@@ -1,30 +1,61 @@
 # PDF Lite
 
-A lightweight, modern PDF viewer and editor built with JavaFX. PDF Lite provides essential PDF viewing capabilities with a clean, intuitive interface.
+A lightweight, modern PDF viewer and editor built with JavaFX. PDF Lite provides comprehensive PDF viewing and editing capabilities with a clean, intuitive interface.
 
 ## Features
 
-- PDF viewing with smooth scrolling and navigation
-- Zoom controls with multiple zoom levels
-- Page navigation (first, previous, next, last page)
-- Search functionality with result highlighting
+### Viewing
+- Smooth scrolling and navigation
+- Multiple zoom levels with fit-to-width/page options
+- Page navigation (first, previous, next, last, go to page)
+- Search with result highlighting
 - Text selection and copying
-- Annotation support with highlighting
-- Image extraction from PDF documents
-- PDF merging and splitting capabilities
-- Recent files tracking
-- Dark and light theme support
 - Fullscreen mode
-- Keyboard shortcuts for common operations
+- Dark and light theme support
+- Multi-tab support for opening multiple PDFs
+- Bookmarks management
+
+### Editing
+- Page reordering via drag-and-drop
+- Page deletion and duplication
+- PDF merging (combine multiple PDFs)
+- PDF splitting (extract pages or ranges)
+- Insert pages from other PDFs
+- Add watermarks (text/image)
+- Image insertion into PDF pages
+- Text editing (basic)
+
+### Annotations
+- Highlight text
+- Draw shapes (rectangle, circle, arrow)
+- Add comments
+- Annotation persistence
+
+### Export & Print
+- Export pages as images (PNG, JPEG)
+- Print with custom settings
+- PDF compression/optimization
+
+### AI Features (Optional)
+- AI-powered chat assistant for PDF content
+- Summarize documents
+- Extract and analyze text
+- Powered by Groq API
+
+### Other
+- Image extraction from PDFs
+- Document metadata viewing/editing
+- PDF encryption/decryption
+- Auto-save and recovery
+- Recent files tracking
+- Keyboard shortcuts
 
 ## Requirements
 
 - Java 21 or higher
-- Maven 3.6 or higher (or use included Maven wrapper)
+- Maven 3.6+ (or use included Maven wrapper)
 
 ## Building from Source
-
-Clone the repository and build using Maven wrapper:
 
 ```bash
 git clone https://github.com/phamngocpho/pdf-lite.git
@@ -33,124 +64,93 @@ cd pdf-lite
 ```
 
 On Windows:
-
 ```cmd
 mvnw.cmd clean package
 ```
 
-## Running the Application
-
-After building, run the application using:
+## Running
 
 ```bash
 ./mvnw javafx:run
 ```
 
-Or run the generated JAR file:
-
+Or run the JAR:
 ```bash
 java -jar target/pdf-lite-1.0-SNAPSHOT.jar
 ```
 
-## Usage
+## Keyboard Shortcuts
 
-### Opening PDF Files
-
-- Click "Open" button or use Ctrl+O
-- Drag and drop PDF files onto the application window
-- Recent files are accessible from the File menu
-
-### Navigation
-
-- Use navigation buttons or keyboard shortcuts:
-  - Home: Go to first page
-  - End: Go to last page
-  - Page Up/Down: Navigate pages
-  - Ctrl+G: Go to specific page
-
-### Zoom Controls
-
-- Zoom in: Ctrl++ or Ctrl+Scroll Up
-- Zoom out: Ctrl+- or Ctrl+Scroll Down
-- Fit width: Ctrl+0
-- Fit page: Ctrl+1
-
-### Search
-
-- Open search: Ctrl+F
-- Find next: F3 or Enter
-- Find previous: Shift+F3
-
-### Other Features
-
-- Fullscreen: F11
-- Toggle theme: Ctrl+T
-- Extract images: Available in context menu
-- Merge PDFs: File > Merge PDFs
-- Split PDF: File > Split PDF
+| Action | Shortcut |
+|--------|----------|
+| Open file | Ctrl+O |
+| Save | Ctrl+S |
+| Save As | Ctrl+Shift+S |
+| Print | Ctrl+P |
+| Search | Ctrl+F |
+| Go to page | Ctrl+G |
+| Zoom in | Ctrl++ |
+| Zoom out | Ctrl+- |
+| Fit width | Ctrl+0 |
+| Fit page | Ctrl+1 |
+| First page | Home |
+| Last page | End |
+| Previous page | Page Up |
+| Next page | Page Down |
+| Fullscreen | F11 |
+| Toggle theme | Ctrl+T |
+| Undo | Ctrl+Z |
+| Redo | Ctrl+Y |
 
 ## Dependencies
 
 - JavaFX 21.0.6 - UI framework
 - Apache PDFBox 3.0.3 - PDF processing
-- SLF4J 2.0.9 - Logging facade
-- Logback 1.5.20 - Logging implementation
+- Gson 2.10.1 - JSON serialization
+- SLF4J 2.0.9 + Logback 1.5.20 - Logging
 
 ## Project Structure
 
 ```
-pdf-lite/
-├── src/
-│   └── main/
-│       ├── java/
-│       │   └── org/pdflite/
-│       │       ├── controller/     # UI controllers
-│       │       ├── manager/        # Business logic managers
-│       │       ├── model/          # Data models
-│       │       ├── service/        # PDF processing services
-│       │       ├── util/           # Utility classes
-│       │       └── view/           # Custom UI components
-│       └── resources/
-│           └── org/pdflite/
-│               ├── *.fxml          # UI layouts
-│               └── *.css           # Stylesheets
-├── pom.xml                         # Maven configuration
-└── LICENSE                         # MIT License
+src/main/java/org/pdflite/
+├── command/        # Command pattern for undo/redo
+├── config/         # Configuration (AI settings)
+├── controller/     # UI controllers
+├── dialog/         # Custom dialogs
+├── manager/        # Business logic managers
+├── model/          # Data models and annotations
+├── service/        # PDF and AI services
+├── util/           # Utility classes
+└── view/           # Custom UI components
 
+src/main/resources/org/pdflite/
+├── *.fxml          # UI layouts
+├── *.css           # Themes and styles
+└── images/         # Icons and images
 ```
-
-## Development
-
-### Code Style
-
-- Follow standard Java naming conventions
-- Use meaningful variable and method names
-- Add Javadoc comments for public APIs
-- Keep methods focused and concise
-
-### Building Documentation
-
-Generate Javadoc documentation:
-
-```bash
-./mvnw javadoc:javadoc
-```
-
-Documentation will be available in `target/site/apidocs/`
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
+## Privacy Notice
+
+AI features use the Groq API. When enabled, PDF content may be sent to Groq's servers. Review their privacy policy at: https://groq.com/privacy-policy
+
+You can use PDF Lite without AI features if you prefer not to share data.
+
+## Disclaimer
+
+This software is provided "AS IS" without warranty of any kind. The authors are not responsible for any data loss, file corruption, or other damages.
+
+**Always backup your PDF files before editing operations.**
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Apache License 2.0 - see [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-- Apache PDFBox team for the excellent PDF library
-- JavaFX community for the UI framework
-- All contributors who have helped improve this project
-
+- Apache PDFBox team
+- JavaFX community
+- All contributors

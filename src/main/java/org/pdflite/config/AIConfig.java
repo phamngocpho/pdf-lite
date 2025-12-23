@@ -23,6 +23,7 @@ public class AIConfig {
     private String model = "llama-3.3-70b-versatile";
     private String fastModel = "llama-3.1-8b-instant";
     private boolean enabled = true;
+    private boolean privacyConsented = false;
 
     private static AIConfig instance;
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -128,5 +129,13 @@ public class AIConfig {
 
     public void setFastModel(String fastModel) {
         this.fastModel = fastModel;
+    }
+
+    public boolean isPrivacyConsented() {
+        return privacyConsented;
+    }
+
+    public void setPrivacyConsented(boolean privacyConsented) {
+        this.privacyConsented = privacyConsented;
     }
 }

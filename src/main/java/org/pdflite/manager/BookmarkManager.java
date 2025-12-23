@@ -39,7 +39,7 @@ import java.util.function.Consumer;
  */
 public class BookmarkManager {
     private static final Logger logger = LoggerFactory.getLogger(BookmarkManager.class);
-    private static final String BOOKMARKS_DIR = System.getProperty("user.home") + "/.pdflite/bookmarks";
+    private static final String BOOKMARKS_DIR = ".pdflite/bookmarks";
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
 
     private final ObservableList<Bookmark> bookmarks;
