@@ -37,7 +37,9 @@ public class SmartTextSelector {
             this.x = tp.getX();
             this.y = tp.getY();
             this.width = tp.getWidth();
-            this.height = tp.getHeight();
+            // Use font size (yScale) instead of getHeight() for more accurate visual height
+            // getHeight() returns the full bounding box which is larger than the visible text
+            this.height = Math.abs(tp.getYScale());
             this.widthOfSpace = tp.getWidthOfSpace();
             this.lineNumber = line;
             this.textPosition = tp;
