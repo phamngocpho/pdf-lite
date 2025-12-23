@@ -94,7 +94,7 @@ cd pdf-lite
 
 ### Java Style Guide
 
-- Use 4 spaces for indentation (no tabs)
+- Use four spaces for indentation (no tabs)
 - Follow standard Java naming conventions:
   - Classes: PascalCase
   - Methods and variables: camelCase
@@ -117,9 +117,8 @@ Example:
  *
  * @param file the PDF file to load
  * @return the loaded PDFDocument object
- * @throws IOException if the file cannot be read
  */
-public PDFDocument loadDocument(File file) throws IOException {
+public PDFDocument loadDocument(File file) {
     // implementation
 }
 ```
@@ -128,7 +127,7 @@ public PDFDocument loadDocument(File file) throws IOException {
 
 - Keep classes focused on a single responsibility
 - Use meaningful names for classes, methods, and variables
-- Avoid deep nesting (max 3-4 levels)
+- Avoid deep nesting (max 3–4 levels)
 - Extract complex logic into separate methods
 - Use appropriate design patterns where applicable
 
@@ -150,7 +149,10 @@ public PDFDocument loadDocument(File file) throws IOException {
 
 ```
 src/main/java/org/pdflite/
+├── command/         # Command pattern for undo/redo
+├── config/          # Configuration (AI settings)
 ├── controller/      # JavaFX controllers for UI
+├── dialog/          # Custom dialog windows
 ├── manager/         # Business logic and state management
 ├── model/           # Data models and entities
 ├── service/         # PDF processing and other services
@@ -160,16 +162,17 @@ src/main/java/org/pdflite/
 
 ## Commit Message Guidelines
 
-This project follows the [Conventional Commits](https://www.conventionalcommits.org/) specification.
+This project uses a simple [Conventional Commits](https://www.conventionalcommits.org/) format.
 
 ### Format
 
 ```
-<type>(<scope>): <subject>
+<type>: <description>
+```
 
-<body>
-
-<footer>
+For multiple changes in one commit, use semicolons:
+```
+<type>: <change1>; <change2>; <change3>
 ```
 
 ### Types
@@ -183,40 +186,18 @@ This project follows the [Conventional Commits](https://www.conventionalcommits.
 - `perf`: Performance improvements
 - `test`: Adding or updating tests
 
-### Scope (optional)
-
-Scope is typically omitted unless needed for clarity. When used, it should specify the affected area.
-
 ### Examples from this project
 
 ```
-feat: add recent files, session restore, and improve search documentation
+feat: add AI assistant chat sidebar with Groq integration for PDF operations
+feat: add privacy consent dialog for AI features; update license to Apache 2.0; improve theme and config handling
 feat: add PDF merge and split functionality with UI integration
 feat: dark and light theme toggle
-feat: extract/Copy single image
-feat: text extract(copy)
-refactor: streamline text extraction and logging in ContextMenuHandler
-refactor: update SelectionInfo class to use records and streamline text access
-refactor: convert classes to records and clean up code
-refactor: extract MainController into manager classes
-fix: resolve merge conflicts and refactor methods into managers
+fix: adjust base font size to 13px in light and dark themes; clean up image extraction log output
 fix: improve zoom functionality and maintain scroll position
-fix: change token secret from PROJECT_TOKEN to GH_TOKEN
+refactor: extract MainController into manager classes
 chore: auto move assigned issues to in progress
-chore: change GITHUB_TOKEN to GH_TOKEN in workflow
 ```
-
-### Breaking Changes
-
-For breaking changes that affect backward compatibility, append `!` after the type:
-
-```
-feat!: change PDF loading method signature
-
-BREAKING CHANGE: loadPDF now requires File parameter instead of String path
-```
-
-Note: Breaking changes are rare in this project since it's an end-user application.
 
 ## Review Process
 
