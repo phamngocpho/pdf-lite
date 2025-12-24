@@ -200,6 +200,12 @@ public class MainController {
     // Bookmark UI Manager
     private BookmarkUIManager bookmarkUIManager;
 
+    // PDF Outline Bookmark Manager
+    private PDFOutlineBookmarkManager pdfOutlineBookmarkManager;
+
+    // Smart Bookmark Manager
+    private SmartBookmarkManager smartBookmarkManager;
+
     // Tab Manager
     private TabManager tabManager;
 
@@ -210,13 +216,20 @@ public class MainController {
     private GroqService groqService;
     private ChatUIManager chatUIManager;
 
+    // New refactored managers
+    private ToolbarManager toolbarManager;
+    private HighlightModeManager highlightModeManager;
+    private NavigationManager navigationManager;
+    private PageReorderUIManager pageReorderUIManager;
+    private PageInsertManager pageInsertManager;
+    private AIChatManager aiChatManager;
+
     // ==================== Document State ====================
     
     private final ExecutorService renderExecutor = Executors.newFixedThreadPool(6);
     private final java.util.concurrent.ScheduledExecutorService autoSaveExecutor =
             Executors.newSingleThreadScheduledExecutor();
     private final Set<Integer> loadingPages = ConcurrentHashMap.newKeySet();
-    private boolean highlightModeActive = false;
 
     // ==================== Initialization ====================
 
@@ -327,7 +340,11 @@ public class MainController {
 
         // Setup page navigation
         if (pageNumberField != null) {
-            pageNumberField.setOnAction(e -> handleGoToPage());
+            pageNumberField.setOnAction(e -> {
+                if (navigationManager != null) {
+                    navigationManager.handleGoToPage();
+                }
+            });
             pageNumberField.setTextFormatter(new TextFormatter<>(change -> {
                 String next = change.getControlNewText();
                 return next.matches("\\d*") ? change : null;
@@ -460,6 +477,9 @@ public class MainController {
 
         // Setup text edit callback
         setupTextEditCallback();
+
+        // Initialize new refactored managers
+        initializeNewManagers();
     }
 
     /**
@@ -543,6 +563,22 @@ public class MainController {
         // Bookmark UI Manager
         bookmarkUIManager = new BookmarkUIManager(rootPane, bookmarkManager, uiStateManager, navigationHelper);
 
+        // PDF Outline Bookmark Manager
+        pdfOutlineBookmarkManager = new PDFOutlineBookmarkManager(bookmarkManager);
+
+        // Smart Bookmark Manager (with AI support)
+        smartBookmarkManager = new SmartBookmarkManager(bookmarkManager);
+        if (groqService != null) {
+            smartBookmarkManager.setGroqService(groqService);
+        }
+
+        // Set extended managers for BookmarkUIManager
+        bookmarkUIManager.setExtendedManagers(
+                pdfOutlineBookmarkManager,
+                smartBookmarkManager,
+                this::getActiveDocument
+        );
+
         // Set callback to update icon after auto-save
         autoSaveManager.setOnAutoSaveCallback(() -> {
             if (saveStatusManager != null) {
@@ -594,6 +630,74 @@ public class MainController {
         logger.info("Text edit callback configured successfully");
     }
 
+    /**
+     * Initializes new refactored managers for separated logic.
+     */
+    private void initializeNewManagers() {
+        // Toolbar Manager
+        toolbarManager = new ToolbarManager(toolbar, toggleToolbarMenuItem);
+
+        // Highlight Mode Manager
+        highlightModeManager = new HighlightModeManager(
+                uiStateManager,
+                pageRenderer,
+                () -> drawingToolsGroup,
+                this::updateAnnotationModeForAllPages
+        );
+
+        // Navigation Manager
+        navigationManager = new NavigationManager(
+                navigationHelper,
+                pageInfoManager,
+                uiStateManager,
+                this::getActiveDocument
+        );
+
+        // Page Reorder UI Manager
+        pageReorderUIManager = new PageReorderUIManager(
+                dialogManager,
+                uiStateManager,
+                pageRenderer,
+                saveStatusManager
+        );
+        pageReorderUIManager.setDocumentSupplier(this::getActiveDocument);
+        pageReorderUIManager.setRenderingManagerSupplier(this::getCurrentRenderingManager);
+
+        // Page Insert Manager
+        pageInsertManager = new PageInsertManager(
+                uiStateManager,
+                dialogManager,
+                documentOperationManager,
+                pageRenderer,
+                scrollHandler,
+                loadingPages
+        );
+        pageInsertManager.setContextSupplier(this::getCurrentContext);
+        pageInsertManager.setDocumentSupplier(this::getActiveDocument);
+        pageInsertManager.setPagesContainerSupplier(this::getCurrentPagesContainer);
+        pageInsertManager.setScrollPaneSupplier(this::getCurrentScrollPane);
+        pageInsertManager.setRenderingManagerSupplier(this::getCurrentRenderingManager);
+
+        // AI Chat Manager
+        aiChatManager = new AIChatManager(
+                rootPane,
+                uiStateManager,
+                pageInfoManager,
+                navigationHelper,
+                pageRenderer
+        );
+        aiChatManager.setDocumentSupplier(this::getActiveDocument);
+        aiChatManager.setRenderingManagerSupplier(this::getCurrentRenderingManager);
+        aiChatManager.setStageSupplier(() -> (Stage) rootPane.getScene().getWindow());
+        aiChatManager.setBookmarkManager(bookmarkManager);
+        if (themeManager != null) {
+            aiChatManager.setThemeManager(themeManager);
+        }
+        if (groqService != null) {
+            aiChatManager.setGroqService(groqService);
+        }
+    }
+
     // ==================== File Operations ====================
 
     @FXML
@@ -616,6 +720,12 @@ public class MainController {
             // Update local references after tab switch
             renderingManager = tabManager.getRenderingManager();
             annotationManager = tabManager.getAnnotationManager();
+            
+            // Set current document for bookmark manager
+            PDFDocument doc = getActiveDocument();
+            if (doc != null && bookmarkManager != null) {
+                bookmarkManager.setCurrentDocument(doc);
+            }
         }
     }
 
@@ -698,28 +808,8 @@ public class MainController {
 
     @FXML
     private void handleToggleToolbar() {
-        if (toolbar == null) return;
-
-        boolean isToolbarVisible = toolbar.isVisible();
-
-        if (isToolbarVisible) {
-            // Hide toolbar
-            toolbar.setManaged(false);
-            toolbar.setVisible(false);
-
-            // Update menu item text
-            if (toggleToolbarMenuItem != null) {
-                toggleToolbarMenuItem.setText("Show Toolbar");
-            }
-        } else {
-            // Show toolbar
-            toolbar.setManaged(true);
-            toolbar.setVisible(true);
-
-            // Update menu item text
-            if (toggleToolbarMenuItem != null) {
-                toggleToolbarMenuItem.setText("Hide Toolbar");
-            }
+        if (toolbarManager != null) {
+            toolbarManager.handleToggleToolbar();
         }
     }
 
@@ -768,30 +858,22 @@ public class MainController {
 
     @FXML
     private void handlePreviousPage() {
-        PDFDocument currentDocument = getActiveDocument();
-        if (currentDocument != null && currentDocument.getCurrentPage() > 0) {
-            navigationHelper.navigateToPage(currentDocument.getCurrentPage() - 1);
+        if (navigationManager != null) {
+            navigationManager.handlePreviousPage();
         }
     }
 
     @FXML
     private void handleNextPage() {
-        PDFDocument currentDocument = getActiveDocument();
-        if (currentDocument != null
-                && currentDocument.getCurrentPage() < currentDocument.getTotalPages() - 1) {
-            navigationHelper.navigateToPage(currentDocument.getCurrentPage() + 1);
+        if (navigationManager != null) {
+            navigationManager.handleNextPage();
         }
     }
 
     @FXML
     private void handleGoToPage() {
-        PDFDocument currentDocument = getActiveDocument();
-        int pageNum = pageInfoManager.getPageNumberFromField();
-        if (pageNum > 0) {
-            navigationHelper.jumpToPage(pageNum);
-        } else {
-            uiStateManager.showError("Invalid Input", "Please enter a valid page number");
-            pageInfoManager.resetPageFieldToCurrentPage(currentDocument);
+        if (navigationManager != null) {
+            navigationManager.handleGoToPage();
         }
     }
 
@@ -799,22 +881,8 @@ public class MainController {
 
     @FXML
     private void handleHighlight() {
-        highlightModeActive = !highlightModeActive;
-
-        if (highlightModeActive) {
-            // Tắt nhóm vẽ hình khi bật Highlight
-            if (drawingToolsGroup != null) {
-                drawingToolsGroup.selectToggle(null);
-            }
-
-            uiStateManager.updateStatus("Highlight mode: Active - Click and drag to highlight");
-            pageRenderer.setHighlightModeActive();
-            updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.HIGHLIGHT);
-        } else {
-            // Tắt Highlight
-            uiStateManager.updateStatus("Highlight mode: Disabled");
-            pageRenderer.setHighlightModeActive();
-            updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.NONE);
+        if (highlightModeManager != null) {
+            highlightModeManager.handleHighlight();
         }
     }
 
@@ -992,31 +1060,9 @@ public class MainController {
 
     @FXML
     private void handleReorderPages() {
-        PDFDocument currentDocument = getActiveDocument();
-        RenderingManager currentRenderingManager = getCurrentRenderingManager();
-        dialogManager.openPageReorderDialog(currentDocument, () -> {
-            // Callback: Refresh view after successful reorder
-            Platform.runLater(() -> {
-                // Clear all caches to force re-render with a new page order
-                currentDocument.clearCache();
-                pageRenderer.clearCache();
-
-                // Re-render all pages using current tab's rendering manager
-                if (currentRenderingManager != null) {
-                    currentRenderingManager.renderAllPages();
-                }
-
-                // Update status
-                uiStateManager.updateStatus("Pages reordered - Don't forget to save!");
-
-                // Trigger auto-save
-                if (saveStatusManager != null) {
-                    saveStatusManager.triggerAutoSave();
-                }
-
-                logger.info("View refreshed after page reorder");
-            });
-        });
+        if (pageReorderUIManager != null) {
+            pageReorderUIManager.handleReorderPages();
+        }
     }
 
 
@@ -1044,10 +1090,6 @@ public class MainController {
 
     public double getCurrentZoom() {
         return zoomManager != null ? zoomManager.getCurrentZoom() : Constants.DEFAULT_ZOOM;
-    }
-
-    public boolean isHighlightModeActive() {
-        return highlightModeActive;
     }
 
     public int getTotalPages() {
@@ -1130,36 +1172,8 @@ public class MainController {
     // ==================== INSERT PAGE ====================
     @FXML
     private void handleInsertPage() {
-        PDFDocument currentDocument = getActiveDocument();
-        VBox pagesContainer = getCurrentPagesContainer();
-        ScrollPane scrollPane = getCurrentScrollPane();
-        RenderingManager currentRenderingManager = getCurrentRenderingManager();
-        
-        if (currentDocument == null) {
-            uiStateManager.showError("No PDF", "Please open a PDF file first.");
-            return;
-        }
-
-        InsertDialogController controller = dialogManager.openInsertDialog(currentDocument);
-        if (controller == null || controller.isInsertClicked()) {
-            return;
-        }
-
-        AtomicReference<VBox> pagesContainerRef = new AtomicReference<>(pagesContainer);
-
-        PDFDocument updatedDocument = documentOperationManager.insertBlankPages(
-                currentDocument, controller, pagesContainerRef, loadingPages,
-                pageRenderer, scrollHandler, scrollPane, currentRenderingManager);
-
-        if (updatedDocument != null) {
-            VBox updatedContainer = pagesContainerRef.get();
-            // Update context with new container
-            org.pdflite.model.DocumentContext context = getCurrentContext();
-            if (context != null && updatedContainer != null) {
-                // Recreate annotation manager with updated container
-                AnnotationManager newAnnotationManager = new AnnotationManager(updatedContainer, uiStateManager, currentDocument);
-                context.setAnnotationManager(newAnnotationManager);
-            }
+        if (pageInsertManager != null) {
+            pageInsertManager.handleInsertPage();
         }
     }
 
@@ -1185,6 +1199,36 @@ public class MainController {
         }
     }
 
+    /**
+     * Clears all bookmarks for the current document.
+     */
+    @FXML
+    private void handleClearAllBookmarks() {
+        if (bookmarkUIManager != null) {
+            bookmarkUIManager.handleClearAllBookmarks();
+        }
+    }
+
+    /**
+     * Imports bookmarks from PDF outline (Table of Contents).
+     */
+    @FXML
+    private void handleImportOutlineBookmarks() {
+        if (bookmarkUIManager != null) {
+            bookmarkUIManager.handleImportOutlineBookmarks();
+        }
+    }
+
+    /**
+     * Analyzes document and creates smart bookmarks based on headings/chapters.
+     */
+    @FXML
+    private void handleSmartBookmarks() {
+        if (bookmarkUIManager != null) {
+            bookmarkUIManager.handleSmartBookmarks();
+        }
+    }
+
     // ==================== AI CHAT OPERATIONS ====================
 
     /**
@@ -1192,38 +1236,12 @@ public class MainController {
      */
     @FXML
     private void handleOpenChat() {
-        if (chatUIManager == null) {
-            // Initialize Groq service
-            if (groqService == null) {
-                groqService = new GroqService();
-            }
-
-            // Create command executor
-            AICommandExecutor commandExecutor = new AICommandExecutor(
-                    this::getActiveDocument,
-                    () -> bookmarkManager,
-                    pageIndex -> navigationHelper.navigateToPage(pageIndex),
-                    status -> uiStateManager.updateStatus(status),
-                    () -> {
-                        PDFDocument doc = getActiveDocument();
-                        if (doc != null) {
-                            doc.clearCache();
-                            pageRenderer.clearCache();
-                            RenderingManager rm = getCurrentRenderingManager();
-                            if (rm != null) {
-                                rm.renderAllPages();
-                            }
-                            pageInfoManager.updatePageInfo(doc);
-                        }
-                    },
-                    () -> (Stage) rootPane.getScene().getWindow()
-            );
-
-            chatUIManager = new ChatUIManager(rootPane, groqService, commandExecutor, this::getActiveDocument);
-            chatUIManager.setThemeManager(themeManager);
+        if (aiChatManager != null) {
+            aiChatManager.handleOpenChat();
         }
+    }
 
-        chatUIManager.toggleChat();
+    public boolean isHighlightModeActive() {
+        return highlightModeManager != null && highlightModeManager.isHighlightModeActive();
     }
 }
-

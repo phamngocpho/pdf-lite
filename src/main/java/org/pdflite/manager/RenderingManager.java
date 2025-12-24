@@ -83,7 +83,7 @@ public class RenderingManager {
             if (pagesContainer == null) {
                 pagesContainer = new VBox(10);
                 pagesContainer.setAlignment(Pos.TOP_CENTER);
-                pagesContainer.setStyle("-fx-background-color: #808080; -fx-padding: 20;");
+                pagesContainer.setStyle("-fx-background-color: #808080; -fx-padding: 10 20 20 20;");
                 if (contentPane != null) {
                     contentPane.getChildren().add(pagesContainer);
                 }

@@ -45,7 +45,7 @@ public class BookmarkManager {
     private final ObservableList<Bookmark> bookmarks;
     private final Gson gson;
     private PDFDocument currentDocument;
-    private Consumer<Integer> onNavigateToPage;
+    private java.util.function.BiConsumer<Integer, Float> onNavigateToPage; // pageNumber, yPosition
     private ListView<Bookmark> bookmarkListView;
     private ThemeManager themeManager;
 
@@ -80,9 +80,9 @@ public class BookmarkManager {
     }
 
     /**
-     * Sets the callback for navigating to a page.
+     * Sets the callback for navigating to a page with Y position.
      */
-    public void setOnNavigateToPage(Consumer<Integer> callback) {
+    public void setOnNavigateToPage(java.util.function.BiConsumer<Integer, Float> callback) {
         this.onNavigateToPage = callback;
     }
 
@@ -105,7 +105,50 @@ public class BookmarkManager {
         bookmarks.add(bookmark);
         saveBookmarks();
         
+        // Refresh ListView to fix layout issues
+        refreshListView();
+        
         logger.info("Added bookmark for page {}: {}", pageNumber, title);
+    }
+
+    /**
+     * Adds multiple bookmarks at once (batch operation).
+     * More efficient than adding one by one.
+     */
+    public void addBookmarksBatch(List<Bookmark> newBookmarks) {
+        if (currentDocument == null) {
+            logger.warn("Cannot add bookmarks: no document loaded");
+            return;
+        }
+
+        int added = 0;
+        for (Bookmark bookmark : newBookmarks) {
+            // Check if bookmark already exists
+            if (!bookmarks.stream().anyMatch(b -> b.getPageNumber() == bookmark.getPageNumber())) {
+                bookmarks.add(bookmark);
+                added++;
+            }
+        }
+
+        if (added > 0) {
+            saveBookmarks();
+            // Refresh ListView after batch add
+            refreshListView();
+            logger.info("Added {} bookmarks in batch", added);
+        }
+    }
+
+    /**
+     * Refreshes the ListView by reloading from file (same as app startup).
+     * This fixes layout issues when adding items dynamically.
+     */
+    public void refreshListView() {
+        if (bookmarkListView != null && currentDocument != null) {
+            javafx.application.Platform.runLater(() -> {
+                // Reload from file - exactly like app startup
+                loadBookmarks();
+            });
+        }
     }
 
     /**
@@ -115,6 +158,16 @@ public class BookmarkManager {
         bookmarks.remove(bookmark);
         saveBookmarks();
         logger.info("Removed bookmark for page {}", bookmark.getPageNumber());
+    }
+
+    /**
+     * Removes all bookmarks.
+     */
+    public void clearAllBookmarks() {
+        int count = bookmarks.size();
+        bookmarks.clear();
+        saveBookmarks();
+        logger.info("Cleared all {} bookmarks", count);
     }
 
     /**
@@ -220,8 +273,8 @@ public class BookmarkManager {
         VBox sidebar = new VBox(10);
         sidebar.setPadding(new Insets(10));
         sidebar.setStyle("-fx-background-color: -fx-background;");
-        sidebar.setPrefWidth(250);
-        sidebar.setMinWidth(200);
+        sidebar.setPrefWidth(280);
+        sidebar.setMinWidth(250);
 
         // Title
         Label titleLabel = new Label("Bookmarks");
@@ -231,6 +284,12 @@ public class BookmarkManager {
         Button addButton = new Button("+ Add Bookmark");
         addButton.setMaxWidth(Double.MAX_VALUE);
         addButton.setOnAction(e -> showAddBookmarkDialog());
+
+        // Clear all button
+        Button clearAllButton = new Button("Clear All");
+        clearAllButton.setMaxWidth(Double.MAX_VALUE);
+        clearAllButton.setStyle("-fx-text-fill: #f44336;"); // Red text
+        clearAllButton.setOnAction(e -> handleClearAll());
 
         // Export/Import buttons
         HBox actionButtons = new HBox(5);
@@ -245,12 +304,29 @@ public class BookmarkManager {
         importButton.setOnAction(e -> handleImport());
         actionButtons.getChildren().addAll(exportButton, importButton);
 
-        // Bookmark list
+        // Bookmark list with fixed cell size to prevent layout bugs
         bookmarkListView = new ListView<>(bookmarks);
+        bookmarkListView.setFixedCellSize(52); // Fixed height for each cell
         bookmarkListView.setCellFactory(lv -> new BookmarkCell());
         VBox.setVgrow(bookmarkListView, Priority.ALWAYS);
+        
+        // Disable horizontal scrollbar
+        bookmarkListView.setStyle("-fx-focus-color: transparent; -fx-faint-focus-color: transparent;");
+        
+        // Force no horizontal scrollbar
+        bookmarkListView.skinProperty().addListener((obs, oldSkin, newSkin) -> {
+            if (newSkin != null) {
+                ScrollBar hBar = (ScrollBar) bookmarkListView.lookup(".scroll-bar:horizontal");
+                if (hBar != null) {
+                    hBar.setManaged(false);
+                    hBar.setVisible(false);
+                    hBar.setPrefWidth(0);
+                    hBar.setMaxWidth(0);
+                }
+            }
+        });
 
-        sidebar.getChildren().addAll(titleLabel, addButton, actionButtons, bookmarkListView);
+        sidebar.getChildren().addAll(titleLabel, addButton, clearAllButton, actionButtons, bookmarkListView);
 
         return sidebar;
     }
@@ -328,6 +404,28 @@ public class BookmarkManager {
     }
 
     /**
+     * Handles clear all bookmarks.
+     */
+    private void handleClearAll() {
+        if (bookmarks.isEmpty()) {
+            showAlert("No Bookmarks", "There are no bookmarks to clear.");
+            return;
+        }
+
+        boolean confirmed = CustomConfirmDialog.show(
+                "Clear All Bookmarks",
+                "Delete all bookmarks?",
+                String.format("This will permanently delete all %d bookmarks.", bookmarks.size()),
+                themeManager
+        );
+
+        if (confirmed) {
+            clearAllBookmarks();
+            showAlert("Bookmarks Cleared", "All bookmarks have been deleted.");
+        }
+    }
+
+    /**
      * Gets the bookmark filename for the current document.
      */
     private String getBookmarkFilename() {
@@ -354,31 +452,57 @@ public class BookmarkManager {
         private final VBox textContent;
         private final Label titleLabel;
         private final Label pageLabel;
-        private final Button deleteButton;
         private final Button goButton;
 
         public BookmarkCell() {
-            content = new HBox(10);
+            setPadding(Insets.EMPTY);
+            setStyle("-fx-padding: 0;");
+            
+            content = new HBox(6);
             content.setAlignment(Pos.CENTER_LEFT);
-            content.setPadding(new Insets(5));
+            content.setPadding(new Insets(4, 8, 4, 8));
+            content.setMinHeight(48);
+            content.setMaxHeight(48);
+            content.setPrefHeight(48);
 
-            textContent = new VBox(2);
+            textContent = new VBox(1);
+            textContent.setMinWidth(0);
+            textContent.setAlignment(Pos.CENTER_LEFT);
+            HBox.setHgrow(textContent, Priority.ALWAYS);
+            
             titleLabel = new Label();
-            titleLabel.setStyle("-fx-font-weight: bold;");
+            titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+            titleLabel.setWrapText(false);
+            titleLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
+            titleLabel.setMinWidth(0);
+            titleLabel.setMaxWidth(Double.MAX_VALUE);
+            
             pageLabel = new Label();
             pageLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: gray;");
+            pageLabel.setWrapText(false);
+            pageLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
+            pageLabel.setMinWidth(0);
+            pageLabel.setMaxWidth(Double.MAX_VALUE);
+            
             textContent.getChildren().addAll(titleLabel, pageLabel);
-            HBox.setHgrow(textContent, Priority.ALWAYS);
 
             goButton = new Button("Go");
-            goButton.setStyle("-fx-font-size: 11px; -fx-padding: 5 10;");
-            
-            deleteButton = new Button("×");
-            deleteButton.setStyle("-fx-font-size: 18px; -fx-text-fill: red; -fx-background-color: transparent; -fx-cursor: hand;");
-            deleteButton.setMinWidth(30);
-            deleteButton.setPrefWidth(30);
+            goButton.setStyle("-fx-font-size: 13px; -fx-padding: 4 10;");
+            goButton.setMinWidth(42);
+            goButton.setPrefWidth(42);
+            goButton.setMaxWidth(42);
 
-            content.getChildren().addAll(textContent, goButton, deleteButton);
+            content.getChildren().addAll(textContent, goButton);
+            
+            // Bind width to ListView width minus scrollbar
+            content.maxWidthProperty().bind(
+                javafx.beans.binding.Bindings.createDoubleBinding(
+                    () -> getListView() != null ? getListView().getWidth() - 20 : 200,
+                    widthProperty()
+                )
+            );
+            
+            setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
         }
 
         @Override
@@ -388,6 +512,7 @@ public class BookmarkManager {
             if (empty || bookmark == null) {
                 setGraphic(null);
                 setContextMenu(null);
+                setText(null);
             } else {
                 titleLabel.setText(bookmark.getTitle());
                 pageLabel.setText("Page " + (bookmark.getPageNumber() + 1) + " • " + 
@@ -396,12 +521,9 @@ public class BookmarkManager {
                 // Go button action
                 goButton.setOnAction(e -> {
                     if (onNavigateToPage != null) {
-                        onNavigateToPage.accept(bookmark.getPageNumber());
+                        onNavigateToPage.accept(bookmark.getPageNumber(), bookmark.getYPosition());
                     }
                 });
-
-                // Delete button action
-                deleteButton.setOnAction(e -> confirmAndDeleteBookmark(bookmark));
 
                 // Context menu for right-click
                 ContextMenu contextMenu = new ContextMenu();
@@ -409,7 +531,7 @@ public class BookmarkManager {
                 MenuItem goToPageItem = new MenuItem("Go to Page");
                 goToPageItem.setOnAction(e -> {
                     if (onNavigateToPage != null) {
-                        onNavigateToPage.accept(bookmark.getPageNumber());
+                        onNavigateToPage.accept(bookmark.getPageNumber(), bookmark.getYPosition());
                     }
                 });
                 

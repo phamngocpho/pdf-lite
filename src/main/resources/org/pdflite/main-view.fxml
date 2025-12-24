@@ -81,6 +81,11 @@
                     <MenuItem text="Toggle Bookmarks" onAction="#handleToggleBookmarks" accelerator="Ctrl+B"/>
                     <MenuItem text="Add Bookmark..." onAction="#handleAddBookmark" accelerator="Ctrl+Shift+B"/>
                     <SeparatorMenuItem/>
+                    <MenuItem text="Smart Bookmarks (AI-Powered)..." onAction="#handleSmartBookmarks"/>
+                    <MenuItem text="Import from PDF Outline..." onAction="#handleImportOutlineBookmarks"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="Clear All Bookmarks..." onAction="#handleClearAllBookmarks"/>
+                    <SeparatorMenuItem/>
                     <MenuItem fx:id="toggleToolbarMenuItem" text="Hide Toolbar" onAction="#handleToggleToolbar"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Toggle Full Screen" onAction="#handleToggleFullScreen" accelerator="F11"/>
