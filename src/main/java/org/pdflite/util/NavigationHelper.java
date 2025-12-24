@@ -103,6 +103,29 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
     }
 
     /**
+     * Navigate to the page by index (0-based) with Y offset
+     * @param pageIndex the page index (0-based)
+     * @param yOffset the Y offset on page (0.0 = top, 1.0 = bottom)
+     */
+    public void navigateToPageWithOffset(int pageIndex, float yOffset) {
+        PDFDocument currentDocument = mainController.getCurrentDocument();
+        if (currentDocument == null) {
+            return;
+        }
+
+        currentDocument.setCurrentPage(pageIndex);
+        
+        // Lock scroll-based page updates during navigation
+        org.pdflite.controller.ScrollHandler scrollHandler = mainController.getScrollHandler();
+        if (scrollHandler != null) {
+            scrollHandler.lockPageUpdates();
+        }
+        
+        scrollToPageWithOffset(pageIndex, yOffset);
+        mainController.updatePageInfo();
+    }
+
+    /**
      * Navigate to the page by index (0-based)
      * @param pageIndex the page index (0-based)
      * @param smooth if true, use smooth animation; if false, jump instantly
@@ -300,9 +323,8 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
             double viewportHeight = scrollPane.getViewportBounds().getHeight();
 
             if (contentHeight > viewportHeight) {
-                double pageHeight = ScrollCalculator.calculatePageBounds(pagesContainer, pageIndex).height();
-                double centerOffset = Math.max(0, (viewportHeight - pageHeight) / 2);
-                double adjustedY = Math.max(0, currentY - centerOffset);
+                // Scroll to top of page - no offset needed since padding handles spacing
+                double adjustedY = Math.max(0, currentY);
 
                 double maxScroll = contentHeight - viewportHeight;
                 double scrollPosition = Math.max(0.0, Math.min(1.0, adjustedY / maxScroll));
@@ -316,6 +338,58 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
         } catch (Exception e) {
             logger.error("Error scrolling to page {}", pageIndex + 1, e);
         }
+    }
+
+    /**
+     * Scroll to a specific page with Y offset
+     * @param pageIndex the page index (0-based)
+     * @param yOffset the Y offset on page (0.0 = top, 1.0 = bottom)
+     */
+    public void scrollToPageWithOffset(int pageIndex, float yOffset) {
+        VBox pagesContainer = mainController.getPagesContainer();
+        ScrollPane scrollPane = mainController.getScrollPane();
+
+        if (pagesContainer == null || scrollPane == null) {
+            logger.warn("Cannot scroll - container or scroll pane is null");
+            return;
+        }
+
+        Platform.runLater(() -> {
+            try {
+                if (pageIndex < 0 || pageIndex >= mainController.getTotalPages()) {
+                    logger.warn("Invalid page index for scrolling: {}", pageIndex);
+                    return;
+                }
+
+                pagesContainer.layout();
+
+                double pageY = ScrollCalculator.calculatePageYPosition(pagesContainer, pageIndex);
+                double pageHeight = ScrollCalculator.calculatePageBounds(pagesContainer, pageIndex).height();
+                
+                // Calculate Y position within the page based on offset
+                double offsetY = pageY + (pageHeight * yOffset);
+                
+                // Small padding so heading appears slightly below top of viewport
+                double topPadding = 10;
+                double adjustedY = Math.max(0, offsetY - topPadding);
+
+                double contentHeight = pagesContainer.getHeight();
+                double viewportHeight = scrollPane.getViewportBounds().getHeight();
+
+                if (contentHeight > viewportHeight) {
+                    double maxScroll = contentHeight - viewportHeight;
+                    double scrollPosition = Math.max(0.0, Math.min(1.0, adjustedY / maxScroll));
+
+                    scrollPane.setVvalue(scrollPosition);
+
+                    logger.debug("Scrolled to page {} with offset {} at position {}", 
+                            pageIndex + 1, yOffset, scrollPosition);
+                }
+
+            } catch (Exception e) {
+                logger.error("Error scrolling to page {} with offset", pageIndex + 1, e);
+            }
+        });
     }
 
     /**

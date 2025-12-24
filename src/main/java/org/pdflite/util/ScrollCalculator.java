@@ -23,28 +23,40 @@ public class ScrollCalculator {
 
     /**
      * Calculates the Y position of a specific page in the container.
-     * This is the cumulative height of all pages before the target page.
+     * Uses actual layout bounds for accurate positioning.
      *
      * @param pagesContainer  the container holding all page boxes
      * @param targetPageIndex the index of the target page (0-based)
      * @return the Y position in pixels
      */
     public static double calculatePageYPosition(VBox pagesContainer, int targetPageIndex) {
-        double currentY = 0;
-
         Object twoMode = pagesContainer.getProperties().get("twoPageMode");
         boolean twoPage = twoMode instanceof Boolean && (Boolean) twoMode;
 
         if (!twoPage) {
+            // Single page mode - get actual Y position from layout
+            if (targetPageIndex >= 0 && targetPageIndex < pagesContainer.getChildren().size()) {
+                javafx.scene.Node pageNode = pagesContainer.getChildren().get(targetPageIndex);
+                return pageNode.getBoundsInParent().getMinY();
+            }
+            // Fallback: calculate manually
+            double currentY = 0;
             for (int i = 0; i < targetPageIndex && i < pagesContainer.getChildren().size(); i++) {
                 VBox pageBox = (VBox) pagesContainer.getChildren().get(i);
-                currentY += pageBox.getPrefHeight() + PAGE_SPACING;
+                currentY += pageBox.getBoundsInParent().getHeight() + PAGE_SPACING;
             }
             return currentY;
         }
 
         // Two-page mode: pagesContainer children are rows (HBox), each containing up to 2 page VBoxes
         int targetRow = targetPageIndex / 2;
+        if (targetRow >= 0 && targetRow < pagesContainer.getChildren().size()) {
+            javafx.scene.Node rowNode = pagesContainer.getChildren().get(targetRow);
+            return rowNode.getBoundsInParent().getMinY();
+        }
+        
+        // Fallback
+        double currentY = 0;
         int rows = pagesContainer.getChildren().size();
         for (int r = 0; r < targetRow && r < rows; r++) {
             double rowHeight = calculateRowHeight(pagesContainer, r);

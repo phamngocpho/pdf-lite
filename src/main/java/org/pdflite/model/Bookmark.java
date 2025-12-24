@@ -12,6 +12,7 @@ public class Bookmark {
     private String title;
     private final LocalDateTime createdAt;
     private String thumbnailPath; // Optional: path to thumbnail image
+    private float yPosition; // Y position on page (0.0 = top, 1.0 = bottom)
 
     /**
      * Creates a new bookmark.
@@ -23,6 +24,21 @@ public class Bookmark {
         this.pageNumber = pageNumber;
         this.title = title;
         this.createdAt = LocalDateTime.now();
+        this.yPosition = 0.0f; // Default to top of page
+    }
+
+    /**
+     * Creates a bookmark with Y position.
+     *
+     * @param pageNumber the page number (0-indexed)
+     * @param title      the bookmark title/description
+     * @param yPosition  the Y position on page (0.0 = top, 1.0 = bottom)
+     */
+    public Bookmark(int pageNumber, String title, float yPosition) {
+        this.pageNumber = pageNumber;
+        this.title = title;
+        this.createdAt = LocalDateTime.now();
+        this.yPosition = yPosition;
     }
 
     /**
@@ -33,6 +49,18 @@ public class Bookmark {
         this.title = title;
         this.createdAt = createdAt;
         this.thumbnailPath = thumbnailPath;
+        this.yPosition = 0.0f;
+    }
+
+    /**
+     * Creates a bookmark with all fields including Y position (for deserialization).
+     */
+    public Bookmark(int pageNumber, String title, LocalDateTime createdAt, String thumbnailPath, float yPosition) {
+        this.pageNumber = pageNumber;
+        this.title = title;
+        this.createdAt = createdAt;
+        this.thumbnailPath = thumbnailPath;
+        this.yPosition = yPosition;
     }
 
     public int getPageNumber() {
@@ -59,6 +87,14 @@ public class Bookmark {
         this.thumbnailPath = thumbnailPath;
     }
 
+    public float getYPosition() {
+        return yPosition;
+    }
+
+    public void setYPosition(float yPosition) {
+        this.yPosition = yPosition;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -77,6 +113,7 @@ public class Bookmark {
         return "Bookmark{" +
                 "pageNumber=" + pageNumber +
                 ", title='" + title + '\'' +
+                ", yPosition=" + yPosition +
                 ", createdAt=" + createdAt +
                 '}';
     }
