@@ -108,11 +108,11 @@ class BookmarkManagerTest {
     @Test
     void testSetOnNavigateToPage() {
         AtomicInteger navigatedPage = new AtomicInteger(-1);
-        bookmarkManager.setOnNavigateToPage(navigatedPage::set);
+        bookmarkManager.setOnNavigateToPage((page, yPos) -> navigatedPage.set(page));
         
         // This would be triggered by UI interaction
         // We can't test it directly without UI, but we can verify it's set
-        assertDoesNotThrow(() -> bookmarkManager.setOnNavigateToPage(navigatedPage::set));
+        assertDoesNotThrow(() -> bookmarkManager.setOnNavigateToPage((page, yPos) -> navigatedPage.set(page)));
     }
 
     @Test
