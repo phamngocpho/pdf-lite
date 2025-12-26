@@ -84,6 +84,8 @@ public class MainController {
     @FXML
     private Button nextButton;
     @FXML
+    private MenuBar menuBar;
+    @FXML
     private Menu recentFilesMenu;
     @FXML
     private ColorPicker colorPicker;
@@ -356,6 +358,9 @@ public class MainController {
         drawingToolIconManager.setupUndoIcon(undoButton);
         drawingToolIconManager.setupRedoIcon(redoButton);
 
+        // Setup menu hover to show on mouse enter
+        setupMenuHoverBehavior();
+
         uiStateManager.updateUIState(false);
 
         // Check for recovery files on startup
@@ -373,6 +378,105 @@ public class MainController {
             if (newScene != null && keyboardShortcutManager != null) {
                 keyboardShortcutManager.setupKeyboardShortcuts(newScene);
             }
+        });
+    }
+
+    /**
+     * Sets up hover behavior for menu bar - menus open on mouse hover without clicking.
+     */
+    private void setupMenuHoverBehavior() {
+        if (menuBar == null) return;
+
+        // Wait for skin to be applied
+        menuBar.skinProperty().addListener((obs, oldSkin, newSkin) -> {
+            if (newSkin != null) {
+                Platform.runLater(this::installMenuHoverHandlers);
+            }
+        });
+        
+        // Also try immediately if skin is already set
+        if (menuBar.getSkin() != null) {
+            Platform.runLater(this::installMenuHoverHandlers);
+        }
+    }
+
+    /**
+     * Installs mouse hover handlers on menu bar buttons to open on hover.
+     */
+    private void installMenuHoverHandlers() {
+        // Find container holding menu buttons
+        for (javafx.scene.Node child : menuBar.getChildrenUnmodifiable()) {
+            if (child instanceof javafx.scene.layout.HBox container) {
+                installHoverOnContainer(container);
+                return;
+            }
+        }
+        
+        // Try lookup as fallback
+        javafx.scene.Node container = menuBar.lookup(".container");
+        if (container instanceof javafx.scene.layout.HBox hbox) {
+            installHoverOnContainer(hbox);
+        }
+    }
+
+    /**
+     * Installs hover handlers on the menu button container to open menus on hover.
+     */
+    private void installHoverOnContainer(javafx.scene.layout.HBox container) {
+        var children = container.getChildren();
+        
+        for (int i = 0; i < children.size() && i < menuBar.getMenus().size(); i++) {
+            javafx.scene.Node menuButton = children.get(i);
+            final int menuIndex = i;
+            
+            // Open menu on hover (no click needed)
+            menuButton.addEventHandler(javafx.scene.input.MouseEvent.MOUSE_ENTERED, e -> {
+                Menu targetMenu = menuBar.getMenus().get(menuIndex);
+                if (!targetMenu.isShowing()) {
+                    // Hide any other showing menu first
+                    for (Menu m : menuBar.getMenus()) {
+                        if (m.isShowing()) {
+                            m.hide();
+                        }
+                    }
+                    targetMenu.show();
+                }
+            });
+        }
+        
+        // Close menu when mouse leaves the menu bar (with delay to allow moving to dropdown)
+        menuBar.setOnMouseExited(e -> {
+            javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.millis(150));
+            pause.setOnFinished(event -> {
+                // Check if mouse is back over menu bar
+                var bounds = menuBar.localToScreen(menuBar.getBoundsInLocal());
+                if (bounds != null) {
+                    try {
+                        var robot = new java.awt.Robot();
+                        var mouseLocation = java.awt.MouseInfo.getPointerInfo().getLocation();
+                        
+                        // If mouse is not over menu bar, close all menus
+                        if (!bounds.contains(mouseLocation.getX(), mouseLocation.getY())) {
+                            // Also check if mouse is over any showing context menu
+                            boolean overDropdown = menuBar.getMenus().stream()
+                                .filter(Menu::isShowing)
+                                .anyMatch(m -> {
+                                    // Context menus capture mouse, so if menu is showing and we got here,
+                                    // mouse is likely over the dropdown
+                                    return false;
+                                });
+                            
+                            if (!overDropdown) {
+                                menuBar.getMenus().forEach(Menu::hide);
+                            }
+                        }
+                    } catch (Exception ex) {
+                        // Fallback: just close menus
+                        menuBar.getMenus().forEach(Menu::hide);
+                    }
+                }
+            });
+            pause.play();
         });
     }
 
