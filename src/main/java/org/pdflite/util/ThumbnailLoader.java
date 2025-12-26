@@ -8,6 +8,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
 import org.slf4j.Logger;
@@ -150,7 +151,8 @@ public class ThumbnailLoader {
         imageView.setFitHeight(THUMBNAIL_SIZE);
         imageView.setPreserveRatio(true);
 
-        Label pageLabel = new Label("Page " + pageNumber);
+        Label pageLabel = new Label(java.text.MessageFormat.format(
+                LanguageManager.getInstance().getString("reorder.page"), pageNumber));
         pageLabel.setStyle("-fx-font-size: 10px;");
 
         VBox box = new VBox(5, imageView, pageLabel);

@@ -8,6 +8,7 @@ import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.manager.ThemeManager;
 import org.pdflite.util.DialogTitleBar;
 import org.slf4j.Logger;
@@ -22,6 +23,10 @@ import java.util.Map;
 public class MetadataDialog {
     private static final Logger logger = LoggerFactory.getLogger(MetadataDialog.class);
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     private final Stage dialog;
     private final Map<String, TextField> fields = new HashMap<>();
     private boolean confirmed = false;
@@ -30,13 +35,13 @@ public class MetadataDialog {
         dialog = new Stage();
         dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.initStyle(StageStyle.TRANSPARENT);
-        dialog.setTitle("Document Properties");
+        dialog.setTitle(lang().getString("metadata.title"));
 
         VBox root = new VBox(0);
         root.getStyleClass().add("custom-confirm-dialog");
 
         // Custom title bar using DialogTitleBar utility
-        DialogTitleBar titleBar = new DialogTitleBar("Document Properties", dialog);
+        DialogTitleBar titleBar = new DialogTitleBar(lang().getString("metadata.title"), dialog);
 
         // Content area with scroll pane
         VBox content = createContent(currentMetadata);
@@ -69,16 +74,16 @@ public class MetadataDialog {
         content.getStyleClass().add("dialog-content");
 
         // Create form fields
-        addField(content, "Title:", "title", currentMetadata.getOrDefault("title", ""));
-        addField(content, "Author:", "author", currentMetadata.getOrDefault("author", ""));
-        addField(content, "Subject:", "subject", currentMetadata.getOrDefault("subject", ""));
-        addField(content, "Keywords:", "keywords", currentMetadata.getOrDefault("keywords", ""));
-        addField(content, "Creator:", "creator", currentMetadata.getOrDefault("creator", ""));
+        addField(content, lang().getString("metadata.titleField") + ":", "title", currentMetadata.getOrDefault("title", ""));
+        addField(content, lang().getString("metadata.author") + ":", "author", currentMetadata.getOrDefault("author", ""));
+        addField(content, lang().getString("metadata.subject") + ":", "subject", currentMetadata.getOrDefault("subject", ""));
+        addField(content, lang().getString("metadata.keywords") + ":", "keywords", currentMetadata.getOrDefault("keywords", ""));
+        addField(content, lang().getString("metadata.creator") + ":", "creator", currentMetadata.getOrDefault("creator", ""));
 
         // Read-only fields
-        addReadOnlyField(content, "Producer:", currentMetadata.getOrDefault("producer", ""));
-        addReadOnlyField(content, "Created:", currentMetadata.getOrDefault("creationDate", ""));
-        addReadOnlyField(content, "Modified:", currentMetadata.getOrDefault("modificationDate", ""));
+        addReadOnlyField(content, lang().getString("metadata.producer") + ":", currentMetadata.getOrDefault("producer", ""));
+        addReadOnlyField(content, lang().getString("metadata.created") + ":", currentMetadata.getOrDefault("creationDate", ""));
+        addReadOnlyField(content, lang().getString("metadata.modified") + ":", currentMetadata.getOrDefault("modificationDate", ""));
 
         return content;
     }
@@ -121,7 +126,7 @@ public class MetadataDialog {
         buttonBar.setPadding(new Insets(0, 20, 20, 20));
         buttonBar.getStyleClass().add("dialog-button-bar");
 
-        Button cancelButton = new Button("Cancel");
+        Button cancelButton = new Button(lang().getString("dialog.cancel"));
         cancelButton.getStyleClass().add("dialog-button");
         cancelButton.setPrefWidth(100);
         cancelButton.setOnAction(e -> {
@@ -129,7 +134,7 @@ public class MetadataDialog {
             dialog.close();
         });
 
-        Button okButton = new Button("OK");
+        Button okButton = new Button(lang().getString("dialog.ok"));
         okButton.getStyleClass().addAll("dialog-button", "dialog-button-primary");
         okButton.setPrefWidth(100);
         okButton.setOnAction(e -> {

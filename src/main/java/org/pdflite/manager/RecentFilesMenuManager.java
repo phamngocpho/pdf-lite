@@ -13,6 +13,11 @@ import javafx.scene.control.MenuItem;
  */
 public record RecentFilesMenuManager(Menu recentFilesMenu, RecentFilesManager recentFilesManager,
                                      UIStateManager uiStateManager, Consumer<File> onFileSelected) {
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Creates a new RecentFilesMenuManager.
      *
@@ -36,7 +41,7 @@ public record RecentFilesMenuManager(Menu recentFilesMenu, RecentFilesManager re
         List<String> recentFiles = recentFilesManager.getRecentFiles();
 
         if (recentFiles.isEmpty()) {
-            MenuItem noFiles = new MenuItem("No recent files");
+            MenuItem noFiles = new MenuItem(lang().getString("recent.noFiles"));
             noFiles.setDisable(true);
             recentFilesMenu.getItems().add(noFiles);
         } else {
@@ -58,7 +63,7 @@ public record RecentFilesMenuManager(Menu recentFilesMenu, RecentFilesManager re
         }
         recentFilesManager.clearRecentFiles();
         updateRecentFilesMenu();
-        uiStateManager.updateStatus("Recent files cleared");
+        uiStateManager.updateStatus(lang().getString("recent.cleared"));
     }
 
     /**

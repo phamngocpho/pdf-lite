@@ -9,6 +9,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import org.pdflite.manager.CompressionManager;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.manager.ThemeManager;
 import org.pdflite.util.DialogTitleBar;
 
@@ -24,6 +25,10 @@ public class CompressionDialog {
     private final org.pdflite.model.PDFDocument pdfDocument;
     private final CompressionManager compressionManager;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     public CompressionDialog(long currentSize, int estimatedReduction, ThemeManager themeManager,
                              org.pdflite.model.PDFDocument pdfDocument, CompressionManager compressionManager) {
         this.pdfDocument = pdfDocument;
@@ -31,13 +36,13 @@ public class CompressionDialog {
         dialog = new Stage();
         dialog.initStyle(StageStyle.TRANSPARENT);
         dialog.initModality(Modality.APPLICATION_MODAL);
-        dialog.setTitle("Optimize PDF");
+        dialog.setTitle(lang().getString("menu.file.optimize"));
 
         VBox mainContainer = new VBox();
         mainContainer.getStyleClass().add("custom-confirm-dialog");
 
         // Title bar
-        DialogTitleBar titleBar = new DialogTitleBar("Optimize PDF", dialog);
+        DialogTitleBar titleBar = new DialogTitleBar(lang().getString("menu.file.optimize"), dialog);
         mainContainer.getChildren().add(titleBar.getTitleBar());
 
         // Content
@@ -65,17 +70,23 @@ public class CompressionDialog {
         content.setPadding(new Insets(20));
         content.setAlignment(Pos.TOP_LEFT);
 
+        // Estimated reduction (shown first)
+        estimateLabel = new Label(
+                String.format(lang().getString("compression.estimatedReduction") + ": ~%d%%", estimatedReduction)
+        );
+        estimateLabel.setStyle("-fx-text-fill: #4caf50; -fx-font-weight: bold;");
+
         // Info label
-        Label infoLabel = new Label("Reduce PDF file size by compressing images.");
+        Label infoLabel = new Label(lang().getString("compression.description"));
         infoLabel.setWrapText(true);
         infoLabel.setMaxWidth(400);
 
         // Current size
-        Label sizeLabel = new Label(String.format("Current size: %.2f MB", currentSize / 1024.0 / 1024.0));
+        Label sizeLabel = new Label(String.format(lang().getString("compression.currentSize") + ": %.2f MB", currentSize / 1024.0 / 1024.0));
         sizeLabel.setStyle("-fx-font-weight: bold;");
 
         // Compression level selection
-        Label levelLabel = new Label("Compression level:");
+        Label levelLabel = new Label(lang().getString("compression.level") + ":");
         levelLabel.setStyle("-fx-font-weight: bold;");
 
         ToggleGroup group = new ToggleGroup();
@@ -116,8 +127,7 @@ public class CompressionDialog {
         warningIcon.setScaleX(scale);
         warningIcon.setScaleY(scale);
 
-        Label warningLabel = new Label("Higher compression may reduce image quality. " +
-                "This operation cannot be undone.");
+        Label warningLabel = new Label(lang().getString("compression.warning"));
         warningLabel.setWrapText(true);
         warningLabel.setMaxWidth(360);
         warningLabel.setStyle("-fx-text-fill: #ff9800; -fx-font-size: 11px;");
@@ -125,12 +135,6 @@ public class CompressionDialog {
         javafx.scene.layout.HBox warningBox = new javafx.scene.layout.HBox(8);
         warningBox.setAlignment(javafx.geometry.Pos.TOP_LEFT);
         warningBox.getChildren().addAll(iconContainer, warningLabel);
-
-        // Estimated reduction
-        estimateLabel = new Label(
-                String.format("Estimated size reduction: ~%d%%", estimatedReduction)
-        );
-        estimateLabel.setStyle("-fx-text-fill: #4caf50; -fx-font-weight: bold;");
 
         content.getChildren().addAll(estimateLabel, infoLabel, sizeLabel, levelLabel, radioBox, warningBox);
         return content;
@@ -142,7 +146,7 @@ public class CompressionDialog {
     private void updateEstimate() {
         if (estimateLabel != null && compressionManager != null && pdfDocument != null) {
             int newEstimate = compressionManager.estimateCompression(pdfDocument, selectedLevel);
-            estimateLabel.setText(String.format("Estimated size reduction: ~%d%%", newEstimate));
+            estimateLabel.setText(String.format(lang().getString("compression.estimatedReduction") + ": ~%d%%", newEstimate));
         }
     }
 
@@ -151,14 +155,14 @@ public class CompressionDialog {
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
         buttonBox.setPadding(new Insets(0, 20, 20, 20));
 
-        Button cancelButton = new Button("Cancel");
+        Button cancelButton = new Button(lang().getString("dialog.cancel"));
         cancelButton.setPrefWidth(100);
         cancelButton.setOnAction(e -> {
             confirmed = false;
             dialog.close();
         });
 
-        Button optimizeButton = new Button("Optimize");
+        Button optimizeButton = new Button(lang().getString("menu.file.optimize"));
         optimizeButton.setPrefWidth(100);
         optimizeButton.setDefaultButton(true);
         optimizeButton.setStyle("-fx-background-color: #2196f3; -fx-text-fill: white;");

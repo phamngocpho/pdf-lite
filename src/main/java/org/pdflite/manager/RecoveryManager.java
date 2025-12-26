@@ -19,6 +19,10 @@ public record RecoveryManager(AutoSaveManager autoSaveManager, UIStateManager ui
 
     private static final Logger logger = LoggerFactory.getLogger(RecoveryManager.class);
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Checks for recovery files on startup and prompts user if found.
      *
@@ -51,7 +55,7 @@ public record RecoveryManager(AutoSaveManager autoSaveManager, UIStateManager ui
                     // Callback to open the file
                     onRecoveryCallback.onRecover(tempFile);
 
-                    uiStateManager.updateStatus("Document recovered from auto-save - Save to keep changes");
+                    uiStateManager.updateStatus(lang().getString("recovery.recovered"));
                     logger.info("Recovered document: {}", fileToRecover.getName());
 
                     // Clean up the auto-save file after successful recovery

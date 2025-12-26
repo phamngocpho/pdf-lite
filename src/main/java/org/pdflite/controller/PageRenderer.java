@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
 import org.pdflite.view.AnnotationLayer;
@@ -28,6 +29,10 @@ import javafx.scene.layout.VBox;
  */
 public class PageRenderer {
     private static final Logger logger = LoggerFactory.getLogger(PageRenderer.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     private final PDFService pdfService;
     private final ExecutorService renderExecutor;
@@ -254,7 +259,7 @@ public class PageRenderer {
                 Platform.runLater(() -> {
                     if (!pageBox.getChildren().isEmpty() &&
                             pageBox.getChildren().getFirst() instanceof StackPane stackPane) {
-                        Label errorLabel = new Label("Error loading page " + (pageIndex + 1));
+                        Label errorLabel = new Label(lang().getString("navigation.errorLoading") + " " + (pageIndex + 1));
                         errorLabel.setStyle("-fx-text-fill: red;");
                         stackPane.getChildren().clear();
                         stackPane.getChildren().add(errorLabel);
@@ -323,7 +328,7 @@ public class PageRenderer {
                     // Fallback: add directly if no command manager
                     currentDocument.addAnnotation(newAnn);
                 }
-                logger.info("Vẽ xong hình trên trang {}", pageIndex);
+                logger.info("Drawing completed on page {}", pageIndex);
             }
         });
 

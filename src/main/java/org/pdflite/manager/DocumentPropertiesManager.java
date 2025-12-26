@@ -13,6 +13,10 @@ public record DocumentPropertiesManager(MetadataManager metadataManager, UIState
 
     private static final Logger logger = LoggerFactory.getLogger(DocumentPropertiesManager.class);
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Opens the document properties dialog and handles metadata updates.
      *
@@ -20,7 +24,7 @@ public record DocumentPropertiesManager(MetadataManager metadataManager, UIState
      */
     public void openDocumentPropertiesDialog(PDFDocument document) {
         if (document == null) {
-            uiStateManager.showError("No Document", "Please open a PDF file first.");
+            uiStateManager.showError(lang().getString("error.noDocument"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
@@ -35,7 +39,7 @@ public record DocumentPropertiesManager(MetadataManager metadataManager, UIState
                 // User clicked OK, update metadata
                 var updatedMetadata = dialog.getMetadata();
                 if (metadataManager.updateMetadata(document, updatedMetadata)) {
-                    uiStateManager.updateStatus("Document properties updated");
+                    uiStateManager.updateStatus(lang().getString("status.complete"));
                     logger.info("Document metadata updated successfully");
 
                     // Trigger auto-save
@@ -43,12 +47,12 @@ public record DocumentPropertiesManager(MetadataManager metadataManager, UIState
                         saveStatusManager.triggerAutoSave();
                     }
                 } else {
-                    uiStateManager.showError("Update Failed", "Failed to update document properties.");
+                    uiStateManager.showError(lang().getString("error.title"), lang().getString("error.saveFailed"));
                 }
             }
         } catch (Exception e) {
             logger.error("Error opening document properties dialog", e);
-            uiStateManager.showError("Error", "Failed to open document properties: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.title") + ": " + e.getMessage());
         }
     }
 }

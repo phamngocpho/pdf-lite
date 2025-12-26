@@ -37,6 +37,10 @@ import java.util.List;
 public record ImageManager(UIStateManager uiStateManager) {
     private static final Logger logger = LoggerFactory.getLogger(ImageManager.class);
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Supported image formats.
      */
@@ -160,7 +164,7 @@ public record ImageManager(UIStateManager uiStateManager) {
                     (float) placement.height());
         }
 
-        uiStateManager.updateStatus("Image placed successfully");
+        uiStateManager.updateStatus(lang().getString("image.placedSuccess"));
         logger.debug("Image placed successfully on page {}", pageIndex);
     }
 
@@ -211,7 +215,7 @@ public record ImageManager(UIStateManager uiStateManager) {
         List<PDAnnotation> annotations = page.getAnnotations();
         annotations.add(stamp);
 
-        uiStateManager.updateStatus("Stamp annotation created successfully");
+        uiStateManager.updateStatus(lang().getString("image.stampSuccess"));
         logger.debug("Stamp annotation created successfully on page {}", pageIndex);
     }
 

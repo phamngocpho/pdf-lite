@@ -17,6 +17,10 @@ import javafx.scene.paint.Color;
 public class CommentManager {
     private static final Logger logger = LoggerFactory.getLogger(CommentManager.class);
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     private final UIStateManager uiStateManager;
     private final Supplier<PDFDocument> documentSupplier;
     private final DoubleSupplier zoomSupplier;
@@ -46,7 +50,7 @@ public class CommentManager {
                     try {
                         PDFDocument currentDocument = documentSupplier.get();
                         if (currentDocument == null) {
-                            uiStateManager.updateStatus("No document loaded");
+                            uiStateManager.updateStatus(lang().getString("comment.noDocument"));
                             logger.warn("Cannot add comment: no document loaded");
                             return;
                         }
@@ -69,12 +73,12 @@ public class CommentManager {
                             annotationManager.refreshPageAnnotations(pageIndex);
                         }
 
-                        uiStateManager.updateStatus("Comment added - Save to persist changes");
+                        uiStateManager.updateStatus(lang().getString("comment.added"));
                         logger.info("Added comment at page {} position ({}, {})", pageIndex + 1, canvasX, canvasY);
 
                     } catch (Exception e) {
                         logger.error("Error adding comment", e);
-                        uiStateManager.updateStatus("Error adding comment: " + e.getMessage());
+                        uiStateManager.updateStatus(lang().getString("comment.errorAdd") + ": " + e.getMessage());
                     }
                 });
 
@@ -90,7 +94,7 @@ public class CommentManager {
                     try {
                         PDFDocument currentDocument = documentSupplier.get();
                         if (currentDocument == null) {
-                            uiStateManager.updateStatus("No document loaded");
+                            uiStateManager.updateStatus(lang().getString("comment.noDocument"));
                             return;
                         }
 
@@ -114,7 +118,7 @@ public class CommentManager {
                         }
 
                         if (targetComment == null) {
-                            uiStateManager.updateStatus("No comment at cursor");
+                            uiStateManager.updateStatus(lang().getString("comment.noCommentAtCursor"));
                             return;
                         }
 
@@ -129,15 +133,15 @@ public class CommentManager {
                                 annotationManager.refreshPageAnnotations(pageIndex);
                             }
 
-                            uiStateManager.updateStatus("Comment deleted - Save to persist changes");
+                            uiStateManager.updateStatus(lang().getString("comment.deleted"));
                             logger.info("Deleted comment at page {} position ({}, {})", pageIndex + 1, canvasX, canvasY);
                         } else {
-                            uiStateManager.updateStatus("Failed to delete comment");
+                            uiStateManager.updateStatus(lang().getString("comment.deleteFailed"));
                         }
 
                     } catch (Exception e) {
                         logger.error("Error deleting comment", e);
-                        uiStateManager.updateStatus("Error deleting comment: " + e.getMessage());
+                        uiStateManager.updateStatus(lang().getString("comment.errorDelete") + ": " + e.getMessage());
                     }
                 }
         );

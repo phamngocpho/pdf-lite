@@ -592,7 +592,26 @@
 
 .dialog-label-strong {
     -fx-text-fill: #1a1a1a;
-    -fx-font-weight: 600;
+    -fx-font-weight: normal;
+    -fx-font-size: 13px;
+}
+
+/* Search Dialog Specific Styles */
+.search-dialog .check-box {
+    -fx-font-size: 12px;
+}
+
+.search-dialog .label {
+    -fx-font-size: 12px;
+}
+
+.search-dialog .button {
+    -fx-font-size: 12px;
+    -fx-padding: 6 12;
+}
+
+.search-dialog .text-field {
+    -fx-font-size: 12px;
 }
 
 /* ==================== SCROLLBAR - MINIMAL ==================== */
@@ -978,18 +997,18 @@
 }
 
 .dialog-header {
-    -fx-font-size: 16px;
-    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-font-weight: normal;
     -fx-text-fill: #1e1e1e;
 }
 
 .dialog-subheader {
-    -fx-font-size: 13px;
+    -fx-font-size: 12px;
     -fx-text-fill: #666666;
 }
 
 .dialog-hint {
-    -fx-font-size: 12px;
+    -fx-font-size: 11px;
     -fx-text-fill: #888888;
     -fx-font-style: italic;
 }

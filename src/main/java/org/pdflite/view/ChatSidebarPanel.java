@@ -8,6 +8,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import org.pdflite.config.AIConfig;
 import org.pdflite.dialog.PrivacyConsentDialog;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.manager.ThemeManager;
 import org.pdflite.model.AICommand;
 import org.pdflite.model.PDFDocument;
@@ -28,6 +29,10 @@ import java.util.function.Supplier;
  */
 public class ChatSidebarPanel extends VBox {
     private static final Logger logger = LoggerFactory.getLogger(ChatSidebarPanel.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     private final VBox chatContainer;
     private final ScrollPane scrollPane;
@@ -90,7 +95,7 @@ public class ChatSidebarPanel extends VBox {
         header.setPadding(new Insets(12, 15, 12, 15));
         header.getStyleClass().add("chat-header");
 
-        Label titleLabel = new Label("AI Assistant");
+        Label titleLabel = new Label(lang().getString("ai.title"));
         titleLabel.getStyleClass().add("chat-title");
 
         Region spacer = new Region();
@@ -111,7 +116,7 @@ public class ChatSidebarPanel extends VBox {
         inputArea.getStyleClass().add("chat-input-area");
 
         inputField = new TextField();
-        inputField.setPromptText("Nhập lệnh...");
+        inputField.setPromptText(lang().getString("ai.placeholder"));
         inputField.getStyleClass().add("chat-input");
         HBox.setHgrow(inputField, Priority.ALWAYS);
 
@@ -134,15 +139,7 @@ public class ChatSidebarPanel extends VBox {
     }
 
     private void addWelcomeMessage() {
-        String welcome = "Xin chào! Tôi có thể giúp bạn:\n\n" +
-                "- Tách/trích xuất trang\n" +
-                "- Xóa trang\n" +
-                "- Sắp xếp lại trang\n" +
-                "- Thêm bookmark\n" +
-                "- Đọc/tóm tắt nội dung\n" +
-                "- Di chuyển đến trang\n\n" +
-                "Nhập lệnh bằng ngôn ngữ tự nhiên!";
-        addMessage(welcome, false);
+        addMessage(lang().getString("ai.welcome"), false);
     }
 
     private void sendMessage(String message) {
@@ -151,7 +148,7 @@ public class ChatSidebarPanel extends VBox {
         if (!config.isPrivacyConsented()) {
             boolean accepted = PrivacyConsentDialog.show(themeManager);
             if (!accepted) {
-                addMessage("Bạn cần đồng ý với chính sách bảo mật để sử dụng tính năng AI.", false);
+                addMessage(lang().getString("ai.privacyRequired"), false);
                 return;
             }
             config.setPrivacyConsented(true);
@@ -187,7 +184,7 @@ public class ChatSidebarPanel extends VBox {
                         // Check if this is a summarize request that needs PDF content
                         if (command.getAction() == AICommand.Action.SUMMARIZE) {
                             // Update loading message
-                            ((Label) loadingBox.getChildren().get(0)).setText("Đang tóm tắt nội dung...");
+                            ((Label) loadingBox.getChildren().get(0)).setText(lang().getString("ai.summarizing"));
                             handleSummarize(command, message, loadingBox);
                         } else {
                             chatContainer.getChildren().remove(loadingBox);
@@ -207,7 +204,7 @@ public class ChatSidebarPanel extends VBox {
                 .exceptionally(e -> {
                     Platform.runLater(() -> {
                         chatContainer.getChildren().remove(loadingBox);
-                        addMessage("Lỗi: " + e.getMessage(), false);
+                        addMessage(lang().getString("ai.error") + ": " + e.getMessage(), false);
                         inputField.setDisable(false);
                         sendButton.setDisable(false);
                     });
@@ -219,7 +216,7 @@ public class ChatSidebarPanel extends VBox {
         PDFDocument doc = documentSupplier.get();
         if (doc == null) {
             chatContainer.getChildren().remove(loadingBox);
-            addMessage("Vui lòng mở một file PDF trước.", false);
+            addMessage(lang().getString("ai.noPdf"), false);
             inputField.setDisable(false);
             sendButton.setDisable(false);
             return;
@@ -247,7 +244,7 @@ public class ChatSidebarPanel extends VBox {
         } catch (Exception e) {
             logger.error("Error extracting text", e);
             chatContainer.getChildren().remove(loadingBox);
-            addMessage("Lỗi khi đọc nội dung: " + e.getMessage(), false);
+            addMessage(lang().getString("ai.errorReading") + ": " + e.getMessage(), false);
             inputField.setDisable(false);
             sendButton.setDisable(false);
             return;
@@ -255,7 +252,7 @@ public class ChatSidebarPanel extends VBox {
 
         if (textContent.isEmpty()) {
             chatContainer.getChildren().remove(loadingBox);
-            addMessage("Không tìm thấy text trong trang " + pages + ". Trang có thể chỉ chứa hình ảnh.", false);
+            addMessage(java.text.MessageFormat.format(lang().getString("ai.noTextFound"), pages), false);
             inputField.setDisable(false);
             sendButton.setDisable(false);
             return;
@@ -293,7 +290,7 @@ public class ChatSidebarPanel extends VBox {
                     logger.error("AI summarize failed after {}ms", elapsed, e);
                     Platform.runLater(() -> {
                         chatContainer.getChildren().remove(loadingBox);
-                        addMessage("Lỗi khi tóm tắt: " + e.getMessage(), false);
+                        addMessage(lang().getString("ai.errorSummarize") + ": " + e.getMessage(), false);
                         inputField.setDisable(false);
                         sendButton.setDisable(false);
                     });
@@ -311,7 +308,7 @@ public class ChatSidebarPanel extends VBox {
             context.append("- Total pages: ").append(doc.getTotalPages()).append("\n");
             context.append("- Current page: ").append(doc.getCurrentPage() + 1).append("\n\n");
         } else {
-            context.append("[No document open]\n\n");
+            context.append("[").append(lang().getString("message.noDocument")).append("]\n\n");
         }
         
         context.append("[User request]\n");
@@ -332,7 +329,7 @@ public class ChatSidebarPanel extends VBox {
         HBox wrapper = new HBox();
         wrapper.setAlignment(Pos.CENTER_LEFT);
         
-        Label loadingLabel = new Label("Đang xử lý...");
+        Label loadingLabel = new Label(lang().getString("ai.processing"));
         loadingLabel.getStyleClass().add("chat-loading");
         
         wrapper.getChildren().add(loadingLabel);

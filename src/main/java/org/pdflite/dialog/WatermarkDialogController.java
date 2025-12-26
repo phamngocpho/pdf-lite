@@ -6,6 +6,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.model.WatermarkConfig;
 import org.pdflite.util.DialogTitleBar;
 import org.slf4j.Logger;
@@ -23,6 +24,10 @@ import java.io.File;
  */
 public class WatermarkDialogController {
     private static final Logger logger = LoggerFactory.getLogger(WatermarkDialogController.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     @FXML
     private HBox dialogTitleBar;
@@ -92,6 +97,9 @@ public class WatermarkDialogController {
 
         config = new WatermarkConfig();
 
+        // Update UI text from language manager
+        updateUIText();
+
         // Setup font combo box
         fontComboBox.getItems().addAll(
                 "Helvetica",
@@ -122,6 +130,13 @@ public class WatermarkDialogController {
 
         // Add listeners
         setupListeners();
+    }
+
+    private void updateUIText() {
+        // Note: Labels in FXML will be updated when we add fx:id to them
+        // For now, we update what we can through the controller
+        if (textField != null) textField.setPromptText(lang().getString("watermark.textPrompt"));
+        if (pageRangeField != null) pageRangeField.setPromptText(lang().getString("watermark.pageRangePrompt"));
     }
 
     private void setupListeners() {
@@ -164,10 +179,72 @@ public class WatermarkDialogController {
         this.dialogStage = dialogStage;
 
         // Create and add custom title bar
-        String title = dialogStage.getTitle() != null ? dialogStage.getTitle() : "Add Watermark";
+        String title = lang().getString("watermark.title");
+        dialogStage.setTitle(title);
         DialogTitleBar titleBar = new org.pdflite.util.DialogTitleBar(title, dialogStage);
         // Copy children from title bar to dialogTitleBar HBox
         dialogTitleBar.getChildren().setAll(titleBar.getTitleBar().getChildren());
+        
+        // Update all UI text after FXML is loaded
+        updateAllUIText();
+    }
+    
+    private void updateAllUIText() {
+        // Update radio buttons
+        if (textRadio != null) textRadio.setText(lang().getString("watermark.text"));
+        if (imageRadio != null) imageRadio.setText(lang().getString("watermark.image"));
+        if (allPagesRadio != null) allPagesRadio.setText(lang().getString("watermark.allPages"));
+        if (specificPagesRadio != null) specificPagesRadio.setText(lang().getString("watermark.specificPages"));
+        
+        // Update prompts
+        if (textField != null) textField.setPromptText(lang().getString("watermark.textPrompt"));
+        if (pageRangeField != null) pageRangeField.setPromptText(lang().getString("watermark.pageRangePrompt"));
+        if (customXField != null) customXField.setPromptText("0");
+        if (customYField != null) customYField.setPromptText("0");
+        
+        // Update labels by finding them in the scene
+        if (dialogStage != null && dialogStage.getScene() != null) {
+            javafx.scene.Parent root = dialogStage.getScene().getRoot();
+            updateLabelsInParent(root);
+        }
+    }
+    
+    private void updateLabelsInParent(javafx.scene.Parent parent) {
+        for (javafx.scene.Node node : parent.getChildrenUnmodifiable()) {
+            if (node instanceof Label label) {
+                String text = label.getText();
+                if (text != null) {
+                    switch (text) {
+                        case "Type:" -> label.setText(lang().getString("watermark.type"));
+                        case "Text Options" -> label.setText(lang().getString("watermark.textOptions"));
+                        case "Text:" -> label.setText(lang().getString("watermark.textLabel"));
+                        case "Font:" -> label.setText(lang().getString("watermark.font"));
+                        case "Size:" -> label.setText(lang().getString("watermark.size"));
+                        case "Color:" -> label.setText(lang().getString("watermark.color"));
+                        case "Image Options" -> label.setText(lang().getString("watermark.imageOptions"));
+                        case "Image File:" -> label.setText(lang().getString("watermark.imageFile"));
+                        case "Scale:" -> label.setText(lang().getString("watermark.scale"));
+                        case "Position & Appearance", "Position &amp; Appearance" -> label.setText(lang().getString("watermark.positionAppearance"));
+                        case "Position:" -> label.setText(lang().getString("watermark.position"));
+                        case "Opacity:" -> label.setText(lang().getString("watermark.opacity"));
+                        case "Rotation:" -> label.setText(lang().getString("watermark.rotation"));
+                        case "Apply To" -> label.setText(lang().getString("watermark.applyTo"));
+                    }
+                }
+            } else if (node instanceof Button button) {
+                String text = button.getText();
+                if (text != null) {
+                    switch (text) {
+                        case "Browse..." -> button.setText(lang().getString("watermark.browse"));
+                        case "Preview" -> button.setText(lang().getString("watermark.preview"));
+                        case "Cancel" -> button.setText(lang().getString("watermark.cancel"));
+                        case "Apply" -> button.setText(lang().getString("watermark.apply"));
+                    }
+                }
+            } else if (node instanceof javafx.scene.Parent p) {
+                updateLabelsInParent(p);
+            }
+        }
     }
 
     public boolean isApplyClicked() {
@@ -181,7 +258,7 @@ public class WatermarkDialogController {
     @FXML
     private void handleBrowseImage() {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Select Watermark Image");
+        fileChooser.setTitle(lang().getString("fileChooser.selectWatermarkImage"));
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp"),
                 new FileChooser.ExtensionFilter("All Files", "*.*")
@@ -198,9 +275,9 @@ public class WatermarkDialogController {
     private void handlePreview() {
         // TODO: Implement preview functionality
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Preview");
-        alert.setHeaderText("Preview Feature");
-        alert.setContentText("Preview functionality will be implemented in a future version.");
+        alert.setTitle(lang().getString("watermark.preview"));
+        alert.setHeaderText(lang().getString("watermark.previewFeature"));
+        alert.setContentText(lang().getString("watermark.previewMsg"));
         alert.showAndWait();
     }
 
@@ -223,12 +300,12 @@ public class WatermarkDialogController {
     private boolean validateInput() {
         if (textRadio.isSelected()) {
             if (textField.getText() == null || textField.getText().trim().isEmpty()) {
-                showError("Please enter watermark text.");
+                showError(lang().getString("watermark.error.noText"));
                 return false;
             }
         } else {
             if (selectedImageFile == null) {
-                showError("Please select an image file.");
+                showError(lang().getString("watermark.error.noImage"));
                 return false;
             }
         }
@@ -236,12 +313,12 @@ public class WatermarkDialogController {
         if (specificPagesRadio.isSelected()) {
             String pageRange = pageRangeField.getText();
             if (pageRange == null || pageRange.trim().isEmpty()) {
-                showError("Please enter page range.");
+                showError(lang().getString("watermark.error.noPageRange"));
                 return false;
             }
             // Basic validation of page range format
             if (!pageRange.matches("[0-9,\\-\\s]+")) {
-                showError("Invalid page range format. Use format like: 1-3,5,7-9");
+                showError(lang().getString("watermark.error.invalidPageRange"));
                 return false;
             }
         }
@@ -305,8 +382,8 @@ public class WatermarkDialogController {
 
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Validation Error");
-        alert.setHeaderText("Invalid Input");
+        alert.setTitle(lang().getString("error.title"));
+        alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
     }

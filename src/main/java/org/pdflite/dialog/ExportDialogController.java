@@ -6,6 +6,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import org.pdflite.manager.LanguageManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +22,10 @@ import java.io.File;
  */
 public class ExportDialogController {
     private static final Logger logger = LoggerFactory.getLogger(ExportDialogController.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     @FXML
     private ToggleGroup exportTypeGroup;
@@ -132,7 +137,7 @@ public class ExportDialogController {
         if (imageRadio.isSelected() && allPagesRadio.isSelected()) {
             // Multiple images - choose directory
             DirectoryChooser dirChooser = new DirectoryChooser();
-            dirChooser.setTitle("Select Output Directory");
+            dirChooser.setTitle(lang().getString("fileChooser.selectOutputDir"));
             File dir = dirChooser.showDialog(dialogStage);
             if (dir != null) {
                 outputPathField.setText(dir.getAbsolutePath());
@@ -142,13 +147,13 @@ public class ExportDialogController {
             FileChooser fileChooser = new FileChooser();
 
             if (imageRadio.isSelected()) {
-                fileChooser.setTitle("Save Image As");
+                fileChooser.setTitle(lang().getString("fileChooser.saveImageAs"));
                 String format = imageFormatComboBox.getValue().toLowerCase();
                 fileChooser.getExtensionFilters().add(
                         new FileChooser.ExtensionFilter(format.toUpperCase() + " Image", "*." + format)
                 );
             } else {
-                fileChooser.setTitle("Save Text As");
+                fileChooser.setTitle(lang().getString("fileChooser.saveTextAs"));
                 fileChooser.getExtensionFilters().add(
                         new FileChooser.ExtensionFilter("Text File", "*.txt")
                 );
@@ -179,18 +184,18 @@ public class ExportDialogController {
 
     private boolean validateInput() {
         if (outputPathField.getText() == null || outputPathField.getText().trim().isEmpty()) {
-            showError("Please select an output location.");
+            showError(lang().getString("export.error.noOutput"));
             return false;
         }
 
         if (specificPagesRadio.isSelected()) {
             String pageRange = pageRangeField.getText();
             if (pageRange == null || pageRange.trim().isEmpty()) {
-                showError("Please enter page range.");
+                showError(lang().getString("export.error.noPageRange"));
                 return false;
             }
             if (!pageRange.matches("[0-9,\\-\\s]+")) {
-                showError("Invalid page range format. Use format like: 1-3,5,7-9");
+                showError(lang().getString("export.error.invalidPageRange"));
                 return false;
             }
         }
@@ -243,8 +248,8 @@ public class ExportDialogController {
 
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Validation Error");
-        alert.setHeaderText("Invalid Input");
+        alert.setTitle(lang().getString("error.title"));
+        alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
     }

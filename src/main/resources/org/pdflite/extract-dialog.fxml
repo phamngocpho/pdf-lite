@@ -22,7 +22,7 @@
                 </padding>
 
                 <HBox spacing="10">
-                    <Label text="File:" styleClass="dialog-label-strong"/>
+                    <Label fx:id="fileLabelText" text="File:" styleClass="dialog-label-strong"/>
                     <Label fx:id="fileNameLabel" text="No file selected" styleClass="dialog-label-muted"/>
                 </HBox>
                 <Label fx:id="totalPagesLabel" text="Total Pages: 0" styleClass="dialog-label-muted"/>
@@ -39,7 +39,7 @@
                     <Insets top="5" bottom="3"/>
                 </padding>
 
-                <Label text="Page Preview" styleClass="dialog-label-strong">
+                <Label fx:id="pagePreviewLabel" text="Page Preview" styleClass="dialog-label-strong">
                     <VBox.margin>
                         <Insets left="8"/>
                     </VBox.margin>
@@ -60,19 +60,19 @@
                     <Insets top="15" right="15" bottom="15" left="10"/>
                 </padding>
 
-                <Label text="Extract Options" styleClass="dialog-label-strong"/>
+                <Label fx:id="extractOptionsLabel" text="Extract Options" styleClass="dialog-label-strong"/>
 
                 <!-- Extract Instructions -->
                 <VBox spacing="10">
-                    <Label text="Select pages to extract:" styleClass="dialog-label-strong"/>
-                    <Label text="Enter page ranges separated by commas."
+                    <Label fx:id="selectPagesLabel" text="Select pages to extract:" styleClass="dialog-label-strong"/>
+                    <Label fx:id="rangeInstructionsLabel" text="Enter page ranges separated by commas."
                            styleClass="dialog-label-muted" wrapText="true"/>
-                    <Label text="Examples:" styleClass="dialog-label-muted" wrapText="true"/>
-                    <Label text="  • 1-5, 10 (pages 1 to 5, and page 10)"
+                    <Label fx:id="examplesLabel" text="Examples:" styleClass="dialog-label-muted" wrapText="true"/>
+                    <Label fx:id="example1Label" text="  • 1-5, 10 (pages 1 to 5, and page 10)"
                            styleClass="dialog-label-muted" wrapText="true"/>
-                    <Label text="  • 1, 3, 5-7 (pages 1, 3, and 5 to 7)"
+                    <Label fx:id="example2Label" text="  • 1, 3, 5-7 (pages 1, 3, and 5 to 7)"
                            styleClass="dialog-label-muted" wrapText="true"/>
-                    <Label text="  • 10-15, 20-25 (pages 10 to 15, and 20 to 25)"
+                    <Label fx:id="example3Label" text="  • 10-15, 20-25 (pages 10 to 15, and 20 to 25)"
                            styleClass="dialog-label-muted" wrapText="true"/>
                 </VBox>
 
@@ -80,7 +80,7 @@
 
                 <!-- Page Range Input -->
                 <VBox spacing="10">
-                    <Label text="Page Range:" styleClass="dialog-label-strong"/>
+                    <Label fx:id="pageRangeLabel" text="Page Range:" styleClass="dialog-label-strong"/>
                     <TextArea fx:id="rangeTextArea"
                               promptText="e.g., 1-5, 10, 25-30"
                               prefRowCount="3"
@@ -94,10 +94,10 @@
 
                 <!-- Output File Name -->
                 <VBox spacing="10">
-                    <Label text="Output File Name:" styleClass="dialog-label-strong"/>
+                    <Label fx:id="outputFileLabel" text="Output File Name:" styleClass="dialog-label-strong"/>
                     <TextField fx:id="outputFileNameField"
                                promptText="extracted_pages.pdf"/>
-                    <Label text="If empty, will use: [original_name]_extracted.pdf"
+                    <Label fx:id="outputHintLabel" text="If empty, will use: [original_name]_extracted.pdf"
                            styleClass="dialog-label-muted"
                            wrapText="true"/>
                 </VBox>
@@ -106,7 +106,7 @@
 
                 <!-- Quick Actions -->
                 <VBox spacing="5">
-                    <Label text="Quick Actions:" styleClass="dialog-label-strong"/>
+                    <Label fx:id="quickActionsLabel" text="Quick Actions:" styleClass="dialog-label-strong"/>
                     <HBox spacing="5">
                         <Button fx:id="allPagesButton"
                                 text="All Pages"

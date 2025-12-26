@@ -22,6 +22,10 @@ public class PDFOptimizationManager {
     private final ThemeManager themeManager;
     private Supplier<RenderingManager> renderingManagerSupplier;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     public PDFOptimizationManager(UIStateManager uiStateManager, RenderingManager renderingManager,
                                   SaveStatusManager saveStatusManager, ThemeManager themeManager) {
         this.uiStateManager = uiStateManager;
@@ -43,7 +47,7 @@ public class PDFOptimizationManager {
      */
     public void openOptimizationDialog(PDFDocument document) {
         if (document == null) {
-            uiStateManager.showError("No Document", "Please open a PDF file first.");
+            uiStateManager.showError(lang().getString("error.noDocument"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
@@ -74,7 +78,7 @@ public class PDFOptimizationManager {
             }
         } catch (Exception e) {
             logger.error("Error optimizing PDF", e);
-            uiStateManager.showError("Error", "Failed to optimize PDF: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.optimize") + ": " + e.getMessage());
         }
     }
 
@@ -126,7 +130,7 @@ public class PDFOptimizationManager {
                 rm.renderAllPages();
             }
 
-            uiStateManager.updateStatus("PDF optimized - Don't forget to save!");
+            uiStateManager.updateStatus(lang().getString("success.optimized"));
             logger.info("PDF compressed with {} level", level);
 
             // Trigger auto-save
@@ -134,8 +138,8 @@ public class PDFOptimizationManager {
                 saveStatusManager.triggerAutoSave();
             }
         } else {
-            uiStateManager.showError("Optimization Failed",
-                    "No images found to compress or optimization failed.");
+            uiStateManager.showError(lang().getString("error.optimizeFailed"),
+                    lang().getString("error.optimizeNoImages"));
         }
     }
 
@@ -144,6 +148,6 @@ public class PDFOptimizationManager {
      */
     private void handleCompressionError(Throwable ex) {
         logger.error("Error during compression", ex);
-        uiStateManager.showError("Error", "Failed to optimize PDF: " + ex.getMessage());
+        uiStateManager.showError(lang().getString("error.title"), lang().getString("error.optimize") + ": " + ex.getMessage());
     }
 }

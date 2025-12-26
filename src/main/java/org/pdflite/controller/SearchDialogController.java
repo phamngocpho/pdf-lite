@@ -6,6 +6,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
 import org.pdflite.util.DialogTitleBar;
@@ -22,6 +23,10 @@ import java.util.List;
 public class SearchDialogController {
 
     private static final Logger logger = LoggerFactory.getLogger(SearchDialogController.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     @FXML
     private HBox titleBar;
@@ -85,7 +90,7 @@ public class SearchDialogController {
         this.pdfDocument = pdfDocument;
 
         searchResults.clear();
-        updateStatus("Ready");
+        updateStatus(lang().getString("search.ready"));
         prevResultButton.setDisable(true);
         nextResultButton.setDisable(true);
     }
@@ -213,7 +218,7 @@ public class SearchDialogController {
             mainController.highlightSearchResult(result);
 
             int position = resultsListView.getSelectionModel().getSelectedIndex() + 1;
-            updateStatus(String.format("Result %d of %d on page %d",
+            updateStatus(java.text.MessageFormat.format(lang().getString("search.resultOf"),
                     position, searchResults.size(), result.pageNumber()));
 
             updateNavigationButtons();
@@ -226,7 +231,7 @@ public class SearchDialogController {
 
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Search Error");
+        alert.setTitle(lang().getString("search.errorTitle"));
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
@@ -243,8 +248,45 @@ public class SearchDialogController {
      * @param stage the dialog stage
      */
     public void setDialogStage(Stage stage) {
-        dialogTitleBar = new DialogTitleBar("Search in PDF", stage);
+        dialogTitleBar = new DialogTitleBar(lang().getString("search.title"), stage);
         titleBar.getChildren().setAll(dialogTitleBar.getTitleBar().getChildren());
+        
+        // Update all UI text
+        updateAllUIText();
+    }
+    
+    private void updateAllUIText() {
+        if (searchField != null) searchField.setPromptText(lang().getString("search.keyword"));
+        if (caseSensitiveCheckbox != null) caseSensitiveCheckbox.setText(lang().getString("search.caseSensitive"));
+        if (wholeWordCheckbox != null) wholeWordCheckbox.setText(lang().getString("search.wholeWord"));
+        if (searchButton != null) searchButton.setText(lang().getString("menu.edit.find"));
+        if (cancelButton != null) cancelButton.setText(lang().getString("dialog.cancel"));
+        if (closeButton != null) closeButton.setText(lang().getString("search.close"));
+        if (prevResultButton != null) prevResultButton.setText(lang().getString("search.prev"));
+        if (nextResultButton != null) nextResultButton.setText(lang().getString("search.next"));
+        if (statusLabel != null) statusLabel.setText(lang().getString("search.ready"));
+        
+        // Update labels in scene
+        if (titleBar != null && titleBar.getScene() != null) {
+            javafx.scene.Parent root = titleBar.getScene().getRoot();
+            updateLabelsInParent(root);
+        }
+    }
+    
+    private void updateLabelsInParent(javafx.scene.Parent parent) {
+        for (javafx.scene.Node node : parent.getChildrenUnmodifiable()) {
+            if (node instanceof Label label) {
+                String text = label.getText();
+                if (text != null) {
+                    switch (text) {
+                        case "Search:" -> label.setText(lang().getString("search.label"));
+                        case "Results:" -> label.setText(lang().getString("search.results"));
+                    }
+                }
+            } else if (node instanceof javafx.scene.Parent p) {
+                updateLabelsInParent(p);
+            }
+        }
     }
 
     private static class SearchResultCell extends ListCell<SearchResult> {

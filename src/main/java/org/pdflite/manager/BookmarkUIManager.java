@@ -36,6 +36,10 @@ public class BookmarkUIManager {
     private VBox bookmarkSidebar;
     private boolean bookmarkSidebarVisible = false;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Creates a new BookmarkUIManager.
      *
@@ -84,7 +88,7 @@ public class BookmarkUIManager {
      */
     public void handleToggleBookmarks(PDFDocument currentDocument) {
         if (currentDocument == null) {
-            uiStateManager.showError("No Document", "Please open a PDF document first.");
+            uiStateManager.showError(lang().getString("error.noDocument"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
@@ -102,23 +106,23 @@ public class BookmarkUIManager {
      */
     public void handleAddBookmark(PDFDocument currentDocument) {
         if (currentDocument == null) {
-            uiStateManager.showError("No Document", "Please open a PDF document first.");
+            uiStateManager.showError(lang().getString("error.noDocument"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
         int currentPage = currentDocument.getCurrentPage();
 
         String result = BookmarkInputDialog.show(
-                "Add Bookmark",
-                "Add bookmark for page " + (currentPage + 1),
-                "Bookmark title:",
-                "Page " + (currentPage + 1),
+                lang().getString("bookmark.add"),
+                lang().getString("bookmark.add") + " - " + lang().getString("status.page", currentPage + 1, ""),
+                lang().getString("bookmark.title") + ":",
+                lang().getString("status.page", currentPage + 1, ""),
                 themeManager
         );
 
         if (result != null && !result.trim().isEmpty()) {
             bookmarkManager.addBookmark(currentPage, result.trim());
-            uiStateManager.updateStatus("Bookmark added for page " + (currentPage + 1));
+            uiStateManager.updateStatus(lang().getString("success.bookmarkAdded"));
         }
     }
 
@@ -128,15 +132,15 @@ public class BookmarkUIManager {
     public void handleClearAllBookmarks() {
         PDFDocument doc = documentSupplier != null ? documentSupplier.get() : null;
         if (doc == null) {
-            uiStateManager.showError("No Document", "Please open a PDF document first.");
+            uiStateManager.showError(lang().getString("error.noDocument"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
         if (bookmarkManager == null || bookmarkManager.getBookmarks().isEmpty()) {
             CustomInfoDialog.show(
-                "No Bookmarks",
-                "No Bookmarks to Clear",
-                "There are no bookmarks for this document.",
+                lang().getString("bookmark.title"),
+                lang().getString("bookmark.empty"),
+                lang().getString("bookmark.emptyMsg"),
                 themeManager
             );
             return;
@@ -144,16 +148,15 @@ public class BookmarkUIManager {
 
         int count = bookmarkManager.getBookmarks().size();
         boolean confirm = CustomConfirmDialog.show(
-            "Clear All Bookmarks",
-            "Delete All Bookmarks?",
-            String.format("This will permanently delete all %d bookmarks for this document.\n\n" +
-                         "This action cannot be undone.", count),
+            lang().getString("menu.view.clearBookmarks"),
+            lang().getString("confirm.clear"),
+            lang().getString("confirm.clear"),
             themeManager
         );
 
         if (confirm) {
             bookmarkManager.clearAllBookmarks();
-            uiStateManager.updateStatus(String.format("Cleared %d bookmarks", count));
+            uiStateManager.updateStatus(lang().getString("message.bookmarkRemoved"));
         }
     }
 
@@ -163,20 +166,20 @@ public class BookmarkUIManager {
     public void handleImportOutlineBookmarks() {
         PDFDocument doc = documentSupplier != null ? documentSupplier.get() : null;
         if (doc == null) {
-            uiStateManager.showError("No Document", "Please open a PDF document first.");
+            uiStateManager.showError(lang().getString("error.noDocument"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
         if (pdfOutlineBookmarkManager == null) {
-            uiStateManager.showError("Error", "Outline bookmark manager not initialized.");
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.bookmark"));
             return;
         }
 
         if (pdfOutlineBookmarkManager.hasOutline(doc)) {
             CustomInfoDialog.show(
-                "No Outline", 
-                "No Table of Contents",
-                "This PDF does not have a table of contents (outline).",
+                lang().getString("menu.view.importOutline"), 
+                lang().getString("bookmark.empty"),
+                lang().getString("bookmark.emptyMsg"),
                 themeManager
             );
             return;
@@ -184,17 +187,15 @@ public class BookmarkUIManager {
 
         int count = pdfOutlineBookmarkManager.getOutlineItemCount(doc);
         boolean confirm = CustomConfirmDialog.show(
-            "Import Bookmarks",
-            "Import from PDF Outline",
-            String.format("Import %d bookmarks from PDF outline?", count),
+            lang().getString("menu.view.importOutline"),
+            lang().getString("menu.view.importOutline"),
+            lang().getString("menu.view.importOutline") + " (" + count + ")",
             themeManager
         );
 
         if (confirm) {
             int imported = pdfOutlineBookmarkManager.importFromPDFOutline(doc);
-            uiStateManager.updateStatus(
-                String.format("Imported %d bookmarks from PDF outline", imported)
-            );
+            uiStateManager.updateStatus(lang().getString("success.bookmarkAdded") + " (" + imported + ")");
         }
     }
 
@@ -204,12 +205,12 @@ public class BookmarkUIManager {
     public void handleSmartBookmarks() {
         PDFDocument doc = documentSupplier != null ? documentSupplier.get() : null;
         if (doc == null) {
-            uiStateManager.showError("No Document", "Please open a PDF document first.");
+            uiStateManager.showError(lang().getString("error.noDocument"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
         if (smartBookmarkManager == null) {
-            uiStateManager.showError("Error", "Smart bookmark manager not initialized.");
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.bookmark"));
             return;
         }
 
@@ -219,10 +220,9 @@ public class BookmarkUIManager {
             boolean accepted = PrivacyConsentDialog.show(themeManager);
             if (!accepted) {
                 CustomInfoDialog.show(
-                    "Privacy Required",
-                    "Privacy Consent Required",
-                    "You need to accept the privacy policy to use AI-powered Smart Bookmarks.\n\n" +
-                    "This feature sends detected heading titles to Groq AI to improve and clean up bookmark names.",
+                    lang().getString("privacy.title"),
+                    lang().getString("privacy.header"),
+                    lang().getString("privacy.description"),
                     themeManager
                 );
                 return;
@@ -232,20 +232,14 @@ public class BookmarkUIManager {
         }
 
         boolean confirm = CustomConfirmDialog.show(
-            "Smart Bookmarks",
-            "Analyze Document Structure",
-            "Analyze this PDF and automatically create bookmarks for detected chapters and headings?\n\n" +
-            "This will detect:\n" +
-            "• Chapter titles (Chapter 1, Chương 1, etc.)\n" +
-            "• Large headings (font size ≥ 14pt)\n" +
-            "• Bold section titles\n\n" +
-            "AI will improve and clean up the detected titles.\n" +
-            "Note: Heading titles will be sent to Groq AI for processing.",
+            lang().getString("menu.view.smartBookmarks"),
+            lang().getString("menu.view.smartBookmarks"),
+            lang().getString("menu.view.smartBookmarks"),
             themeManager
         );
 
         if (confirm) {
-            uiStateManager.updateStatus("Analyzing document structure with AI...");
+            uiStateManager.updateStatus(lang().getString("status.processing"));
             
             new Thread(() -> {
                 try {
@@ -254,31 +248,28 @@ public class BookmarkUIManager {
                     Platform.runLater(() -> {
                         if (created > 0) {
                             CustomInfoDialog.show(
-                                "Smart Bookmarks",
-                                "Analysis Complete",
-                                String.format("Created %d smart bookmarks based on document structure.", created),
+                                lang().getString("menu.view.smartBookmarks"),
+                                lang().getString("status.complete"),
+                                lang().getString("success.bookmarkAdded") + " (" + created + ")",
                                 themeManager
                             );
-                            uiStateManager.updateStatus(
-                                String.format("Created %d smart bookmarks", created)
-                            );
+                            uiStateManager.updateStatus(lang().getString("success.bookmarkAdded") + " (" + created + ")");
                         } else {
                             CustomInfoDialog.show(
-                                "Smart Bookmarks",
-                                "No Headings Found",
-                                "Could not detect any chapter titles or headings in this document.\n\n" +
-                                "Try using 'Import from PDF Outline' if the PDF has a table of contents.",
+                                lang().getString("menu.view.smartBookmarks"),
+                                lang().getString("bookmark.empty"),
+                                lang().getString("bookmark.emptyMsg"),
                                 themeManager
                             );
-                            uiStateManager.updateStatus("No headings detected");
+                            uiStateManager.updateStatus(lang().getString("bookmark.empty"));
                         }
                     });
                     
                 } catch (Exception e) {
                     logger.error("Error creating smart bookmarks", e);
                     Platform.runLater(() -> {
-                        uiStateManager.showError("Error", 
-                            "Failed to analyze document: " + e.getMessage());
+                        uiStateManager.showError(lang().getString("error.title"), 
+                            lang().getString("error.bookmark") + ": " + e.getMessage());
                     });
                 }
             }, "SmartBookmarkAnalyzer").start();
@@ -315,7 +306,7 @@ public class BookmarkUIManager {
     private void navigateToBookmarkedPage(int pageNumber, float yPosition) {
         if (navigationHelper != null) {
             navigationHelper.navigateToPageWithOffset(pageNumber, yPosition);
-            uiStateManager.updateStatus("Navigated to bookmarked page " + (pageNumber + 1));
+            uiStateManager.updateStatus(lang().getString("bookmark.goTo") + " " + (pageNumber + 1));
         }
     }
 

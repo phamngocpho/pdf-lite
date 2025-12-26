@@ -61,6 +61,12 @@ import javafx.stage.Stage;
 public class MainController {
 
     private static final Logger logger = LoggerFactory.getLogger(MainController.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+    
+    @FXML
     public MenuButton drawingToolsMenu;
 
     // ==================== FXML Injected UI Components ====================
@@ -80,9 +86,25 @@ public class MainController {
     @FXML
     private ToolBar toolbar;
     @FXML
+    private Button openButton;
+    @FXML
+    private Button saveButton;
+    @FXML
+    private Button printButton;
+    @FXML
     private Button prevButton;
     @FXML
     private Button nextButton;
+    @FXML
+    private Button zoomOutButton;
+    @FXML
+    private Button zoomInButton;
+    @FXML
+    private Button bookmarksButton;
+    @FXML
+    private Button aiChatButton;
+    @FXML
+    private Tooltip aiChatTooltip;
     @FXML
     private MenuBar menuBar;
     @FXML
@@ -95,6 +117,14 @@ public class MainController {
     private Slider strokeWidthSlider;
     @FXML
     private Label strokeWidthLabel;
+    @FXML
+    private Label drawingToolsLabel;
+    @FXML
+    private Label drawingColorLabel;
+    @FXML
+    private Label highlightColorLabel;
+    @FXML
+    private Label strokeWidthTitleLabel;
     @FXML
     private ToggleGroup drawingToolsGroup;
     @FXML
@@ -124,6 +154,8 @@ public class MainController {
     @FXML
     private javafx.scene.control.MenuItem toggleToolbarMenuItem;
     @FXML
+    private javafx.scene.control.MenuItem fullScreenMenuItem;
+    @FXML
     private RadioMenuItem systemThemeItem;
     @FXML
     private RadioMenuItem lightThemeItem;
@@ -131,6 +163,12 @@ public class MainController {
     private RadioMenuItem darkThemeItem;
     @FXML
     private ToggleButton bookmarkToggleButton;
+    @FXML
+    private Menu languageMenu;
+    @FXML
+    private RadioMenuItem englishItem;
+    @FXML
+    private RadioMenuItem vietnameseItem;
 
 
     // ==================== Services and Managers ====================
@@ -140,8 +178,10 @@ public class MainController {
     private NavigationHelper navigationHelper;
     private PageRenderer pageRenderer;
     private ScrollHandler scrollHandler;
+    private LanguageManager languageManager;
 
     // Managers
+    private UILanguageManager uiLanguageManager;
     private SearchManager searchManager;
     private ZoomManager zoomManager;
     private FileManager fileManager;
@@ -251,6 +291,14 @@ public class MainController {
 
         // Initialize a recent files manager (needed by RecentFilesMenuManager)
         recentFilesManager = new RecentFilesManager();
+
+        // Initialize language manager
+        languageManager = LanguageManager.getInstance();
+        
+        // Initialize UI language manager (will set components later)
+        uiLanguageManager = new UILanguageManager(languageManager);
+        uiLanguageManager.initializeLanguageSelection();
+        languageManager.addLanguageChangeListener(() -> uiLanguageManager.updateUILanguage());
 
         // Initialize title bar manager
         if (customTitleBar != null) {
@@ -443,41 +491,6 @@ public class MainController {
                 }
             });
         }
-        
-        // Close menu when mouse leaves the menu bar (with delay to allow moving to dropdown)
-        menuBar.setOnMouseExited(e -> {
-            javafx.animation.PauseTransition pause = new javafx.animation.PauseTransition(javafx.util.Duration.millis(150));
-            pause.setOnFinished(event -> {
-                // Check if mouse is back over menu bar
-                var bounds = menuBar.localToScreen(menuBar.getBoundsInLocal());
-                if (bounds != null) {
-                    try {
-                        var robot = new java.awt.Robot();
-                        var mouseLocation = java.awt.MouseInfo.getPointerInfo().getLocation();
-                        
-                        // If mouse is not over menu bar, close all menus
-                        if (!bounds.contains(mouseLocation.getX(), mouseLocation.getY())) {
-                            // Also check if mouse is over any showing context menu
-                            boolean overDropdown = menuBar.getMenus().stream()
-                                .filter(Menu::isShowing)
-                                .anyMatch(m -> {
-                                    // Context menus capture mouse, so if menu is showing and we got here,
-                                    // mouse is likely over the dropdown
-                                    return false;
-                                });
-                            
-                            if (!overDropdown) {
-                                menuBar.getMenus().forEach(Menu::hide);
-                            }
-                        }
-                    } catch (Exception ex) {
-                        // Fallback: just close menus
-                        menuBar.getMenus().forEach(Menu::hide);
-                    }
-                }
-            });
-            pause.play();
-        });
     }
 
     // ==================== Multi-Tab Management (Delegated to TabManager) ====================
@@ -593,6 +606,18 @@ public class MainController {
         // UI State Manager (needed by other managers)
         uiStateManager = new UIStateManager(statusLabel, prevButton, nextButton, pageNumberField, zoomComboBox, () -> themeManager);
 
+        // Set UI components for language manager now that uiStateManager is ready
+        uiLanguageManager.setUIComponents(
+            titleLabel, menuBar, toolbar, openButton, saveButton, printButton,
+            prevButton, nextButton, zoomOutButton, zoomInButton, bookmarksButton,
+            aiChatButton, aiChatTooltip, drawingToolsMenu, drawingToolsLabel,
+            drawingColorLabel, highlightColorLabel, strokeWidthTitleLabel,
+            englishItem, vietnameseItem, toggleToolbarMenuItem, fullScreenMenuItem, uiStateManager
+        );
+        
+        // Update UI with current language
+        uiLanguageManager.updateUILanguage();
+
         // Create ZoomManager first (without listener)
         zoomManager = new ZoomManager(pdfService, null);
         zoomManager.initialize(zoomComboBox, null);
@@ -688,7 +713,7 @@ public class MainController {
             if (saveStatusManager != null) {
                 saveStatusManager.updateSaveStatusIndicator(true);
             }
-            uiStateManager.updateStatus("Auto-saved");
+            uiStateManager.updateStatus(lang().getString("autosave.saved"));
         });
 
         // Set text edit callback for context menu
@@ -1011,6 +1036,17 @@ public class MainController {
         }
     }
 
+    // ==================== Language Operations ====================
+
+    @FXML
+    private void setEnglish() {
+        languageManager.setLocale(LanguageManager.ENGLISH);
+    }
+
+    @FXML
+    private void setVietnamese() {
+        languageManager.setLocale(LanguageManager.VIETNAMESE);
+    }
 
     // ==================== Fullscreen Operations ====================
 

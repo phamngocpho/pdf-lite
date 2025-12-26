@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.pdflite.config.AIConfig;
+import org.pdflite.manager.LanguageManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,6 +12,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.text.MessageFormat;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -21,6 +23,10 @@ import java.util.concurrent.CompletableFuture;
 public class GroqService {
     private static final Logger logger = LoggerFactory.getLogger(GroqService.class);
     private static final String GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     private final HttpClient httpClient;
     private final Gson gson;
@@ -135,13 +141,14 @@ public class GroqService {
     public <T> CompletableFuture<String> chat(String userMessage, List<T> history, boolean useFastModel) {
         if (!config.isConfigured()) {
             return CompletableFuture.completedFuture(
-                    "{\"action\":\"unknown\",\"params\":{},\"message\":\"API key chưa được cấu hình. Vui lòng chỉnh sửa file: " + AIConfig.getConfigFilePath() + "\"}"
+                    "{\"action\":\"unknown\",\"params\":{},\"message\":\"" + 
+                    MessageFormat.format(lang().getString("groq.apiNotConfigured"), AIConfig.getConfigFilePath()) + "\"}"
             );
         }
 
         if (!config.isEnabled()) {
             return CompletableFuture.completedFuture(
-                    "{\"action\":\"unknown\",\"params\":{},\"message\":\"AI đã bị tắt trong cấu hình.\"}"
+                    "{\"action\":\"unknown\",\"params\":{},\"message\":\"" + lang().getString("groq.aiDisabled") + "\"}"
             );
         }
 
@@ -159,13 +166,15 @@ public class GroqService {
                 .thenApply(response -> {
                     if (response.statusCode() != 200) {
                         logger.error("Groq API error: {} - {}", response.statusCode(), response.body());
-                        return "{\"action\":\"unknown\",\"params\":{},\"message\":\"Lỗi API: " + response.statusCode() + "\"}";
+                        return "{\"action\":\"unknown\",\"params\":{},\"message\":\"" + 
+                                MessageFormat.format(lang().getString("groq.apiError"), response.statusCode()) + "\"}";
                     }
                     return extractContent(response.body());
                 })
                 .exceptionally(e -> {
                     logger.error("Error calling Groq API", e);
-                    return "{\"action\":\"unknown\",\"params\":{},\"message\":\"Lỗi kết nối: " + e.getMessage() + "\"}";
+                    return "{\"action\":\"unknown\",\"params\":{},\"message\":\"" + 
+                            MessageFormat.format(lang().getString("groq.connectionError"), e.getMessage()) + "\"}";
                 });
     }
 
@@ -223,7 +232,7 @@ public class GroqService {
         } catch (Exception e) {
             logger.error("Error parsing Groq response", e);
         }
-        return "{\"action\":\"unknown\",\"params\":{},\"message\":\"Không thể xử lý phản hồi từ AI\"}";
+        return "{\"action\":\"unknown\",\"params\":{},\"message\":\"" + lang().getString("groq.cannotProcessResponse") + "\"}";
     }
 
     public boolean isConfigured() {

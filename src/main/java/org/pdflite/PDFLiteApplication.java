@@ -9,6 +9,7 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import org.pdflite.controller.MainController;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.manager.TitleBarManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,7 +88,7 @@ public class PDFLiteApplication extends Application {
                 Objects.requireNonNull(PDFLiteApplication.class.getResource("chat-styles.css")).toExternalForm()
         );
 
-        stage.setTitle("PDF Lite - PDF Viewer & Editor");
+        stage.setTitle(LanguageManager.getInstance().getString("app.title"));
         stage.setScene(scene);
 
 

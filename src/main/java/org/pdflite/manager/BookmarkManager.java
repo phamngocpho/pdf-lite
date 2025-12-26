@@ -18,6 +18,7 @@ import org.pdflite.util.LocalDateTimeAdapter;
 import org.pdflite.dialog.BookmarkInputDialog;
 import org.pdflite.dialog.CustomConfirmDialog;
 import org.pdflite.dialog.CustomInfoDialog;
+import org.pdflite.manager.LanguageManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +42,10 @@ public class BookmarkManager {
     private static final Logger logger = LoggerFactory.getLogger(BookmarkManager.class);
     private static final String BOOKMARKS_DIR = ".pdflite/bookmarks";
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     private final ObservableList<Bookmark> bookmarks;
     private final Gson gson;
@@ -277,24 +282,24 @@ public class BookmarkManager {
         sidebar.setMinWidth(250);
 
         // Title
-        Label titleLabel = new Label("Bookmarks");
+        Label titleLabel = new Label(lang().getString("bookmark.title"));
         titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
         // Add bookmark button
-        Button addButton = new Button("+ Add Bookmark");
+        Button addButton = new Button("+ " + lang().getString("bookmark.add"));
         addButton.setMaxWidth(Double.MAX_VALUE);
         addButton.setOnAction(e -> showAddBookmarkDialog());
 
         // Clear all button
-        Button clearAllButton = new Button("Clear All");
+        Button clearAllButton = new Button(lang().getString("bookmark.clearAll"));
         clearAllButton.setMaxWidth(Double.MAX_VALUE);
         clearAllButton.setStyle("-fx-text-fill: #f44336;"); // Red text
         clearAllButton.setOnAction(e -> handleClearAll());
 
         // Export/Import buttons
         HBox actionButtons = new HBox(5);
-        Button exportButton = new Button("Export");
-        Button importButton = new Button("Import");
+        Button exportButton = new Button(lang().getString("bookmark.export"));
+        Button importButton = new Button(lang().getString("bookmark.import"));
         exportButton.setMaxWidth(Double.MAX_VALUE);
         importButton.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(exportButton, Priority.ALWAYS);
@@ -336,17 +341,17 @@ public class BookmarkManager {
      */
     private void showAddBookmarkDialog() {
         if (currentDocument == null) {
-            showAlert("No Document", "Please open a PDF document first.");
+            showAlert(lang().getString("error.noDocument"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
         int currentPage = currentDocument.getCurrentPage();
         
         String result = BookmarkInputDialog.show(
-                "Add Bookmark",
-                "Add bookmark for page " + (currentPage + 1),
-                "Bookmark title:",
-                "Page " + (currentPage + 1),
+                lang().getString("bookmark.add"),
+                java.text.MessageFormat.format(lang().getString("bookmark.addForPage"), currentPage + 1),
+                lang().getString("bookmark.titleLabel"),
+                java.text.MessageFormat.format(lang().getString("bookmark.defaultTitle"), currentPage + 1),
                 themeManager
         );
 
@@ -360,12 +365,12 @@ public class BookmarkManager {
      */
     private void handleExport() {
         if (bookmarks.isEmpty()) {
-            showAlert("No Bookmarks", "There are no bookmarks to export.");
+            showAlert(lang().getString("bookmark.noBookmarks"), lang().getString("bookmark.noBookmarksToExport"));
             return;
         }
 
         javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
-        fileChooser.setTitle("Export Bookmarks");
+        fileChooser.setTitle(lang().getString("bookmark.export"));
         fileChooser.getExtensionFilters().add(
                 new javafx.stage.FileChooser.ExtensionFilter("JSON Files", "*.json")
         );
@@ -375,9 +380,9 @@ public class BookmarkManager {
         if (file != null) {
             try {
                 exportBookmarks(file);
-                showAlert("Export Successful", "Bookmarks exported successfully.");
+                showAlert(lang().getString("bookmark.exportSuccess"), lang().getString("bookmark.exportSuccessMsg"));
             } catch (Exception e) {
-                showAlert("Export Failed", "Failed to export bookmarks: " + e.getMessage());
+                showAlert(lang().getString("bookmark.exportFailed"), lang().getString("bookmark.exportFailedMsg") + ": " + e.getMessage());
             }
         }
     }
@@ -387,7 +392,7 @@ public class BookmarkManager {
      */
     private void handleImport() {
         javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
-        fileChooser.setTitle("Import Bookmarks");
+        fileChooser.setTitle(lang().getString("bookmark.import"));
         fileChooser.getExtensionFilters().add(
                 new javafx.stage.FileChooser.ExtensionFilter("JSON Files", "*.json")
         );
@@ -396,9 +401,9 @@ public class BookmarkManager {
         if (file != null) {
             try {
                 importBookmarks(file);
-                showAlert("Import Successful", "Bookmarks imported successfully.");
+                showAlert(lang().getString("bookmark.importSuccess"), lang().getString("bookmark.importSuccessMsg"));
             } catch (Exception e) {
-                showAlert("Import Failed", "Failed to import bookmarks: " + e.getMessage());
+                showAlert(lang().getString("bookmark.importFailed"), lang().getString("bookmark.importFailedMsg") + ": " + e.getMessage());
             }
         }
     }
@@ -408,20 +413,20 @@ public class BookmarkManager {
      */
     private void handleClearAll() {
         if (bookmarks.isEmpty()) {
-            showAlert("No Bookmarks", "There are no bookmarks to clear.");
+            showAlert(lang().getString("bookmark.noBookmarks"), lang().getString("bookmark.noBookmarksToClear"));
             return;
         }
 
         boolean confirmed = CustomConfirmDialog.show(
-                "Clear All Bookmarks",
-                "Delete all bookmarks?",
-                String.format("This will permanently delete all %d bookmarks.", bookmarks.size()),
+                lang().getString("bookmark.clearAllTitle"),
+                lang().getString("bookmark.clearAllHeader"),
+                java.text.MessageFormat.format(lang().getString("bookmark.clearAllMsg"), bookmarks.size()),
                 themeManager
         );
 
         if (confirmed) {
             clearAllBookmarks();
-            showAlert("Bookmarks Cleared", "All bookmarks have been deleted.");
+            showAlert(lang().getString("bookmark.cleared"), lang().getString("bookmark.clearedMsg"));
         }
     }
 
@@ -486,7 +491,7 @@ public class BookmarkManager {
             
             textContent.getChildren().addAll(titleLabel, pageLabel);
 
-            goButton = new Button("Go");
+            goButton = new Button(lang().getString("bookmark.go"));
             goButton.setStyle("-fx-font-size: 13px; -fx-padding: 4 10;");
             goButton.setMinWidth(42);
             goButton.setPrefWidth(42);
@@ -515,7 +520,8 @@ public class BookmarkManager {
                 setText(null);
             } else {
                 titleLabel.setText(bookmark.getTitle());
-                pageLabel.setText("Page " + (bookmark.getPageNumber() + 1) + " • " + 
+                pageLabel.setText(java.text.MessageFormat.format(lang().getString("bookmark.pageInfo"), 
+                                bookmark.getPageNumber() + 1) + " • " + 
                                 bookmark.getCreatedAt().format(TIME_FORMATTER));
 
                 // Go button action
@@ -528,17 +534,17 @@ public class BookmarkManager {
                 // Context menu for right-click
                 ContextMenu contextMenu = new ContextMenu();
                 
-                MenuItem goToPageItem = new MenuItem("Go to Page");
+                MenuItem goToPageItem = new MenuItem(lang().getString("bookmark.goTo"));
                 goToPageItem.setOnAction(e -> {
                     if (onNavigateToPage != null) {
                         onNavigateToPage.accept(bookmark.getPageNumber(), bookmark.getYPosition());
                     }
                 });
                 
-                MenuItem editItem = new MenuItem("Edit Title");
+                MenuItem editItem = new MenuItem(lang().getString("bookmark.editTitle"));
                 editItem.setOnAction(e -> showEditBookmarkDialog(bookmark));
                 
-                MenuItem deleteItem = new MenuItem("Delete");
+                MenuItem deleteItem = new MenuItem(lang().getString("bookmark.delete"));
                 deleteItem.setStyle("-fx-text-fill: red;");
                 deleteItem.setOnAction(e -> confirmAndDeleteBookmark(bookmark));
                 
@@ -555,8 +561,8 @@ public class BookmarkManager {
      */
     private void confirmAndDeleteBookmark(Bookmark bookmark) {
         boolean confirmed = CustomConfirmDialog.show(
-                "Delete Bookmark",
-                "Delete this bookmark?",
+                lang().getString("bookmark.deleteTitle"),
+                lang().getString("bookmark.deleteHeader"),
                 bookmark.getTitle(),
                 themeManager
         );
@@ -571,9 +577,9 @@ public class BookmarkManager {
      */
     private void showEditBookmarkDialog(Bookmark bookmark) {
         String result = BookmarkInputDialog.show(
-                "Edit Bookmark",
-                "Edit bookmark title",
-                "New title:",
+                lang().getString("bookmark.editBookmark"),
+                lang().getString("bookmark.editBookmarkHeader"),
+                lang().getString("bookmark.newTitle"),
                 bookmark.getTitle(),
                 themeManager
         );

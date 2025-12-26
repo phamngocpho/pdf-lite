@@ -31,6 +31,10 @@ public class SearchDialogManager {
     private SearchDialogController searchDialogController;
     private Stage searchDialogStage;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Creates a new SearchDialogManager.
      *
@@ -60,7 +64,7 @@ public class SearchDialogManager {
      */
     public void openSearchDialog(PDFDocument currentDocument, MainController mainController) {
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF Loaded", "Please open a PDF file first");
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
@@ -77,7 +81,7 @@ public class SearchDialogManager {
                 searchDialogController.setMainController(mainController);
 
                 searchDialogStage = new Stage();
-                searchDialogStage.setTitle("Search in PDF");
+                searchDialogStage.setTitle(lang().getString("search.title"));
                 searchDialogStage.initStyle(javafx.stage.StageStyle.TRANSPARENT);
 
                 Scene scene = new Scene(root);
@@ -113,7 +117,7 @@ public class SearchDialogManager {
 
         } catch (IOException e) {
             logger.error("Error loading search dialog", e);
-            uiStateManager.showError("Error", "Could not open search dialog: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.openSearch") + ": " + e.getMessage());
         }
     }
 

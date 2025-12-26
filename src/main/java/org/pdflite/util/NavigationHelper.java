@@ -7,6 +7,7 @@ import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 
 import org.pdflite.controller.MainController;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
 import org.pdflite.view.AnnotationLayer;
@@ -42,6 +43,10 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
                                Set<Integer> loadingPages) {
 
     private static final Logger logger = LoggerFactory.getLogger(NavigationHelper.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     /**
      * Constructor with dependency injection
@@ -495,7 +500,7 @@ public record NavigationHelper(MainController mainController, PDFService pdfServ
                 Platform.runLater(() -> {
                     if (!pageBox.getChildren().isEmpty()
                             && pageBox.getChildren().getFirst() instanceof StackPane stackPane) {
-                        Label errorLabel = new Label("Error loading page");
+                        Label errorLabel = new Label(lang().getString("navigation.errorLoading"));
                         errorLabel.setStyle("-fx-text-fill: red;");
                         stackPane.getChildren().set(0, errorLabel);
                     }

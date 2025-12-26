@@ -15,6 +15,7 @@ import javafx.scene.shape.SVGPath;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.manager.ThemeManager;
 import org.pdflite.util.DialogTitleBar;
 
@@ -26,6 +27,7 @@ public class PrivacyConsentDialog {
 
     private Stage dialogStage;
     private boolean accepted = false;
+    private final LanguageManager lang = LanguageManager.getInstance();
 
     /**
      * Shows the privacy consent dialog.
@@ -42,13 +44,13 @@ public class PrivacyConsentDialog {
         dialogStage = new Stage();
         dialogStage.initStyle(StageStyle.TRANSPARENT);
         dialogStage.initModality(Modality.APPLICATION_MODAL);
-        dialogStage.setTitle("Privacy Notice");
+        dialogStage.setTitle(lang.getString("privacy.title"));
 
         VBox mainContainer = new VBox();
         mainContainer.getStyleClass().add("custom-confirm-dialog");
 
         // Custom title bar
-        DialogTitleBar titleBar = new DialogTitleBar("Privacy Notice - AI Features", dialogStage);
+        DialogTitleBar titleBar = new DialogTitleBar(lang.getString("privacy.title"), dialogStage);
         mainContainer.getChildren().add(titleBar.getTitleBar());
 
         // Content
@@ -68,7 +70,7 @@ public class PrivacyConsentDialog {
         warningIcon.setScaleX(scale);
         warningIcon.setScaleY(scale);
 
-        Label headerLabel = new Label("Data Privacy Warning");
+        Label headerLabel = new Label(lang.getString("privacy.header"));
         headerLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
         
         HBox headerBox = new HBox(8);
@@ -77,20 +79,13 @@ public class PrivacyConsentDialog {
         contentBox.getChildren().add(headerBox);
 
         // Description
-        Label descLabel = new Label(
-            "When using AI features (summarize, read text, etc.), your PDF content " +
-            "will be sent to Groq's servers for processing.\n\n" +
-            "This includes:\n" +
-            "• Text content from selected pages\n" +
-            "• Your chat messages with the AI assistant\n\n" +
-            "Groq may process and store this data according to their privacy policy."
-        );
+        Label descLabel = new Label(lang.getString("privacy.description"));
         descLabel.setWrapText(true);
         descLabel.setMaxWidth(450);
         contentBox.getChildren().add(descLabel);
 
         // Privacy policy link
-        Hyperlink privacyLink = new Hyperlink("View Groq Privacy Policy");
+        Hyperlink privacyLink = new Hyperlink(lang.getString("privacy.link"));
         privacyLink.setFocusTraversable(false);
         privacyLink.setStyle("-fx-border-color: transparent;");
         privacyLink.setOnAction(e -> {
@@ -105,7 +100,7 @@ public class PrivacyConsentDialog {
         contentBox.getChildren().add(privacyLink);
 
         // Checkbox
-        CheckBox consentCheckbox = new CheckBox("I understand and agree to send data to Groq API");
+        CheckBox consentCheckbox = new CheckBox(lang.getString("privacy.consent"));
         consentCheckbox.setWrapText(true);
         contentBox.getChildren().add(consentCheckbox);
 
@@ -114,14 +109,14 @@ public class PrivacyConsentDialog {
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
         buttonBox.setPadding(new Insets(15, 0, 0, 0));
 
-        Button cancelButton = new Button("Decline");
+        Button cancelButton = new Button(lang.getString("privacy.decline"));
         cancelButton.setPrefWidth(100);
         cancelButton.setOnAction(e -> {
             accepted = false;
             dialogStage.close();
         });
 
-        Button acceptButton = new Button("Accept");
+        Button acceptButton = new Button(lang.getString("privacy.accept"));
         acceptButton.setPrefWidth(100);
         acceptButton.setDisable(true);
         acceptButton.setDefaultButton(true);

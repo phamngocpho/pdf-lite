@@ -23,6 +23,10 @@ public class PageOperationsManager {
     private final ThemeManager themeManager;
     private Supplier<RenderingManager> renderingManagerSupplier;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     public PageOperationsManager(UIStateManager uiStateManager, PageDuplicationManager pageDuplicationManager,
                                  RenderingManager renderingManager, PageInfoManager pageInfoManager,
                                  SaveStatusManager saveStatusManager, PageRenderer pageRenderer,
@@ -51,7 +55,7 @@ public class PageOperationsManager {
      */
     public void handleDuplicatePage(PDFDocument document) {
         if (document == null) {
-            uiStateManager.showError("No Document", "Please open a PDF file first.");
+            uiStateManager.showError(lang().getString("error.noDocument"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
@@ -83,9 +87,7 @@ public class PageOperationsManager {
                     // Update page info
                     pageInfoManager.updatePageInfo(document);
 
-                    uiStateManager.updateStatus(
-                            String.format("Duplicated page %d (%d copies) - Don't forget to save!",
-                                    sourcePageIndex + 1, numberOfCopies));
+                    uiStateManager.updateStatus(lang().getString("success.duplicated"));
                     logger.info("Page {} duplicated {} times at position {}",
                             sourcePageIndex + 1, numberOfCopies, insertPosition + 1);
 
@@ -94,13 +96,13 @@ public class PageOperationsManager {
                         saveStatusManager.triggerAutoSave();
                     }
                 } else {
-                    uiStateManager.showError("Duplication Failed",
-                            "Failed to duplicate the page.");
+                    uiStateManager.showError(lang().getString("error.duplicateFailed"),
+                            lang().getString("error.duplicateFailedMsg"));
                 }
             }
         } catch (Exception e) {
             logger.error("Error duplicating page", e);
-            uiStateManager.showError("Error", "Failed to duplicate page: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.duplicate") + ": " + e.getMessage());
         }
     }
 }

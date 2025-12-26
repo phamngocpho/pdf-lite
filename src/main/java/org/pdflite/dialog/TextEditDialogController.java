@@ -4,6 +4,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.util.DialogTitleBar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +23,10 @@ import org.slf4j.LoggerFactory;
  */
 public class TextEditDialogController {
     private static final Logger logger = LoggerFactory.getLogger(TextEditDialogController.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     @FXML
     private HBox dialogTitleBar;
@@ -53,9 +58,56 @@ public class TextEditDialogController {
         this.dialogStage = dialogStage;
 
         // Create and add custom title bar
-        DialogTitleBar titleBar = new DialogTitleBar("Edit Text", dialogStage);
+        DialogTitleBar titleBar = new DialogTitleBar(lang().getString("textEdit.title"), dialogStage);
         // Copy children from title bar to dialogTitleBar HBox
         dialogTitleBar.getChildren().setAll(titleBar.getTitleBar().getChildren());
+        
+        // Update all UI text
+        updateAllUIText();
+    }
+
+    /**
+     * Updates all UI text elements with current language.
+     */
+    private void updateAllUIText() {
+        if (dialogStage == null || dialogStage.getScene() == null) {
+            return;
+        }
+        
+        // Recursively update all Labels and Buttons in the scene
+        updateNodeText(dialogStage.getScene().getRoot());
+    }
+    
+    /**
+     * Recursively updates text for Labels and Buttons.
+     */
+    private void updateNodeText(javafx.scene.Node node) {
+        if (node instanceof javafx.scene.control.Label label) {
+            String text = label.getText();
+            if (text != null && !text.isEmpty()) {
+                switch (text) {
+                    case "Original Text:" -> label.setText(lang().getString("textEdit.original") + ":");
+                    case "New Text:" -> label.setText(lang().getString("textEdit.new") + ":");
+                    case "(Text extraction may be inaccurate with some fonts)" -> 
+                        label.setText("(" + lang().getString("textEdit.warning") + ")");
+                }
+            }
+        } else if (node instanceof javafx.scene.control.Button button) {
+            String text = button.getText();
+            if (text != null && !text.isEmpty()) {
+                switch (text) {
+                    case "OK" -> button.setText(lang().getString("textEdit.ok"));
+                    case "Cancel" -> button.setText(lang().getString("textEdit.cancel"));
+                }
+            }
+        }
+        
+        // Recursively process children
+        if (node instanceof javafx.scene.Parent parent) {
+            for (javafx.scene.Node child : parent.getChildrenUnmodifiable()) {
+                updateNodeText(child);
+            }
+        }
     }
 
     /**

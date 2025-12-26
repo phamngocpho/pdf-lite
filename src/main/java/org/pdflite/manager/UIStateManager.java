@@ -57,13 +57,31 @@ public record UIStateManager(Label statusLabel, Button prevButton, Button nextBu
      */
     public void showError(String title, String message) {
         ThemeManager themeManager = themeManagerSupplier != null ? themeManagerSupplier.get() : null;
+        LanguageManager lang = LanguageManager.getInstance();
         org.pdflite.dialog.CustomInfoDialog.show(
                 title,
-                "Error",
+                lang.getString("error.title"),
                 message,
                 themeManager
         );
         logger.error("Error: {} - {}", title, message);
+    }
+
+    /**
+     * Shows a success/info dialog.
+     *
+     * @param title   the dialog title
+     * @param message the message
+     */
+    public void showInfo(String title, String message) {
+        ThemeManager themeManager = themeManagerSupplier != null ? themeManagerSupplier.get() : null;
+        LanguageManager lang = LanguageManager.getInstance();
+        org.pdflite.dialog.CustomInfoDialog.show(
+                title,
+                lang.getString("success.title"),
+                message,
+                themeManager
+        );
     }
 }
 

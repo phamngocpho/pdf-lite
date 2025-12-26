@@ -8,6 +8,7 @@ import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.manager.ThemeManager;
 import org.pdflite.util.DialogTitleBar;
 
@@ -15,6 +16,10 @@ import org.pdflite.util.DialogTitleBar;
  * Dialog for configuring Smart Bookmark detection settings.
  */
 public class SmartBookmarkSettingsDialog {
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
     
     private final Stage dialog;
     private boolean confirmed = false;
@@ -32,13 +37,13 @@ public class SmartBookmarkSettingsDialog {
         dialog = new Stage();
         dialog.initStyle(StageStyle.TRANSPARENT);
         dialog.initModality(Modality.APPLICATION_MODAL);
-        dialog.setTitle("Smart Bookmark Settings");
+        dialog.setTitle(lang().getString("smartBookmark.title"));
         
         VBox mainContainer = new VBox();
         mainContainer.getStyleClass().add("custom-confirm-dialog");
         
         // Title bar
-        DialogTitleBar titleBar = new DialogTitleBar("Smart Bookmark Settings", dialog);
+        DialogTitleBar titleBar = new DialogTitleBar(lang().getString("smartBookmark.title"), dialog);
         mainContainer.getChildren().add(titleBar.getTitleBar());
         
         // Content
@@ -66,13 +71,13 @@ public class SmartBookmarkSettingsDialog {
         content.setPadding(new Insets(20));
         content.setAlignment(Pos.TOP_LEFT);
         
-        Label infoLabel = new Label("Configure how Smart Bookmarks detects headings and chapters:");
+        Label infoLabel = new Label(lang().getString("smartBookmark.info"));
         infoLabel.setWrapText(true);
         infoLabel.setMaxWidth(450);
         infoLabel.setStyle("-fx-font-size: 12px;");
         
         // Font size settings
-        Label fontSizeLabel = new Label("Font Size Thresholds:");
+        Label fontSizeLabel = new Label(lang().getString("smartBookmark.fontSizeThresholds"));
         fontSizeLabel.setStyle("-fx-font-weight: bold;");
         
         GridPane fontSizeGrid = new GridPane();
@@ -88,25 +93,25 @@ public class SmartBookmarkSettingsDialog {
         titleFontSizeSpinner.setEditable(true);
         titleFontSizeSpinner.setPrefWidth(100);
         
-        fontSizeGrid.add(new Label("Heading font size (pt):"), 0, 0);
+        fontSizeGrid.add(new Label(lang().getString("smartBookmark.headingFontSize")), 0, 0);
         fontSizeGrid.add(headingFontSizeSpinner, 1, 0);
-        fontSizeGrid.add(new Label("Title font size (pt):"), 0, 1);
+        fontSizeGrid.add(new Label(lang().getString("smartBookmark.titleFontSize")), 0, 1);
         fontSizeGrid.add(titleFontSizeSpinner, 1, 1);
         
         // Detection options
-        Label detectionLabel = new Label("Detection Options:");
+        Label detectionLabel = new Label(lang().getString("smartBookmark.detectionOptions"));
         detectionLabel.setStyle("-fx-font-weight: bold;");
         
         VBox detectionBox = new VBox(8);
         detectionBox.setPadding(new Insets(5, 0, 0, 20));
         
-        detectChapterPatternsCheck = new CheckBox("Detect chapter patterns (Chapter 1, Chương 1, etc.)");
+        detectChapterPatternsCheck = new CheckBox(lang().getString("smartBookmark.detectChapterPatterns"));
         detectChapterPatternsCheck.setSelected(true);
         
-        detectBoldHeadingsCheck = new CheckBox("Detect bold headings");
+        detectBoldHeadingsCheck = new CheckBox(lang().getString("smartBookmark.detectBoldHeadings"));
         detectBoldHeadingsCheck.setSelected(true);
         
-        detectAllCapsCheck = new CheckBox("Detect ALL CAPS titles");
+        detectAllCapsCheck = new CheckBox(lang().getString("smartBookmark.detectAllCaps"));
         detectAllCapsCheck.setSelected(true);
         
         detectionBox.getChildren().addAll(
@@ -116,7 +121,7 @@ public class SmartBookmarkSettingsDialog {
         );
         
         // Text length settings
-        Label lengthLabel = new Label("Text Length Limits:");
+        Label lengthLabel = new Label(lang().getString("smartBookmark.textLengthLimits"));
         lengthLabel.setStyle("-fx-font-weight: bold;");
         
         GridPane lengthGrid = new GridPane();
@@ -132,9 +137,9 @@ public class SmartBookmarkSettingsDialog {
         maxTextLengthSpinner.setEditable(true);
         maxTextLengthSpinner.setPrefWidth(100);
         
-        lengthGrid.add(new Label("Minimum characters:"), 0, 0);
+        lengthGrid.add(new Label(lang().getString("smartBookmark.minChars")), 0, 0);
         lengthGrid.add(minTextLengthSpinner, 1, 0);
-        lengthGrid.add(new Label("Maximum characters:"), 0, 1);
+        lengthGrid.add(new Label(lang().getString("smartBookmark.maxChars")), 0, 1);
         lengthGrid.add(maxTextLengthSpinner, 1, 1);
         
         content.getChildren().addAll(
@@ -155,21 +160,21 @@ public class SmartBookmarkSettingsDialog {
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
         buttonBox.setPadding(new Insets(0, 20, 20, 20));
         
-        Button resetButton = new Button("Reset to Defaults");
+        Button resetButton = new Button(lang().getString("smartBookmark.resetDefaults"));
         resetButton.setPrefWidth(130);
         resetButton.setOnAction(e -> resetToDefaults());
         
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         
-        Button cancelButton = new Button("Cancel");
+        Button cancelButton = new Button(lang().getString("dialog.cancel"));
         cancelButton.setPrefWidth(100);
         cancelButton.setOnAction(e -> {
             confirmed = false;
             dialog.close();
         });
         
-        Button okButton = new Button("OK");
+        Button okButton = new Button(lang().getString("dialog.ok"));
         okButton.setPrefWidth(100);
         okButton.setDefaultButton(true);
         okButton.setStyle("-fx-background-color: #2196f3; -fx-text-fill: white;");

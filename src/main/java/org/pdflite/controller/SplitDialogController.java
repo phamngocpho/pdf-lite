@@ -11,6 +11,7 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.pdflite.dialog.CustomInfoDialog;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.service.PDFService;
 import org.pdflite.service.PDFSplitService;
 import org.pdflite.util.DialogTitleBar;
@@ -37,6 +38,10 @@ import java.util.concurrent.Executors;
 public class SplitDialogController {
 
     private static final Logger logger = LoggerFactory.getLogger(SplitDialogController.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     @FXML
     private javafx.scene.layout.HBox dialogTitleBar;
@@ -137,11 +142,14 @@ public class SplitDialogController {
         this.dialogStage = dialogStage;
 
         // Create and add a custom title bar
-        String title = dialogStage.getTitle() != null ? dialogStage.getTitle() : "Split PDF File";
+        String title = lang().getString("split.title");
         DialogTitleBar titleBar = new DialogTitleBar(title, dialogStage);
         if (dialogTitleBar != null) {
             dialogTitleBar.getChildren().setAll(titleBar.getTitleBar().getChildren());
         }
+
+        // Update all UI text
+        updateAllUIText();
 
         // Ensure FlowPane layout is calculated correctly after the dialog is shown
         // This fixes the issue where FlowPane doesn't calculate the correct column count initially
@@ -155,6 +163,87 @@ public class SplitDialogController {
                 previewPane.layout();
             }
         }));
+    }
+    
+    /**
+     * Updates all UI text elements with current language.
+     */
+    private void updateAllUIText() {
+        if (dialogStage == null || dialogStage.getScene() == null) {
+            return;
+        }
+        
+        // Update radio buttons
+        splitByRangeRadio.setText(lang().getString("split.byRange"));
+        splitByPagesRadio.setText(lang().getString("split.byPages"));
+        splitAllPagesRadio.setText(lang().getString("split.allPages"));
+        
+        // Update buttons
+        addRangeButton.setText(lang().getString("split.addRange"));
+        removeRangeButton.setText(lang().getString("split.removeRange"));
+        splitButton.setText(lang().getString("split.split"));
+        cancelButton.setText(lang().getString("split.cancel"));
+        
+        // Update checkbox
+        zipOutputCheckBox.setText(lang().getString("split.zipOutput"));
+        
+        // Update status
+        statusLabel.setText(lang().getString("split.status.ready"));
+        
+        // Recursively update all Labels in the scene
+        updateNodeText(dialogStage.getScene().getRoot());
+    }
+    
+    /**
+     * Recursively updates text for Labels.
+     */
+    private void updateNodeText(javafx.scene.Node node) {
+        if (node instanceof Label label) {
+            String text = label.getText();
+            if (text != null && !text.isEmpty()) {
+                if (text.equals("File:")) {
+                    label.setText(lang().getString("split.file") + ":");
+                } else if (text.equals("No file selected")) {
+                    label.setText(lang().getString("split.noFileSelected"));
+                } else if (text.startsWith("Total Pages:")) {
+                    // Keep dynamic content
+                } else if (text.equals("Page Preview")) {
+                    label.setText(lang().getString("split.preview"));
+                } else if (text.equals("Split Options")) {
+                    label.setText(lang().getString("split.options"));
+                } else if (text.contains("Enter page ranges")) {
+                    label.setText(lang().getString("split.enterRanges") + ":");
+                } else if (text.equals("Selected Ranges:")) {
+                    label.setText(lang().getString("split.selectedRanges") + ":");
+                } else if (text.contains("Number of pages per file")) {
+                    label.setText(lang().getString("split.pagesPerFile") + ":");
+                } else if (text.equals("Each page will be saved as a separate PDF file.")) {
+                    label.setText(lang().getString("split.eachPageSeparate"));
+                } else if (text.equals("Output Options")) {
+                    label.setText(lang().getString("split.outputOptions"));
+                } else if (text.equals("Ready to split")) {
+                    label.setText(lang().getString("split.status.ready"));
+                }
+            }
+        } else if (node instanceof TextField textField) {
+            String prompt = textField.getPromptText();
+            if (prompt != null && !prompt.isEmpty()) {
+                if (prompt.contains("1-5")) {
+                    textField.setPromptText(lang().getString("split.rangeExample"));
+                } else if (prompt.equals("e.g., 10")) {
+                    textField.setPromptText(lang().getString("split.pagesPerFilePrompt"));
+                } else if (prompt.equals("1")) {
+                    textField.setPromptText("1");
+                }
+            }
+        }
+        
+        // Recursively process children
+        if (node instanceof javafx.scene.Parent parent) {
+            for (javafx.scene.Node child : parent.getChildrenUnmodifiable()) {
+                updateNodeText(child);
+            }
+        }
     }
 
     /**
@@ -177,16 +266,16 @@ public class SplitDialogController {
         try {
             totalPages = splitService.getPageCount(file);
             fileNameLabel.setText(file.getName());
-            totalPagesLabel.setText(String.format("Total Pages: %d", totalPages));
+            totalPagesLabel.setText(java.text.MessageFormat.format(lang().getString("split.totalPages"), totalPages));
 
             // Load thumbnails
             loadThumbnails();
 
-            updateStatus("Ready to split");
+            updateStatus(lang().getString("split.status.ready"));
             logger.info("Loaded PDF: {} ({} pages)", file.getName(), totalPages);
         } catch (IOException e) {
             logger.error("Error loading PDF", e);
-            showError("Error", "Failed to load PDF: " + e.getMessage());
+            showError(lang().getString("error.title"), lang().getString("error.openPdf") + ": " + e.getMessage());
         }
     }
 
@@ -203,12 +292,12 @@ public class SplitDialogController {
 
         totalPages = document.getNumberOfPages();
         fileNameLabel.setText(file != null ? file.getName() : "Document");
-        totalPagesLabel.setText(String.format("Total Pages: %d", totalPages));
+        totalPagesLabel.setText(java.text.MessageFormat.format(lang().getString("split.totalPages"), totalPages));
 
         // Load thumbnails from documents
         loadThumbnailsFromDocument();
 
-        updateStatus("Ready to split");
+        updateStatus(lang().getString("split.status.ready"));
         logger.info("Loaded PDF document ({} pages)", totalPages);
     }
 
@@ -247,14 +336,14 @@ public class SplitDialogController {
         String rangeText = rangeTextField.getText().trim();
 
         if (rangeText.isEmpty()) {
-            showError("Invalid Input", "Please enter a page range (e.g., 1-5)");
+            showError(lang().getString("error.title"), lang().getString("split.error.invalidRange"));
             return;
         }
 
         // Parse range (e.g., "1-5" or "3-3")
         String[] parts = rangeText.split("-");
         if (parts.length != 2) {
-            showError("Invalid Format", "Please use format: startPage-endPage (e.g., 1-5)");
+            showError(lang().getString("error.title"), lang().getString("split.error.invalidFormat"));
             return;
         }
 
@@ -263,8 +352,8 @@ public class SplitDialogController {
             int endPage = Integer.parseInt(parts[1].trim());
 
             if (startPage < 1 || endPage > totalPages || startPage > endPage) {
-                showError("Invalid Range",
-                        String.format("Range must be between 1 and %d, with start <= end", totalPages));
+                showError(lang().getString("error.title"),
+                        java.text.MessageFormat.format(lang().getString("split.error.rangeOutOfBounds"), totalPages));
                 return;
             }
 
@@ -273,7 +362,7 @@ public class SplitDialogController {
             updateButtonStates();
 
         } catch (NumberFormatException e) {
-            showError("Invalid Input", "Please enter valid page numbers");
+            showError(lang().getString("error.title"), lang().getString("split.error.invalidNumber"));
         }
     }
 
@@ -295,13 +384,13 @@ public class SplitDialogController {
     @FXML
     private void handleSplit() {
         if (sourceFile == null) {
-            showError("No File", "Please select a PDF file first");
+            showError(lang().getString("error.title"), lang().getString("split.error.noFile"));
             return;
         }
 
         // Choose an output directory
         DirectoryChooser dirChooser = new DirectoryChooser();
-        dirChooser.setTitle("Select Output Directory");
+        dirChooser.setTitle(lang().getString("split.selectOutput"));
         File outputDir = dirChooser.showDialog(dialogStage);
 
         if (outputDir == null) {
@@ -323,7 +412,7 @@ public class SplitDialogController {
      */
     private void performSplitByRanges(File outputDir) {
         if (rangesList.isEmpty()) {
-            showError("No Ranges", "Please add at least one page range");
+            showError(lang().getString("error.title"), lang().getString("split.error.noRanges"));
             return;
         }
 
@@ -349,7 +438,7 @@ public class SplitDialogController {
         String pagesPerFileText = pagesPerFileTextField.getText().trim();
 
         if (pagesPerFileText.isEmpty()) {
-            showError("Invalid Input", "Please enter the number of pages per file");
+            showError(lang().getString("error.title"), lang().getString("split.error.invalidNumber"));
             return;
         }
 
@@ -357,8 +446,8 @@ public class SplitDialogController {
             int pagesPerFile = Integer.parseInt(pagesPerFileText);
 
             if (pagesPerFile < 1 || pagesPerFile > totalPages) {
-                showError("Invalid Input",
-                        String.format("Pages per file must be between 1 and %d", totalPages));
+                showError(lang().getString("error.title"),
+                        java.text.MessageFormat.format(lang().getString("split.error.invalidPagesPerFile"), totalPages));
                 return;
             }
 
@@ -370,7 +459,7 @@ public class SplitDialogController {
                     progressBar.setVisible(true);
                     progressBar.setManaged(true);
                     progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
-                    updateStatus("Splitting PDF...");
+                    updateStatus(lang().getString("split.status.splitting"));
 
                     List<File> outputFiles = splitService.splitByPageCount(
                             sourceFile, outputDir, pagesPerFile, baseName
@@ -384,7 +473,7 @@ public class SplitDialogController {
             });
 
         } catch (NumberFormatException e) {
-            showError("Invalid Input", "Please enter a valid number");
+            showError(lang().getString("error.title"), lang().getString("split.error.invalidNumber"));
         }
     }
 
@@ -400,7 +489,7 @@ public class SplitDialogController {
                 progressBar.setVisible(true);
                 progressBar.setManaged(true);
                 progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
-                updateStatus("Splitting PDF into individual pages...");
+                updateStatus(lang().getString("split.status.splittingAll"));
 
                 List<File> outputFiles;
                 if (sourceDocument != null) {
@@ -433,7 +522,7 @@ public class SplitDialogController {
                 progressBar.setVisible(true);
                 progressBar.setManaged(true);
                 progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
-                updateStatus("Splitting PDF...");
+                updateStatus(lang().getString("split.status.splitting"));
 
                 List<File> outputFiles;
                 if (sourceDocument != null) {
@@ -458,7 +547,7 @@ public class SplitDialogController {
     private void handleSplitSuccess(List<File> outputFiles, File outputDir) {
         Platform.runLater(() -> {
             progressBar.setProgress(1.0);
-            updateStatus("Split completed successfully!");
+            updateStatus(lang().getString("split.status.success"));
 
             // Create ZIP if requested
             if (zipOutputCheckBox.isSelected() && outputFiles.size() > 1) {
@@ -473,7 +562,7 @@ public class SplitDialogController {
      * Creates a ZIP archive of the output files.
      */
     private void createZipArchive(List<File> outputFiles, File outputDir) {
-        updateStatus("Creating ZIP archive...");
+        updateStatus(lang().getString("split.status.creatingZip"));
 
         executorService.submit(() -> {
             try {
@@ -483,9 +572,9 @@ public class SplitDialogController {
                 ZipUtility.createZipArchive(outputFiles, zipFile);
 
                 Platform.runLater(() -> {
-                    updateStatus("ZIP archive created!");
+                    updateStatus(lang().getString("split.status.zipCreated"));
                     showInfo(
-                            String.format("Successfully split PDF into %d files.\nZIP archive created: %s",
+                            java.text.MessageFormat.format(lang().getString("split.success.zipMessage"),
                                     outputFiles.size(), zipFile.getName()));
                     handleCancel();
                 });
@@ -493,8 +582,8 @@ public class SplitDialogController {
             } catch (IOException e) {
                 logger.error("Error creating ZIP", e);
                 Platform.runLater(() -> {
-                    updateStatus("ZIP creation failed");
-                    showError("ZIP Error", "Failed to create ZIP archive: " + e.getMessage());
+                    updateStatus(lang().getString("split.status.zipFailed"));
+                    showError(lang().getString("error.title"), lang().getString("split.error.zip") + ": " + e.getMessage());
                     showSplitCompleteDialog(outputFiles, outputDir);
                 });
             }
@@ -506,7 +595,7 @@ public class SplitDialogController {
      */
     private void showSplitCompleteDialog(List<File> outputFiles, File outputDir) {
         showInfo(
-                String.format("Successfully split PDF into %d files.\nOutput directory: %s",
+                java.text.MessageFormat.format(lang().getString("split.success.message"),
                         outputFiles.size(), outputDir.getAbsolutePath()));
         handleCancel();
     }
@@ -520,8 +609,8 @@ public class SplitDialogController {
             progressBar.setVisible(false);
             progressBar.setManaged(false);
             setUIEnabled(true);
-            updateStatus("Split failed!");
-            showError("Split Error", "Failed to split PDF: " + e.getMessage());
+            updateStatus(lang().getString("split.status.failed"));
+            showError(lang().getString("error.title"), lang().getString("split.error.split") + ": " + e.getMessage());
         });
     }
 
@@ -608,7 +697,7 @@ public class SplitDialogController {
     private void showError(String title, String message) {
         Platform.runLater(() -> CustomInfoDialog.show(
                 title,
-                "Error",
+                lang().getString("error.title"),
                 message,
                 themeManager
         ));
@@ -620,8 +709,8 @@ public class SplitDialogController {
     private void showInfo(String message) {
         Platform.runLater(() -> {
             CustomInfoDialog.show(
-                    "Split Complete",
-                    "Success",
+                    lang().getString("split.success.title"),
+                    lang().getString("success.title"),
                     message,
                     themeManager
             );

@@ -3,20 +3,25 @@ package org.pdflite.dialog;
 import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
+import org.pdflite.manager.LanguageManager;
 
 /**
  * Dialog for entering password to open encrypted PDF files.
  */
 public class PasswordDialog extends Dialog<String> {
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     private final PasswordField passwordField;
 
     public PasswordDialog() {
-        setTitle("Mật khẩu PDF");
-        setHeaderText("File PDF này được bảo vệ bởi mật khẩu");
+        setTitle(lang().getString("password.title"));
+        setHeaderText(lang().getString("password.header"));
 
         // Set the button types
-        ButtonType loginButtonType = new ButtonType("Mở", ButtonBar.ButtonData.OK_DONE);
+        ButtonType loginButtonType = new ButtonType(lang().getString("password.open"), ButtonBar.ButtonData.OK_DONE);
         getDialogPane().getButtonTypes().addAll(loginButtonType, ButtonType.CANCEL);
 
         // Create the password field
@@ -26,10 +31,10 @@ public class PasswordDialog extends Dialog<String> {
         grid.setPadding(new Insets(20, 150, 10, 10));
 
         passwordField = new PasswordField();
-        passwordField.setPromptText("Nhập mật khẩu");
+        passwordField.setPromptText(lang().getString("password.placeholder"));
         passwordField.setPrefWidth(250);
 
-        grid.add(new Label("Mật khẩu:"), 0, 0);
+        grid.add(new Label(lang().getString("password.label")), 0, 0);
         grid.add(passwordField, 1, 0);
 
         // Enable/Disable login button depending on whether a password was entered
