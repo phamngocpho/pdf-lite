@@ -9,12 +9,17 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import javafx.application.Platform;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.shape.SVGPath;
 
 import org.pdflite.controller.PageRenderer;
 import org.pdflite.controller.ScrollHandler;
@@ -190,10 +195,47 @@ public class TabManager {
     }
 
     /**
+     * Finds an existing tab that has the specified file open.
+     *
+     * @param file the file to search for
+     * @return the tab containing the file, or null if not found
+     */
+    private Tab findTabByFile(File file) {
+        if (file == null) return null;
+        
+        String filePath = file.getAbsolutePath();
+        for (Map.Entry<Tab, DocumentContext> entry : tabContextMap.entrySet()) {
+            DocumentContext context = entry.getValue();
+            if (context != null && context.getDocument() != null) {
+                File docFile = context.getDocument().getFile();
+                if (docFile != null && docFile.getAbsolutePath().equals(filePath)) {
+                    return entry.getKey();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * Opens a PDF file in a new tab.
      */
     public void openPDFFile(File file, Set<Integer> loadingPages,
                             java.util.concurrent.ExecutorService renderExecutor) {
+        // Ensure we're on the FX Application Thread
+        if (!Platform.isFxApplicationThread()) {
+            Platform.runLater(() -> openPDFFile(file, loadingPages, renderExecutor));
+            return;
+        }
+        
+        // Check if file is already open in a tab
+        Tab existingTab = findTabByFile(file);
+        if (existingTab != null) {
+            documentTabPane.getSelectionModel().select(existingTab);
+            uiStateManager.updateStatus("Switched to: " + file.getName());
+            logger.info("File already open, switched to existing tab: {}", file.getName());
+            return;
+        }
+        
         try {
             PDFDocument newDocument = fileManager.openFile(file);
             if (newDocument == null) {
@@ -230,6 +272,7 @@ public class TabManager {
 
             // Create per-tab scroll handler
             ScrollHandler tabScrollHandler = new ScrollHandler(pageRenderer, scrollPane);
+            tabScrollHandler.setDocumentLoading(true); // Block scroll during load
             tabScrollHandler.setDocument(newDocument, pagesContainer);
             tabScrollHandler.setPageChangeListener(
                     ListenerFactory.createPageChangeListener(newDocument, pageInfoManager));
@@ -285,12 +328,14 @@ public class TabManager {
             // Switch to the new tab context
             switchToTabContext(tab);
 
-            // Scroll to top and enable text selection
+            // Scroll to top, enable text selection, and unlock scroll after initial render
             Platform.runLater(() -> {
                 scrollPane.setVvalue(0.0);
                 if (pagesContainer != null) {
                     pageRenderer.setSelectionModeActive(pagesContainer, true);
                 }
+                // Enable scroll after a short delay to ensure initial pages are loaded
+                Platform.runLater(() -> tabScrollHandler.setDocumentLoading(false));
             });
 
             // Add to recent files
@@ -405,11 +450,19 @@ public class TabManager {
                 document.getTotalPages());
     }
 
+    // SVG path for close icon (same as title bar)
+    private static final String CLOSE_ICON_PATH = "m256-236-20-20 224-224-224-224 20-20 224 224 224-224 20 20-224 224 224 224-20 20-224-224-224 224Z";
+
     /**
      * Creates a new tab for a document.
      */
     private Tab createDocumentTab(PDFDocument document, DocumentContext context) {
-        Tab tab = new Tab(document.getFile().getName());
+        Tab tab = new Tab();
+        tab.setClosable(false); // We use custom close button
+
+        // Create custom tab graphic with label and close button
+        HBox tabGraphic = createTabGraphic(document.getFile().getName(), tab);
+        tab.setGraphic(tabGraphic);
 
         // Create the tab content
         ScrollPane scrollPane = context.getScrollPane();
@@ -417,13 +470,6 @@ public class TabManager {
 
         // Store context
         tabContextMap.put(tab, context);
-
-        // Handle tab close
-        tab.setOnCloseRequest(event -> {
-            if (!handleCloseTab(tab)) {
-                event.consume();
-            }
-        });
 
         // Add tab and select it
         if (documentTabPane != null) {
@@ -437,6 +483,43 @@ public class TabManager {
         }
 
         return tab;
+    }
+
+    /**
+     * Creates custom tab graphic with label and close button.
+     */
+    private HBox createTabGraphic(String fileName, Tab tab) {
+        HBox graphic = new HBox(8);
+        graphic.setAlignment(Pos.CENTER_LEFT);
+        graphic.setPadding(new Insets(0, 0, 0, 0));
+
+        // File name label
+        Label label = new Label(fileName);
+        label.getStyleClass().add("tab-label");
+
+        // Close button with SVG icon
+        Button closeButton = new Button();
+        closeButton.getStyleClass().add("tab-close-btn");
+
+        SVGPath closeIcon = new SVGPath();
+        closeIcon.setContent(CLOSE_ICON_PATH);
+        closeIcon.getStyleClass().add("tab-close-icon-svg");
+
+        StackPane closeIconPane = new StackPane(closeIcon);
+        closeIconPane.setMinSize(10, 10);
+        closeIconPane.setPrefSize(10, 10);
+        closeIconPane.setMaxSize(10, 10);
+        closeIconPane.setPickOnBounds(false);
+
+        closeButton.setGraphic(closeIconPane);
+        closeButton.setOnAction(e -> {
+            if (handleCloseTab(tab)) {
+                documentTabPane.getTabs().remove(tab);
+            }
+        });
+
+        graphic.getChildren().addAll(label, closeButton);
+        return graphic;
     }
 
     /**

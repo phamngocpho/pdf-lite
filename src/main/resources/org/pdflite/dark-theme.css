@@ -1163,6 +1163,42 @@
     -fx-border-color: transparent;
 }
 
+/* Tab Close Button */
+.tab-close-btn {
+    -fx-background-color: transparent;
+    -fx-padding: 4;
+    -fx-background-radius: 50%;
+    -fx-border-radius: 50%;
+    -fx-min-width: 20;
+    -fx-pref-width: 20;
+    -fx-max-width: 20;
+    -fx-min-height: 20;
+    -fx-pref-height: 20;
+    -fx-max-height: 20;
+    -fx-cursor: hand;
+}
+
+.tab-close-btn:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.15);
+}
+
+.tab-close-btn:pressed {
+    -fx-background-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Tab Close Icon SVG */
+.tab-close-icon-svg {
+    -fx-fill: #999999;
+    -fx-stroke: #999999;
+    -fx-scale-x: 0.0125;
+    -fx-scale-y: 0.0125;
+}
+
+.tab-close-btn:hover .tab-close-icon-svg {
+    -fx-fill: #e8e8e8;
+    -fx-stroke: #e8e8e8;
+}
+
 /* ==================== AI CHAT BUTTON ==================== */
 .ai-chat-button {
     -fx-background-color: #5b7cfa;

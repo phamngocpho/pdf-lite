@@ -39,6 +39,7 @@ public class ScrollHandler {
     private Timer scrollTimer;
     private volatile long lastLoadTime = 0;
     private volatile long navigationLockUntil = 0;
+    private volatile boolean isDocumentLoading = false; // Flag to block scroll during initial load
     private PageChangeListener pageChangeListener;
 
     /**
@@ -68,6 +69,28 @@ public class ScrollHandler {
     public void setDocument(PDFDocument document, VBox pagesContainer) {
         this.currentDocument = document;
         this.pagesContainer = pagesContainer;
+    }
+
+    /**
+     * Sets the document loading state.
+     * When true, scroll events will be ignored to prevent crashes during initial load.
+     *
+     * @param loading true if document is currently loading
+     */
+    public void setDocumentLoading(boolean loading) {
+        this.isDocumentLoading = loading;
+        if (loading) {
+            logger.debug("Document loading started - scroll blocked");
+        } else {
+            logger.debug("Document loading finished - scroll enabled");
+        }
+    }
+
+    /**
+     * Checks if document is currently loading.
+     */
+    public boolean isDocumentLoading() {
+        return isDocumentLoading;
     }
 
     /**
@@ -101,6 +124,12 @@ public class ScrollHandler {
      */
     public void handleScroll() {
         if (currentDocument == null || pagesContainer == null) {
+            return;
+        }
+
+        // Block scroll handling during initial document load
+        if (isDocumentLoading) {
+            logger.trace("Scroll ignored - document is loading");
             return;
         }
 

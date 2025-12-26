@@ -41,7 +41,7 @@
             </HBox>
 
             <!-- Menu Bar -->
-            <MenuBar>
+            <MenuBar fx:id="menuBar">
                 <Menu text="File">
                     <MenuItem text="Open PDF..." onAction="#handleOpenPDF" accelerator="Ctrl+O"/>
                     <Menu fx:id="recentFilesMenu" text="Recent Files">
