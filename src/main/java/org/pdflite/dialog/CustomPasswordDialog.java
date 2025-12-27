@@ -12,6 +12,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.manager.ThemeManager;
 import org.pdflite.util.DialogTitleBar;
 
@@ -19,6 +20,10 @@ import org.pdflite.util.DialogTitleBar;
  * Custom password dialog with a custom title bar.
  */
 public class CustomPasswordDialog {
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     private Stage dialogStage;
     private String password = null;
@@ -39,14 +44,14 @@ public class CustomPasswordDialog {
         dialogStage = new Stage();
         dialogStage.initStyle(StageStyle.TRANSPARENT);
         dialogStage.initModality(Modality.APPLICATION_MODAL);
-        dialogStage.setTitle("Mật khẩu PDF");
+        dialogStage.setTitle(lang().getString("password.title"));
 
         // Create main container
         VBox mainContainer = new VBox();
         mainContainer.getStyleClass().add("custom-confirm-dialog");
 
         // Create custom title bar
-        DialogTitleBar titleBar = new DialogTitleBar("Mật khẩu PDF", dialogStage);
+        DialogTitleBar titleBar = new DialogTitleBar(lang().getString("password.title"), dialogStage);
         mainContainer.getChildren().add(titleBar.getTitleBar());
 
         // Create content
@@ -55,7 +60,7 @@ public class CustomPasswordDialog {
         contentBox.setAlignment(Pos.TOP_LEFT);
 
         // Header label
-        Label headerLabel = new Label("File PDF này được bảo vệ bởi mật khẩu");
+        Label headerLabel = new Label(lang().getString("password.header"));
         headerLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
         contentBox.getChildren().add(headerLabel);
 
@@ -65,10 +70,10 @@ public class CustomPasswordDialog {
         grid.setVgap(10);
 
         passwordField = new PasswordField();
-        passwordField.setPromptText("Nhập mật khẩu");
+        passwordField.setPromptText(lang().getString("password.placeholder"));
         passwordField.setPrefWidth(250);
 
-        grid.add(new Label("Mật khẩu:"), 0, 0);
+        grid.add(new Label(lang().getString("password.label")), 0, 0);
         grid.add(passwordField, 1, 0);
 
         contentBox.getChildren().add(grid);
@@ -78,14 +83,14 @@ public class CustomPasswordDialog {
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
         buttonBox.setPadding(new Insets(10, 0, 0, 0));
 
-        Button cancelButton = new Button("Cancel");
+        Button cancelButton = new Button(lang().getString("dialog.cancel"));
         cancelButton.setPrefWidth(80);
         cancelButton.setOnAction(e -> {
             password = null;
             dialogStage.close();
         });
 
-        Button okButton = new Button("Mở");
+        Button okButton = new Button(lang().getString("password.open"));
         okButton.setPrefWidth(80);
         okButton.setDefaultButton(true);
         okButton.setDisable(true);

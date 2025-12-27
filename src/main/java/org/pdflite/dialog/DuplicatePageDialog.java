@@ -8,6 +8,7 @@ import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.manager.ThemeManager;
 import org.pdflite.util.DialogTitleBar;
 
@@ -23,6 +24,10 @@ public class DuplicatePageDialog {
     private int numberOfCopies = 1;
     private final int totalPages;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     public DuplicatePageDialog(int currentPage, int totalPages, ThemeManager themeManager) {
         this.totalPages = totalPages;
         this.sourcePageIndex = currentPage;
@@ -31,13 +36,13 @@ public class DuplicatePageDialog {
         dialog = new Stage();
         dialog.initStyle(StageStyle.TRANSPARENT);
         dialog.initModality(Modality.APPLICATION_MODAL);
-        dialog.setTitle("Duplicate Page");
+        dialog.setTitle(lang().getString("menu.tools.duplicatePage"));
 
         VBox mainContainer = new VBox();
         mainContainer.getStyleClass().add("custom-confirm-dialog");
 
         // Title bar
-        DialogTitleBar titleBar = new DialogTitleBar("Duplicate Page", dialog);
+        DialogTitleBar titleBar = new DialogTitleBar(lang().getString("menu.tools.duplicatePage"), dialog);
         mainContainer.getChildren().add(titleBar.getTitleBar());
 
         // Content
@@ -66,7 +71,7 @@ public class DuplicatePageDialog {
         content.setAlignment(Pos.TOP_LEFT);
 
         // Info label
-        Label infoLabel = new Label("Create duplicate copies of a page.");
+        Label infoLabel = new Label(lang().getString("menu.tools.duplicatePage"));
         infoLabel.setWrapText(true);
 
         // Use GridPane for better alignment
@@ -76,7 +81,7 @@ public class DuplicatePageDialog {
         grid.setAlignment(Pos.CENTER_LEFT);
 
         // Source page selection
-        Label sourceLabel = new Label("Page to duplicate:");
+        Label sourceLabel = new Label(lang().getString("status.page", "", ""));
         sourceLabel.setStyle("-fx-font-weight: bold;");
 
         Spinner<Integer> sourceSpinner = new Spinner<>(1, totalPages, sourcePageIndex + 1);
@@ -95,7 +100,7 @@ public class DuplicatePageDialog {
         grid.add(sourceSpinner, 1, 0);
 
         // Number of copies
-        Label copiesLabel = new Label("Number of copies:");
+        Label copiesLabel = new Label(lang().getString("page.total", ""));
         copiesLabel.setStyle("-fx-font-weight: bold;");
 
         Spinner<Integer> copiesSpinner = new Spinner<>(1, 100, 1);
@@ -114,7 +119,7 @@ public class DuplicatePageDialog {
         grid.add(copiesSpinner, 1, 1);
 
         // Insert position
-        Label positionLabel = new Label("Insert at position:");
+        Label positionLabel = new Label(lang().getString("pdftools.insertPage"));
         positionLabel.setStyle("-fx-font-weight: bold;");
 
         Spinner<Integer> positionSpinner = new Spinner<>(1, totalPages + 1, insertPosition + 1);
@@ -132,7 +137,7 @@ public class DuplicatePageDialog {
         grid.add(positionLabel, 0, 2);
         grid.add(positionSpinner, 1, 2);
 
-        Label positionHint = new Label("(1 = beginning, " + (totalPages + 1) + " = end)");
+        Label positionHint = new Label("(1 - " + (totalPages + 1) + ")");
         positionHint.setStyle("-fx-font-size: 10px; -fx-text-fill: gray;");
 
         content.getChildren().addAll(infoLabel, grid, positionHint);
@@ -144,14 +149,14 @@ public class DuplicatePageDialog {
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
         buttonBox.setPadding(new Insets(0, 20, 20, 20));
 
-        Button cancelButton = new Button("Cancel");
+        Button cancelButton = new Button(lang().getString("dialog.cancel"));
         cancelButton.setPrefWidth(100);
         cancelButton.setOnAction(e -> {
             confirmed = false;
             dialog.close();
         });
 
-        Button duplicateButton = new Button("Duplicate");
+        Button duplicateButton = new Button(lang().getString("menu.tools.duplicatePage"));
         duplicateButton.setPrefWidth(100);
         duplicateButton.setDefaultButton(true);
         duplicateButton.setStyle("-fx-background-color: #2196f3; -fx-text-fill: white;");

@@ -9,6 +9,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.manager.ThemeManager;
 import org.pdflite.util.DialogTitleBar;
 
@@ -18,6 +19,10 @@ import java.util.Optional;
  * Dialog for encrypting PDF files with password protection.
  */
 public class EncryptionDialog {
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     private final PasswordField ownerPasswordField;
     private final PasswordField ownerPasswordConfirmField;
@@ -36,37 +41,37 @@ public class EncryptionDialog {
         ownerPasswordConfirmField = new PasswordField();
         userPasswordField = new PasswordField();
         userPasswordConfirmField = new PasswordField();
-        allowPrintingCheck = new CheckBox("Cho phép in (Allow Printing)");
-        allowModifyCheck = new CheckBox("Cho phép chỉnh sửa nội dung (Allow Modify)");
-        allowCopyCheck = new CheckBox("Cho phép sao chép văn bản (Allow Copy)");
-        allowAnnotationsCheck = new CheckBox("Cho phép thêm chú thích (Allow Annotations)");
+        allowPrintingCheck = new CheckBox(lang().getString("encrypt.allowPrinting"));
+        allowModifyCheck = new CheckBox(lang().getString("encrypt.allowModify"));
+        allowCopyCheck = new CheckBox(lang().getString("encrypt.allowCopy"));
+        allowAnnotationsCheck = new CheckBox(lang().getString("encrypt.allowAnnotations"));
     }
 
     public Optional<EncryptionResult> showAndWait(ThemeManager themeManager) {
         dialogStage = new Stage();
         dialogStage.initStyle(StageStyle.TRANSPARENT);
         dialogStage.initModality(Modality.APPLICATION_MODAL);
-        dialogStage.setTitle("Mã hóa PDF");
+        dialogStage.setTitle(lang().getString("encrypt.title"));
 
         // Create main container
         VBox mainContainer = new VBox();
         mainContainer.getStyleClass().add("encryption-dialog");
 
         // Create custom title bar
-        DialogTitleBar titleBar = new DialogTitleBar("Mã hóa PDF", dialogStage);
+        DialogTitleBar titleBar = new DialogTitleBar(lang().getString("encrypt.title"), dialogStage);
         mainContainer.getChildren().add(titleBar.getTitleBar());
 
         // Create content
         VBox vbox = new VBox(15);
         vbox.setPadding(new Insets(20));
 
-        Label headerLabel = new Label("Đặt mật khẩu bảo vệ cho file PDF");
+        Label headerLabel = new Label(lang().getString("encrypt.header"));
         headerLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: gray;");
 
         // Owner password section
-        Label ownerLabel = new Label("Mật khẩu chủ sở hữu (Owner Password):");
+        Label ownerLabel = new Label(lang().getString("encrypt.ownerLabel"));
         ownerLabel.setStyle("-fx-font-weight: bold;");
-        Label ownerDesc = new Label("Có toàn quyền truy cập, có thể xóa mật khẩu");
+        Label ownerDesc = new Label(lang().getString("encrypt.ownerDesc"));
         ownerDesc.setStyle("-fx-font-size: 11px; -fx-text-fill: gray;");
 
         GridPane ownerGrid = new GridPane();
@@ -74,21 +79,21 @@ public class EncryptionDialog {
         ownerGrid.setVgap(10);
         ownerGrid.setPadding(new Insets(5, 0, 0, 20));
 
-        ownerPasswordField.setPromptText("Nhập mật khẩu chủ");
+        ownerPasswordField.setPromptText(lang().getString("encrypt.ownerPlaceholder"));
         ownerPasswordField.setPrefWidth(250);
 
-        ownerPasswordConfirmField.setPromptText("Xác nhận mật khẩu");
+        ownerPasswordConfirmField.setPromptText(lang().getString("encrypt.confirmPlaceholder"));
         ownerPasswordConfirmField.setPrefWidth(250);
 
-        ownerGrid.add(new Label("Mật khẩu:"), 0, 0);
+        ownerGrid.add(new Label(lang().getString("encrypt.passwordLabel")), 0, 0);
         ownerGrid.add(ownerPasswordField, 1, 0);
-        ownerGrid.add(new Label("Xác nhận:"), 0, 1);
+        ownerGrid.add(new Label(lang().getString("encrypt.confirmLabel")), 0, 1);
         ownerGrid.add(ownerPasswordConfirmField, 1, 1);
 
         // User password section
-        Label userLabel = new Label("Mật khẩu người dùng (User Password) - Tùy chọn:");
+        Label userLabel = new Label(lang().getString("encrypt.userLabel"));
         userLabel.setStyle("-fx-font-weight: bold;");
-        Label userDesc = new Label("Quyền hạn chế theo cài đặt bên dưới");
+        Label userDesc = new Label(lang().getString("encrypt.userDesc"));
         userDesc.setStyle("-fx-font-size: 11px; -fx-text-fill: gray;");
 
         GridPane userGrid = new GridPane();
@@ -96,19 +101,19 @@ public class EncryptionDialog {
         userGrid.setVgap(10);
         userGrid.setPadding(new Insets(5, 0, 0, 20));
 
-        userPasswordField.setPromptText("Nhập mật khẩu người dùng (để trống nếu không cần)");
+        userPasswordField.setPromptText(lang().getString("encrypt.userPlaceholder"));
         userPasswordField.setPrefWidth(250);
 
-        userPasswordConfirmField.setPromptText("Xác nhận mật khẩu");
+        userPasswordConfirmField.setPromptText(lang().getString("encrypt.confirmPlaceholder"));
         userPasswordConfirmField.setPrefWidth(250);
 
-        userGrid.add(new Label("Mật khẩu:"), 0, 0);
+        userGrid.add(new Label(lang().getString("encrypt.passwordLabel")), 0, 0);
         userGrid.add(userPasswordField, 1, 0);
-        userGrid.add(new Label("Xác nhận:"), 0, 1);
+        userGrid.add(new Label(lang().getString("encrypt.confirmLabel")), 0, 1);
         userGrid.add(userPasswordConfirmField, 1, 1);
 
         // Permissions section
-        Label permLabel = new Label("Quyền hạn cho người dùng:");
+        Label permLabel = new Label(lang().getString("encrypt.permissionsLabel"));
         permLabel.setStyle("-fx-font-weight: bold;");
 
         VBox permBox = new VBox(8);
@@ -130,14 +135,14 @@ public class EncryptionDialog {
         ButtonBar buttonBar = new ButtonBar();
         buttonBar.setPadding(new Insets(10, 0, 0, 0));
 
-        Button cancelButton = new Button("Hủy");
+        Button cancelButton = new Button(lang().getString("encrypt.cancel"));
         cancelButton.setPrefWidth(80);
         cancelButton.setOnAction(e -> {
             result = null;
             dialogStage.close();
         });
 
-        Button encryptButton = new Button("Mã hóa");
+        Button encryptButton = new Button(lang().getString("encrypt.encrypt"));
         encryptButton.setPrefWidth(80);
         encryptButton.setDisable(true);
         encryptButton.setOnAction(e -> {
@@ -218,17 +223,17 @@ public class EncryptionDialog {
         String userConfirm = userPasswordConfirmField.getText();
 
         if (ownerPwd.isEmpty()) {
-            showError("Vui lòng nhập mật khẩu chủ sở hữu");
+            showError(lang().getString("encrypt.error.noOwnerPassword"));
             return false;
         }
 
         if (!ownerPwd.equals(ownerConfirm)) {
-            showError("Mật khẩu chủ sở hữu không khớp");
+            showError(lang().getString("encrypt.error.ownerPasswordMismatch"));
             return false;
         }
 
         if (!userPwd.isEmpty() && !userPwd.equals(userConfirm)) {
-            showError("Mật khẩu người dùng không khớp");
+            showError(lang().getString("encrypt.error.userPasswordMismatch"));
             return false;
         }
 
@@ -237,7 +242,7 @@ public class EncryptionDialog {
 
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Lỗi");
+        alert.setTitle(lang().getString("error.title"));
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();

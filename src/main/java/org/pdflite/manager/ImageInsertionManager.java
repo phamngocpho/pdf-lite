@@ -36,6 +36,10 @@ public class ImageInsertionManager {
     private final ThemeManager themeManager;
     private Supplier<RenderingManager> renderingManagerSupplier;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Creates a new ImageInsertionManager.
      *
@@ -76,7 +80,7 @@ public class ImageInsertionManager {
      */
     public void openInsertImageDialog(PDFDocument currentDocument) {
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
@@ -102,7 +106,7 @@ public class ImageInsertionManager {
 
             // Create and show the dialog
             Stage dialogStage = new Stage();
-            String dialogTitle = "Insert Image";
+            String dialogTitle = lang().getString("menu.edit.insertImage");
             dialogStage.setTitle(dialogTitle); // Store title for controller to use
             dialogStage.initStyle(StageStyle.TRANSPARENT); // Transparent for rounded corners
             dialogStage.initModality(Modality.APPLICATION_MODAL);
@@ -132,15 +136,15 @@ public class ImageInsertionManager {
                 // Refresh display
                 refreshDisplay(currentDocument);
 
-                uiStateManager.updateStatus("Image inserted successfully - save document to persist changes");
+                uiStateManager.updateStatus(lang().getString("success.title"));
                 logger.info("Image inserted on page {}", placement.pageIndex());
             }
         } catch (IOException e) {
             logger.error("Error showing image placement dialog", e);
-            uiStateManager.showError("Error", "Could not open image placement dialog: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.insertImage") + ": " + e.getMessage());
         } catch (Exception e) {
             logger.error("Error inserting image", e);
-            uiStateManager.showError("Error", "Could not insert image: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.insertImage") + ": " + e.getMessage());
         }
     }
 
@@ -151,7 +155,7 @@ public class ImageInsertionManager {
      */
     public void openInsertStampDialog(PDFDocument currentDocument) {
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
@@ -177,7 +181,7 @@ public class ImageInsertionManager {
 
             // Create and show the dialog
             Stage dialogStage = new Stage();
-            String dialogTitle = "Insert Stamp";
+            String dialogTitle = lang().getString("menu.edit.insertStamp");
             dialogStage.setTitle(dialogTitle); // Store title for controller to use
             dialogStage.initStyle(StageStyle.TRANSPARENT); // Transparent for rounded corners
             dialogStage.initModality(Modality.APPLICATION_MODAL);
@@ -213,15 +217,15 @@ public class ImageInsertionManager {
                 // Refresh display
                 refreshDisplay(currentDocument);
 
-                uiStateManager.updateStatus("Stamp inserted successfully - save document to persist changes");
+                uiStateManager.updateStatus(lang().getString("success.title"));
                 logger.info("Stamp inserted on page {}", placement.pageIndex());
             }
         } catch (IOException e) {
             logger.error("Error showing stamp placement dialog", e);
-            uiStateManager.showError("Error", "Could not open stamp placement dialog: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.insertImage") + ": " + e.getMessage());
         } catch (Exception e) {
             logger.error("Error inserting stamp", e);
-            uiStateManager.showError("Error", "Could not insert stamp: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.insertImage") + ": " + e.getMessage());
         }
     }
 
@@ -232,7 +236,7 @@ public class ImageInsertionManager {
      */
     public void openWatermarkDialog(PDFDocument currentDocument) {
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
@@ -247,7 +251,7 @@ public class ImageInsertionManager {
 
             // Create and show the dialog
             Stage dialogStage = new Stage();
-            String dialogTitle = "Add Watermark";
+            String dialogTitle = lang().getString("menu.tools.watermark");
             dialogStage.setTitle(dialogTitle); // Store title for controller to use
             dialogStage.initStyle(StageStyle.TRANSPARENT); // Transparent for rounded corners
             dialogStage.initModality(Modality.APPLICATION_MODAL);
@@ -275,15 +279,15 @@ public class ImageInsertionManager {
                 // Refresh display
                 refreshDisplay(currentDocument);
 
-                uiStateManager.updateStatus("Watermark applied successfully - save document to persist changes");
+                uiStateManager.updateStatus(lang().getString("success.watermark"));
                 logger.info("Watermark applied to document");
             }
         } catch (IOException e) {
             logger.error("Error showing watermark dialog", e);
-            uiStateManager.showError("Error", "Could not open watermark dialog: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.watermark") + ": " + e.getMessage());
         } catch (Exception e) {
             logger.error("Error applying watermark", e);
-            uiStateManager.showError("Error", "Could not apply watermark: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.watermark") + ": " + e.getMessage());
         }
     }
 
@@ -294,32 +298,17 @@ public class ImageInsertionManager {
      */
     public void showTextEditingInfo(PDFDocument currentDocument) {
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
-        uiStateManager.updateStatus("Text editing: This feature requires selecting text first. " +
-                "Note: PDF text editing is complex and may not work for all PDFs.");
+        uiStateManager.updateStatus(lang().getString("menu.edit.editText"));
 
         // Show info dialog explaining how to use text editing
         org.pdflite.dialog.CustomInfoDialog.show(
-                "Text Editing",
-                "How to Edit Text in PDF",
-                """
-                        Text editing in PDF is a complex operation with limitations:
-                        
-                        1. Enable 'Text Selection' mode from the toolbar
-                        2. Click on the text you want to edit
-                        3. Right-click and select 'Edit Text' from context menu
-                        4. Edit the text in the dialog
-                        5. Click OK to apply changes
-                        
-                        Note: This feature is experimental and may not work for:
-                        - Scanned PDFs (images of text)
-                        - PDFs with complex formatting
-                        - Encrypted or protected PDFs
-                        
-                        For best results, use 'Insert Image' to add new content instead.""",
+                lang().getString("menu.edit.editText"),
+                lang().getString("menu.edit.editText"),
+                lang().getString("textEdit.info"),
                 themeManager
         );
     }

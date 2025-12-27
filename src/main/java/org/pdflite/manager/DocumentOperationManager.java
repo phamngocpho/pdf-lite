@@ -28,6 +28,10 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
                                        FileManager fileManager) {
     private static final Logger logger = LoggerFactory.getLogger(DocumentOperationManager.class);
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Creates a new DocumentOperationManager.
      *
@@ -62,7 +66,7 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
             rm.preserveScrollPositionAndApplyZoom(zoomManager.getCurrentZoom());
         }
 
-        uiStateManager.updateStatus("Rotated document " + (angle > 0 ? "Right" : "Left"));
+        uiStateManager.updateStatus(lang().getString("view.rotateLeft"));
     }
 
     /**
@@ -103,14 +107,14 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
 
         int total = currentDocument.getTotalPages();
         if (total <= 1) {
-            uiStateManager.showError("Delete Page", "Cannot delete the last remaining page.");
+            uiStateManager.showError(lang().getString("error.deleteFailed"), lang().getString("error.delete"));
             return null;
         }
 
         boolean confirmed = org.pdflite.dialog.CustomConfirmDialog.show(
-                "Delete Page",
-                "Delete current page?",
-                "This will remove page " + (pageIndex + 1) + " from the document.",
+                lang().getString("confirm.title"),
+                lang().getString("confirm.delete"),
+                lang().getString("confirm.delete"),
                 themeManager
         );
 
@@ -155,7 +159,7 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
                 // 8. Reopen file (so PDFBox loads new structure)
                 result[0] = fileManager.openFile(currentFile);
                 if (result[0] == null) {
-                    uiStateManager.showError("Error", "Could not reopen the file after deletion.");
+                    uiStateManager.showError(lang().getString("error.title"), lang().getString("error.openPdf"));
                     return null;
                 }
 
@@ -203,16 +207,14 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
 
                     // Update UI
                     pageInfoManager.updatePageInfo(result[0]);
-                    uiStateManager.updateStatus(
-                            "Deleted page " + (pageIndex + 1) + ". Total pages: " + newTotal
-                    );
+                    uiStateManager.updateStatus(lang().getString("success.deleted"));
                 });
 
                 logger.info("Successfully deleted page {} and reloaded document", pageIndex + 1);
 
             } catch (Exception ex) {
                 logger.error("Error deleting page {}", pageIndex + 1, ex);
-                uiStateManager.showError("Delete Page Error", "Could not delete the page: " + ex.getMessage());
+                uiStateManager.showError(lang().getString("error.deleteFailed"), lang().getString("error.delete") + ": " + ex.getMessage());
                 result[0] = null;
             }
         }
@@ -291,12 +293,12 @@ public record DocumentOperationManager(PDFService pdfService, RenderingManager r
                 });
             });
 
-            uiStateManager.updateStatus("Inserted " + count + " blank page(s).");
+            uiStateManager.updateStatus(lang().getString("status.complete"));
             return currentDocument;
 
         } catch (Exception e) {
             logger.error("Error inserting pages", e);
-            uiStateManager.showError("Insert Error", e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), e.getMessage());
             return null;
         }
     }

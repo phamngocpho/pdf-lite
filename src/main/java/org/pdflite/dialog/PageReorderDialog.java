@@ -8,6 +8,7 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.pdflite.controller.PageReorderDialogController;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.manager.ThemeManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +26,10 @@ import java.io.IOException;
 public class PageReorderDialog {
 
     private static final Logger logger = LoggerFactory.getLogger(PageReorderDialog.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     /**
      * Shows the page reorder dialog for a PDF file.
@@ -70,7 +75,7 @@ public class PageReorderDialog {
             dialogStage.initStyle(StageStyle.TRANSPARENT);
             dialogStage.initModality(Modality.APPLICATION_MODAL);
             dialogStage.initOwner(owner);
-            dialogStage.setTitle("Reorder Pages");
+            dialogStage.setTitle(lang().getString("pageReorder.title"));
 
             // Create the scene
             Scene scene = new Scene(root);

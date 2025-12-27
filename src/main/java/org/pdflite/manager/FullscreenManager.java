@@ -16,6 +16,10 @@ import javafx.util.Duration;
  */
 public class FullscreenManager {
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     private final BorderPane rootPane;
     private final ToolBar toolbar;
     private final FullscreenListener fullscreenListener;
@@ -114,14 +118,14 @@ public class FullscreenManager {
                 showToolbar();
                 scheduleToolbarHide();
                 if (fullscreenListener != null) {
-                    fullscreenListener.updateStatus("Full screen mode");
+                    fullscreenListener.updateStatus(lang().getString("fullscreen.entered"));
                 }
             } else {
                 rootPane.getStyleClass().remove("full-screen-mode");
                 toolbarHideTimer.stop();
                 showToolbar();
                 if (fullscreenListener != null) {
-                    fullscreenListener.updateStatus("Exited full screen");
+                    fullscreenListener.updateStatus(lang().getString("fullscreen.exited"));
                 }
             }
             if (fullscreenListener != null) {

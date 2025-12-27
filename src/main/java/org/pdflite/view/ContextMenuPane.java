@@ -4,6 +4,7 @@ import java.awt.geom.Rectangle2D;
 import java.util.List;
 
 import org.pdflite.controller.ContextMenuHandler;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.model.CommentAnnotation;
 import org.pdflite.model.PDFDocument;
 import org.slf4j.Logger;
@@ -20,6 +21,10 @@ import javafx.scene.shape.Rectangle;
 
 public class ContextMenuPane extends StackPane {
     private static final Logger logger = LoggerFactory.getLogger(ContextMenuPane.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     private final ContextMenuHandler handler;
     private ContextMenu contextMenu;
@@ -311,15 +316,15 @@ public class ContextMenuPane extends StackPane {
         contextMenu = new ContextMenu();
         contextMenu.setAutoHide(true); // Auto hide when clicking outside
 
-        MenuItem copyText = new MenuItem("Copy Text");
-        MenuItem editText = new MenuItem("Edit Text");
-        MenuItem highlightSelection = new MenuItem("Highlight Selection");
-        MenuItem deleteHighlight = new MenuItem("Delete Highlight");
-        MenuItem addComment = new MenuItem("Add Comment");
-        MenuItem deleteComment = new MenuItem("Delete Comment");
-        MenuItem copyImage = new MenuItem("Copy Image");
+        MenuItem copyText = new MenuItem(lang().getString("contextMenu.copyText"));
+        MenuItem editText = new MenuItem(lang().getString("contextMenu.editText"));
+        MenuItem highlightSelection = new MenuItem(lang().getString("contextMenu.highlightSelection"));
+        MenuItem deleteHighlight = new MenuItem(lang().getString("contextMenu.deleteHighlight"));
+        MenuItem addComment = new MenuItem(lang().getString("contextMenu.addComment"));
+        MenuItem deleteComment = new MenuItem(lang().getString("contextMenu.deleteComment"));
+        MenuItem copyImage = new MenuItem(lang().getString("contextMenu.copyImage"));
         MenuItem separator = new MenuItem("──────────");
-        MenuItem clearSelection = new MenuItem("Clear Selection");
+        MenuItem clearSelection = new MenuItem(lang().getString("contextMenu.clearSelection"));
 
         separator.setDisable(true);
 

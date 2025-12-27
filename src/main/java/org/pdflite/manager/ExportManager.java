@@ -24,6 +24,10 @@ public class ExportManager {
     private final PDFExportService exportService;
     private ThemeManager themeManager;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Creates a new ExportManager.
      *
@@ -52,7 +56,7 @@ public class ExportManager {
      */
     public void openExportDialog(PDFDocument currentDocument) {
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
@@ -72,13 +76,13 @@ public class ExportManager {
 
             // Create and show the dialog
             Stage dialogStage = new Stage();
-            dialogStage.setTitle("Export PDF");
+            dialogStage.setTitle(lang().getString("dialog.title.export"));
             dialogStage.initStyle(javafx.stage.StageStyle.TRANSPARENT);
             dialogStage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
             dialogStage.initOwner(rootPane.getScene().getWindow());
 
             // Add title bar
-            org.pdflite.util.DialogTitleBar titleBar = new org.pdflite.util.DialogTitleBar("Export PDF", dialogStage);
+            org.pdflite.util.DialogTitleBar titleBar = new org.pdflite.util.DialogTitleBar(lang().getString("dialog.title.export"), dialogStage);
             mainContainer.getChildren().add(titleBar.getTitleBar());
 
             // Add dialog content
@@ -103,10 +107,10 @@ public class ExportManager {
             }
         } catch (java.io.IOException e) {
             logger.error("Error showing export dialog", e);
-            uiStateManager.showError("Error", "Could not open export dialog: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("message.exportFailed") + ": " + e.getMessage());
         } catch (Exception e) {
             logger.error("Error exporting", e);
-            uiStateManager.showError("Error", "Could not export: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("message.exportFailed") + ": " + e.getMessage());
         }
     }
 
@@ -131,7 +135,7 @@ public class ExportManager {
             logger.info("Export completed successfully");
         } catch (Exception e) {
             logger.error("Error during export", e);
-            uiStateManager.showError("Export Error", "Failed to export: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("message.exportFailed") + ": " + e.getMessage());
         }
     }
 
@@ -183,7 +187,7 @@ public class ExportManager {
             File outputFile = new File(config.outputPath);
             exportService.exportPageToImage(currentDocument, pageIndices.getFirst(),
                     outputFile, format, config.dpi);
-            uiStateManager.updateStatus("Page exported to: " + outputFile.getName());
+            uiStateManager.updateStatus(lang().getString("success.exported") + ": " + outputFile.getName());
         } else {
             // Multiple pages export
             File outputDir = new File(config.outputPath);
@@ -191,7 +195,7 @@ public class ExportManager {
                     currentDocument.getFile().getName().replaceFirst("[.][^.]+$", "") : "page";
             List<File> files = exportService.exportPagesToImages(
                     currentDocument, pageIndices, outputDir, prefix, format, config.dpi);
-            uiStateManager.updateStatus("Exported " + files.size() + " pages to: " + outputDir.getName());
+            uiStateManager.updateStatus(lang().getString("success.exported") + " (" + files.size() + ")");
         }
     }
 
@@ -218,7 +222,7 @@ public class ExportManager {
             exportService.exportToText(currentDocument, outputFile, startPage, endPage);
         }
 
-        uiStateManager.updateStatus("Text exported to: " + outputFile.getName());
+        uiStateManager.updateStatus(lang().getString("success.exported") + ": " + outputFile.getName());
     }
 
     /**

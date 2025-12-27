@@ -23,6 +23,10 @@ public class HighlightModeManager {
 
     private boolean highlightModeActive = false;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     public HighlightModeManager(UIStateManager uiStateManager,
                                 PageRenderer pageRenderer,
                                 Supplier<ToggleGroup> drawingToolsGroupSupplier,
@@ -46,12 +50,12 @@ public class HighlightModeManager {
                 drawingToolsGroup.selectToggle(null);
             }
 
-            uiStateManager.updateStatus("Highlight mode: Active - Click and drag to highlight");
+            uiStateManager.updateStatus(lang().getString("toolbar.highlight"));
             pageRenderer.setHighlightModeActive();
             annotationModeUpdater.accept(AnnotationLayer.AnnotationMode.HIGHLIGHT);
             logger.debug("Highlight mode activated");
         } else {
-            uiStateManager.updateStatus("Highlight mode: Disabled");
+            uiStateManager.updateStatus(lang().getString("status.ready"));
             pageRenderer.setHighlightModeActive();
             annotationModeUpdater.accept(AnnotationLayer.AnnotationMode.NONE);
             logger.debug("Highlight mode deactivated");

@@ -7,6 +7,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import org.pdflite.controller.MainController;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
 import org.pdflite.util.SearchHandler;
@@ -22,6 +23,10 @@ import java.util.List;
 public class SearchPanel extends VBox {
 
     private static final Logger logger = LoggerFactory.getLogger(SearchPanel.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     // UI Components
     private final TextField searchField;
@@ -52,14 +57,14 @@ public class SearchPanel extends VBox {
 
         // Initialize UI components
         searchField = new TextField();
-        caseSensitiveCheckbox = new CheckBox("Case Sensitive");
-        wholeWordCheckbox = new CheckBox("Whole Word");
-        searchButton = new Button("Search");
-        cancelButton = new Button("Cancel");
-        prevResultButton = new Button("◀ Prev");
-        nextResultButton = new Button("Next ▶");
+        caseSensitiveCheckbox = new CheckBox(lang().getString("search.caseSensitive"));
+        wholeWordCheckbox = new CheckBox(lang().getString("search.wholeWord"));
+        searchButton = new Button(lang().getString("toolbar.search"));
+        cancelButton = new Button(lang().getString("dialog.cancel"));
+        prevResultButton = new Button(lang().getString("search.prev"));
+        nextResultButton = new Button(lang().getString("search.next"));
         progressIndicator = new ProgressIndicator();
-        statusLabel = new Label("Ready");
+        statusLabel = new Label(lang().getString("search.ready"));
         resultsListView = new ListView<>();
 
         // Setup UI
@@ -82,10 +87,10 @@ public class SearchPanel extends VBox {
         VBox searchControls = new VBox(10);
         searchControls.getStyleClass().add("search-controls");
 
-        Label searchLabel = new Label("Search:");
+        Label searchLabel = new Label(lang().getString("search.title") + ":");
         searchLabel.getStyleClass().add("search-title");
 
-        searchField.setPromptText("Enter keyword...");
+        searchField.setPromptText(lang().getString("search.keyword"));
         searchField.getStyleClass().add("search-input");
 
         HBox searchBox = new HBox(10);
@@ -93,7 +98,9 @@ public class SearchPanel extends VBox {
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
         HBox optionsBox = new HBox(20);
+        caseSensitiveCheckbox.setText(lang().getString("search.caseSensitive"));
         caseSensitiveCheckbox.getStyleClass().add("search-checkbox");
+        wholeWordCheckbox.setText(lang().getString("search.wholeWord"));
         wholeWordCheckbox.getStyleClass().add("search-checkbox");
         optionsBox.getChildren().addAll(caseSensitiveCheckbox, wholeWordCheckbox);
 
@@ -106,14 +113,16 @@ public class SearchPanel extends VBox {
         HBox resultsHeader = new HBox(10);
         resultsHeader.setAlignment(Pos.CENTER_LEFT);
 
-        Label resultsLabel = new Label("Results:");
+        Label resultsLabel = new Label(lang().getString("search.results"));
         resultsLabel.getStyleClass().add("search-title");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
 
+        prevResultButton.setText(lang().getString("search.prev"));
         prevResultButton.getStyleClass().add("search-nav-btn");
+        nextResultButton.setText(lang().getString("search.next"));
         nextResultButton.getStyleClass().add("search-nav-btn");
 
         resultsHeader.getChildren().addAll(resultsLabel, spacer, prevResultButton, nextResultButton);
@@ -168,7 +177,7 @@ public class SearchPanel extends VBox {
     public void setPDFDocument(PDFDocument document) {
         this.pdfDocument = document;
         searchResults.clear();
-        updateStatus("Ready");
+        updateStatus(lang().getString("search.ready"));
         prevResultButton.setDisable(true);
         nextResultButton.setDisable(true);
     }
@@ -305,7 +314,7 @@ public class SearchPanel extends VBox {
             mainController.highlightSearchResult(result);
 
             int position = resultsListView.getSelectionModel().getSelectedIndex() + 1;
-            updateStatus(String.format("Result %d of %d on page %d",
+            updateStatus(java.text.MessageFormat.format(lang().getString("search.resultOf"),
                     position, searchResults.size(), result.pageNumber()));
 
             updateNavigationButtons();
@@ -324,7 +333,7 @@ public class SearchPanel extends VBox {
      */
     private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Search Error");
+        alert.setTitle(lang().getString("search.errorTitle"));
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
@@ -341,7 +350,7 @@ public class SearchPanel extends VBox {
     /**
      * Search result cell
      */
-    private static class SearchResultCell extends ListCell<SearchResult> {
+    private class SearchResultCell extends ListCell<SearchResult> {
         @Override
         protected void updateItem(SearchResult item, boolean empty) {
             super.updateItem(item, empty);

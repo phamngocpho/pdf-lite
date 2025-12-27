@@ -8,6 +8,7 @@ import javafx.scene.layout.*;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.manager.ThemeManager;
 import org.pdflite.util.DialogTitleBar;
 
@@ -20,6 +21,10 @@ import java.util.Date;
  */
 public class RecoveryDialog {
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     private final Stage dialog;
     private boolean recoverClicked = false;
     private File selectedFile;
@@ -28,13 +33,13 @@ public class RecoveryDialog {
         dialog = new Stage();
         dialog.initStyle(StageStyle.TRANSPARENT);
         dialog.initModality(Modality.APPLICATION_MODAL);
-        dialog.setTitle("Document Recovery");
+        dialog.setTitle(lang().getString("recovery.title"));
 
         VBox mainContainer = new VBox();
         mainContainer.getStyleClass().add("custom-confirm-dialog");
 
         // Title bar
-        DialogTitleBar titleBar = new DialogTitleBar("Document Recovery", dialog);
+        DialogTitleBar titleBar = new DialogTitleBar(lang().getString("recovery.title"), dialog);
         mainContainer.getChildren().add(titleBar.getTitleBar());
 
         // Content
@@ -76,7 +81,7 @@ public class RecoveryDialog {
         infoIcon.setScaleX(scale);
         infoIcon.setScaleY(scale);
 
-        Label infoLabel = new Label("Auto-saved documents were found. Would you like to recover them?");
+        Label infoLabel = new Label(lang().getString("autosave.recoveryPrompt"));
         infoLabel.setWrapText(true);
         infoLabel.setMaxWidth(440);
 
@@ -122,14 +127,14 @@ public class RecoveryDialog {
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
         buttonBox.setPadding(new Insets(0, 20, 20, 20));
 
-        Button discardButton = new Button("Discard");
+        Button discardButton = new Button(lang().getString("dialog.cancel"));
         discardButton.setPrefWidth(100);
         discardButton.setOnAction(e -> {
             recoverClicked = false;
             dialog.close();
         });
 
-        Button recoverButton = new Button("Recover");
+        Button recoverButton = new Button(lang().getString("dialog.ok"));
         recoverButton.setPrefWidth(100);
         recoverButton.setDefaultButton(true);
         recoverButton.setStyle("-fx-background-color: #2196f3; -fx-text-fill: white;");

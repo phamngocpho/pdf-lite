@@ -23,6 +23,10 @@ public class PageReorderUIManager {
     private Supplier<PDFDocument> documentSupplier;
     private Supplier<RenderingManager> renderingManagerSupplier;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     public PageReorderUIManager(DialogManager dialogManager,
                                 UIStateManager uiStateManager,
                                 PageRenderer pageRenderer,
@@ -49,7 +53,7 @@ public class PageReorderUIManager {
         RenderingManager currentRenderingManager = renderingManagerSupplier != null ? renderingManagerSupplier.get() : null;
 
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
@@ -64,7 +68,7 @@ public class PageReorderUIManager {
                     currentRenderingManager.renderAllPages();
                 }
 
-                uiStateManager.updateStatus("Pages reordered - Don't forget to save!");
+                uiStateManager.updateStatus(lang().getString("status.complete"));
 
                 if (saveStatusManager != null) {
                     saveStatusManager.triggerAutoSave();

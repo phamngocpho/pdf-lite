@@ -24,6 +24,10 @@ public class PageDeletionManager {
     private Supplier<ThemeManager> themeManagerSupplier;
     private Supplier<RenderingManager> renderingManagerSupplier;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Creates a new PageDeletionManager.
      *
@@ -72,13 +76,13 @@ public class PageDeletionManager {
     public void handleDeletePage(PDFDocument currentDocument) {
         // Validate document
         if (currentDocument == null) {
-            uiStateManager.showError("No Document", "Please open a PDF document first.");
+            uiStateManager.showError(lang().getString("error.noDocument"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
         // Check if we can delete
         if (currentDocument.getTotalPages() <= 1) {
-            uiStateManager.showError("Cannot Delete", "Cannot delete the last page of the document.");
+            uiStateManager.showError(lang().getString("error.deleteFailed"), lang().getString("error.delete"));
             return;
         }
 
@@ -102,9 +106,9 @@ public class PageDeletionManager {
     private boolean showConfirmationDialog(int pageNumber) {
         ThemeManager themeManager = themeManagerSupplier != null ? themeManagerSupplier.get() : null;
         return CustomConfirmDialog.show(
-                "Delete Page",
-                "Delete Page " + (pageNumber + 1) + "?",
-                "This action can be undone using Ctrl+Z.",
+                lang().getString("confirm.title"),
+                lang().getString("confirm.delete"),
+                lang().getString("toolbar.undo") + " (Ctrl+Z)",
                 themeManager
         );
     }
@@ -127,7 +131,7 @@ public class PageDeletionManager {
             // Execute command through undo/redo manager
             if (undoRedoManager != null) {
                 undoRedoManager.getCommandManager().executeCommand(cmd);
-                uiStateManager.updateStatus("Deleted page " + (pageNumber + 1));
+                uiStateManager.updateStatus(lang().getString("success.deleted"));
                 logger.info("Deleted page {} from document", pageNumber + 1);
             }
 
@@ -136,7 +140,7 @@ public class PageDeletionManager {
 
         } catch (Exception e) {
             logger.error("Error deleting page {}", pageNumber + 1, e);
-            uiStateManager.showError("Delete Error", "Failed to delete page: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.deleteFailed"), lang().getString("error.delete") + ": " + e.getMessage());
         }
     }
 

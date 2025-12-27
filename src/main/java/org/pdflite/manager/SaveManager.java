@@ -23,6 +23,10 @@ public class SaveManager {
     private final UIStateManager uiStateManager;
     private final DialogManager dialogManager;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     public SaveManager(FileManager fileManager, DocumentLifecycleManager documentLifecycleManager,
                        HighlightPersistenceManager highlightPersistenceManager, AutoSaveManager autoSaveManager,
                        SaveStatusManager saveStatusManager, UIStateManager uiStateManager,
@@ -53,8 +57,8 @@ public class SaveManager {
                 logger.info("Highlights saved to PDF");
             } catch (Exception e) {
                 logger.error("Error saving highlights to PDF", e);
-                uiStateManager.showError("Save Error",
-                        "Failed to save highlights: " + e.getMessage());
+                uiStateManager.showError(lang().getString("error.saveFailed"),
+                        lang().getString("error.saveHighlights") + ": " + e.getMessage());
             }
         }
 
@@ -90,7 +94,7 @@ public class SaveManager {
             fileManager.saveAs(document, stage);
         } catch (IOException e) {
             logger.error("Error saving document as", e);
-            uiStateManager.showError("Save As Error", "Could not save the document: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.saveFailed"), lang().getString("error.saveFailed") + ": " + e.getMessage());
         }
     }
 }

@@ -3,6 +3,7 @@ package org.pdflite.service;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.model.AICommand;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,10 @@ import org.slf4j.LoggerFactory;
 public class AICommandParser {
     private static final Logger logger = LoggerFactory.getLogger(AICommandParser.class);
     private final Gson gson = new Gson();
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     /**
      * Parses the AI response string into an AICommand.
@@ -42,7 +47,7 @@ public class AICommandParser {
             return new AICommand(
                     AICommand.Action.UNKNOWN,
                     new JsonObject(),
-                    "Không thể phân tích phản hồi từ AI"
+                    lang().getString("groq.cannotProcessResponse")
             );
         }
     }

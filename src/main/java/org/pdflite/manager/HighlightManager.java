@@ -1,6 +1,7 @@
 package org.pdflite.manager;
 
 import java.awt.geom.Rectangle2D;
+import java.text.MessageFormat;
 import java.util.List;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
@@ -21,6 +22,10 @@ import javafx.scene.paint.Color;
  */
 public class HighlightManager {
     private static final Logger logger = LoggerFactory.getLogger(HighlightManager.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     private final ColorPicker highlightColorPicker;
     private final HighlightPersistenceManager persistenceManager;
@@ -79,7 +84,7 @@ public class HighlightManager {
                     try {
                         PDFDocument currentDocument = documentSupplier.get();
                         if (currentDocument == null) {
-                            uiStateManager.updateStatus("No document loaded");
+                            uiStateManager.updateStatus(lang().getString("highlight.noDocument"));
                             logger.warn("Cannot highlight: no document loaded");
                             return;
                         }
@@ -138,19 +143,19 @@ public class HighlightManager {
 
                         // Update status
                         uiStateManager.updateStatus(
-                                String.format("Added %d highlight(s) - Save to persist changes",
+                                MessageFormat.format(lang().getString("highlight.added"),
                                         highlightRegions.size()));
 
                     } catch (Exception e) {
                         logger.error("Error creating highlights", e);
-                        uiStateManager.updateStatus("Error creating highlights: " + e.getMessage());
+                        uiStateManager.updateStatus(lang().getString("highlight.error") + ": " + e.getMessage());
 
                         // Show error dialog
                         javafx.application.Platform.runLater(() -> {
                             javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
                                     javafx.scene.control.Alert.AlertType.ERROR);
-                            alert.setTitle("Highlight Error");
-                            alert.setHeaderText("Failed to create highlights");
+                            alert.setTitle(lang().getString("highlight.errorTitle"));
+                            alert.setHeaderText(lang().getString("highlight.errorHeader"));
                             alert.setContentText(e.getMessage());
                             alert.showAndWait();
                         });
@@ -170,7 +175,7 @@ public class HighlightManager {
                     try {
                         PDFDocument currentDocument = documentSupplier.get();
                         if (currentDocument == null) {
-                            uiStateManager.updateStatus("No document loaded");
+                            uiStateManager.updateStatus(lang().getString("highlight.noDocument"));
                             return;
                         }
 
@@ -204,7 +209,7 @@ public class HighlightManager {
                         }
 
                         if (target == null) {
-                            uiStateManager.updateStatus("No highlight at cursor");
+                            uiStateManager.updateStatus(lang().getString("highlight.noHighlightAtCursor"));
                             return;
                         }
 
@@ -229,7 +234,7 @@ public class HighlightManager {
                         }
 
                         if (removedCount <= 0) {
-                            uiStateManager.updateStatus("Failed to delete highlight");
+                            uiStateManager.updateStatus(lang().getString("highlight.deleteFailed"));
                             return;
                         }
 
@@ -240,10 +245,10 @@ public class HighlightManager {
                             annotationManager.refreshPageAnnotations(pageIndex);
                         }
 
-                        uiStateManager.updateStatus("Deleted " + removedCount + " highlight segment(s) - Save to persist changes");
+                        uiStateManager.updateStatus(MessageFormat.format(lang().getString("highlight.deleted"), removedCount));
                     } catch (Exception e) {
                         logger.error("Error deleting highlight", e);
-                        uiStateManager.updateStatus("Error deleting highlight: " + e.getMessage());
+                        uiStateManager.updateStatus(lang().getString("highlight.errorDelete") + ": " + e.getMessage());
                     }
                 }
         );
@@ -319,8 +324,8 @@ public class HighlightManager {
             logger.info("Highlights saved to PDF");
         } catch (Exception e) {
             logger.error("Error saving highlights to PDF", e);
-            uiStateManager.showError("Save Error",
-                    "Failed to save highlights: " + e.getMessage());
+            uiStateManager.showError(lang().getString("highlight.saveError"),
+                    lang().getString("highlight.saveErrorMsg") + ": " + e.getMessage());
         }
     }
 }

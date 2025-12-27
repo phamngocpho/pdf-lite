@@ -67,6 +67,10 @@ public class TabManager {
     private Supplier<javafx.scene.control.ColorPicker> highlightColorPickerSupplier;
     private Supplier<javafx.scene.control.Slider> strokeWidthSliderSupplier;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     public TabManager(TabPane documentTabPane, PDFService pdfService, FileManager fileManager,
                       PageRenderer pageRenderer, ZoomManager zoomManager, PageInfoManager pageInfoManager,
                       UIStateManager uiStateManager, RecentFilesManager recentFilesManager,
@@ -231,7 +235,7 @@ public class TabManager {
         Tab existingTab = findTabByFile(file);
         if (existingTab != null) {
             documentTabPane.getSelectionModel().select(existingTab);
-            uiStateManager.updateStatus("Switched to: " + file.getName());
+            uiStateManager.updateStatus(lang().getString("status.switchedTo", file.getName()));
             logger.info("File already open, switched to existing tab: {}", file.getName());
             return;
         }
@@ -343,7 +347,7 @@ public class TabManager {
             recentFilesMenuManager.updateRecentFilesMenu();
 
             // Update status
-            uiStateManager.updateStatus("Opened: " + file.getName());
+            uiStateManager.updateStatus(lang().getString("status.opened", file.getName()));
 
             // Load bookmarks for the new document
             if (bookmarkManager != null) {
@@ -356,7 +360,7 @@ public class TabManager {
 
         } catch (IOException e) {
             logger.error("Error opening PDF file", e);
-            uiStateManager.showError("Error Opening PDF", "Could not open the PDF file: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.openPdf") + ": " + e.getMessage());
         }
     }
 
@@ -413,7 +417,7 @@ public class TabManager {
 
         if (uiStateManager != null) {
             uiStateManager.updateUIState(true);
-            uiStateManager.updateStatus("Switched to: " + document.getFile().getName());
+            uiStateManager.updateStatus(lang().getString("status.switchedTo", document.getFile().getName()));
         }
 
         // Update annotation manager reference

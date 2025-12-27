@@ -12,6 +12,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.pdflite.dialog.CustomInfoDialog;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFReorderService;
 import org.pdflite.service.PDFService;
@@ -40,6 +41,10 @@ public class PageReorderDialogController {
     private static final double THUMBNAIL_SIZE = 120.0;
     private static final double PREVIEW_SCALE = 0.35;
     private static final DataFormat PAGE_INDEX_FORMAT = new DataFormat("application/pdf-page-index");
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     @FXML
     private javafx.scene.layout.HBox dialogTitleBar;
@@ -133,7 +138,7 @@ public class PageReorderDialogController {
             initializeUI();
         } catch (IOException e) {
             logger.error("Error loading PDF", e);
-            showError("Error", "Failed to load PDF: " + e.getMessage());
+            showError(lang().getString("error.title"), lang().getString("error.openPdf") + ": " + e.getMessage());
         }
     }
 
@@ -158,7 +163,7 @@ public class PageReorderDialogController {
      */
     private void initializeUI() {
         fileNameLabel.setText(sourceFile != null ? sourceFile.getName() : "Document");
-        totalPagesLabel.setText(String.format("Total Pages: %d", totalPages));
+        totalPagesLabel.setText(java.text.MessageFormat.format(lang().getString("reorder.totalPages"), totalPages));
 
         // Initialize order lists
         originalOrder = new ArrayList<>();
@@ -169,7 +174,7 @@ public class PageReorderDialogController {
         }
 
         loadThumbnails();
-        updateStatus("Ready - Drag thumbnails to reorder");
+        updateStatus(lang().getString("reorder.status.ready"));
 
         if (dialogStage != null) {
             Platform.runLater(() -> Platform.runLater(() -> dialogStage.sizeToScene()));
@@ -183,7 +188,7 @@ public class PageReorderDialogController {
      */
     private void loadThumbnails() {
         previewPane.getChildren().clear();
-        updateStatus("Loading thumbnails...");
+        updateStatus(lang().getString("reorder.status.loading"));
 
         executorService.submit(() -> {
             try {
@@ -198,14 +203,14 @@ public class PageReorderDialogController {
                 }
 
                 Platform.runLater(() -> {
-                    updateStatus("Ready - Drag thumbnails to reorder");
+                    updateStatus(lang().getString("reorder.status.ready"));
                     previewPane.applyCss();
                     previewPane.layout();
                 });
 
             } catch (Exception e) {
                 logger.error("Error loading thumbnails", e);
-                Platform.runLater(() -> updateStatus("Error loading thumbnails"));
+                Platform.runLater(() -> updateStatus(lang().getString("reorder.status.loading")));
             }
         });
     }
@@ -219,7 +224,7 @@ public class PageReorderDialogController {
         imageView.setFitHeight(THUMBNAIL_SIZE);
         imageView.setPreserveRatio(true);
 
-        Label pageLabel = new Label("Page " + (pageIndex + 1));
+        Label pageLabel = new Label(java.text.MessageFormat.format(lang().getString("reorder.page"), pageIndex + 1));
         pageLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
 
         VBox box = new VBox(8, imageView, pageLabel);
@@ -335,7 +340,7 @@ public class PageReorderDialogController {
         Integer pageToMove = currentOrder.remove(sourcePos);
         currentOrder.add(targetPos, pageToMove);
 
-        updateStatus("Pages reordered - Click Apply to save changes");
+        updateStatus(lang().getString("reorder.status.reordered"));
         logger.debug("Moved page {} to position {}", sourceIndex + 1, targetPos);
     }
 
@@ -349,7 +354,7 @@ public class PageReorderDialogController {
 
         // Reload thumbnails in original order
         loadThumbnails();
-        updateStatus("Order reset to original");
+        updateStatus(lang().getString("reorder.status.reset"));
     }
 
     /**
@@ -358,7 +363,7 @@ public class PageReorderDialogController {
     @FXML
     private void handleApply() {
         if (currentOrder.equals(originalOrder)) {
-            showInfo("No changes to apply");
+            showInfo(lang().getString("reorder.noChanges"));
             return;
         }
 
@@ -367,7 +372,7 @@ public class PageReorderDialogController {
             progressBar.setVisible(true);
             progressBar.setManaged(true);
             progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
-            updateStatus("Applying new page order...");
+            updateStatus(lang().getString("reorder.status.applying"));
 
             executorService.submit(() -> {
                 try {
@@ -375,9 +380,9 @@ public class PageReorderDialogController {
 
                     Platform.runLater(() -> {
                         progressBar.setProgress(1.0);
-                        updateStatus("Pages reordered successfully!");
+                        updateStatus(lang().getString("reorder.status.success"));
                         reorderApplied = true; // Set flag
-                        showInfo("Pages have been reordered successfully.\nDon't forget to save the document.");
+                        showInfo(lang().getString("reorder.success.message"));
 
                         // Update original order to current
                         originalOrder.clear();
@@ -392,15 +397,15 @@ public class PageReorderDialogController {
                         progressBar.setVisible(false);
                         progressBar.setManaged(false);
                         setUIEnabled(true);
-                        updateStatus("Failed to reorder pages");
-                        showError("Reorder Error", "Failed to reorder pages: " + e.getMessage());
+                        updateStatus(lang().getString("reorder.status.failed"));
+                        showError(lang().getString("error.title"), lang().getString("reorder.error.apply") + ": " + e.getMessage());
                     });
                 }
             });
 
         } catch (Exception e) {
             logger.error("Error initiating reorder", e);
-            showError("Error", "Failed to initiate reorder: " + e.getMessage());
+            showError(lang().getString("error.title"), lang().getString("reorder.error.init") + ": " + e.getMessage());
         }
     }
 
@@ -438,7 +443,7 @@ public class PageReorderDialogController {
     private void showError(String title, String message) {
         Platform.runLater(() -> CustomInfoDialog.show(
                 title,
-                "Error",
+                lang().getString("error.title"),
                 message,
                 themeManager
         ));
@@ -449,8 +454,8 @@ public class PageReorderDialogController {
      */
     private void showInfo(String message) {
         Platform.runLater(() -> CustomInfoDialog.show(
-                "Page Reorder",
-                "Success",
+                lang().getString("reorder.success.title"),
+                lang().getString("success.title"),
                 message,
                 themeManager
         ));

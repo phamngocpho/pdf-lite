@@ -4,12 +4,14 @@ import javafx.application.Platform;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import org.pdflite.manager.BookmarkManager;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.model.AICommand;
 import org.pdflite.model.PDFDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -22,6 +24,10 @@ import java.util.function.Supplier;
  */
 public class AICommandExecutor {
     private static final Logger logger = LoggerFactory.getLogger(AICommandExecutor.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     private final PDFSplitService splitService;
     private final PDFReorderService reorderService;
@@ -59,7 +65,7 @@ public class AICommandExecutor {
         
         if (doc == null && command.getAction() != AICommand.Action.HELP 
                 && command.getAction() != AICommand.Action.UNKNOWN) {
-            return CompletableFuture.completedFuture("Vui lòng mở một file PDF trước.");
+            return CompletableFuture.completedFuture(lang().getString("ai.openPdfFirst"));
         }
 
         return switch (command.getAction()) {
@@ -81,7 +87,7 @@ public class AICommandExecutor {
     private CompletableFuture<String> executeSplit(AICommand command, PDFDocument doc) {
         List<Integer> pages = command.getPages();
         if (pages.isEmpty()) {
-            return CompletableFuture.completedFuture("Vui lòng chỉ định các trang cần tách.");
+            return CompletableFuture.completedFuture(lang().getString("ai.specifyPages"));
         }
 
         // Validate pages
@@ -89,7 +95,7 @@ public class AICommandExecutor {
         for (int page : pages) {
             if (page < 1 || page > totalPages) {
                 return CompletableFuture.completedFuture(
-                        "Trang " + page + " không hợp lệ. Document có " + totalPages + " trang.");
+                        MessageFormat.format(lang().getString("ai.invalidPage"), page, totalPages));
             }
         }
 
@@ -97,11 +103,11 @@ public class AICommandExecutor {
 
         Platform.runLater(() -> {
             DirectoryChooser chooser = new DirectoryChooser();
-            chooser.setTitle("Chọn thư mục lưu file");
+            chooser.setTitle(lang().getString("ai.selectOutputDir"));
             File outputDir = chooser.showDialog(stageSupplier.get());
 
             if (outputDir == null) {
-                result.complete("Đã hủy thao tác.");
+                result.complete(lang().getString("ai.operationCancelled"));
                 return;
             }
 
@@ -124,13 +130,13 @@ public class AICommandExecutor {
                 List<File> outputFiles = splitService.splitPDF(
                         doc.getDocument(), outputDir, ranges);
 
-                statusCallback.accept("Đã tách " + pages.size() + " trang");
-                result.complete("Đã tách trang " + minPage + "-" + maxPage + 
-                        " thành file: " + outputFiles.get(0).getName());
+                statusCallback.accept(MessageFormat.format(lang().getString("ai.splitSuccess"), pages.size()));
+                result.complete(MessageFormat.format(lang().getString("ai.splitSuccessMsg"), 
+                        minPage, maxPage, outputFiles.get(0).getName()));
 
             } catch (Exception e) {
                 logger.error("Error splitting PDF", e);
-                result.complete("Lỗi khi tách file: " + e.getMessage());
+                result.complete(MessageFormat.format(lang().getString("ai.splitError"), e.getMessage()));
             }
         });
 
@@ -140,7 +146,7 @@ public class AICommandExecutor {
     private CompletableFuture<String> executeDelete(AICommand command, PDFDocument doc) {
         List<Integer> pages = command.getPages();
         if (pages.isEmpty()) {
-            return CompletableFuture.completedFuture("Vui lòng chỉ định các trang cần xóa.");
+            return CompletableFuture.completedFuture(lang().getString("ai.specifyPagesToDelete"));
         }
 
         int totalPages = doc.getTotalPages();
@@ -149,13 +155,12 @@ public class AICommandExecutor {
         for (int page : pages) {
             if (page < 1 || page > totalPages) {
                 return CompletableFuture.completedFuture(
-                        "Trang " + page + " không hợp lệ.");
+                        MessageFormat.format(lang().getString("ai.invalidPage"), page, totalPages));
             }
         }
 
         if (pages.size() >= totalPages) {
-            return CompletableFuture.completedFuture(
-                    "Không thể xóa tất cả các trang.");
+            return CompletableFuture.completedFuture(lang().getString("ai.cannotDeleteAllPages"));
         }
 
         try {
@@ -170,29 +175,28 @@ public class AICommandExecutor {
 
             doc.clearCache();
             Platform.runLater(refreshCallback);
-            statusCallback.accept("Đã xóa " + pages.size() + " trang");
+            statusCallback.accept(MessageFormat.format(lang().getString("ai.deletedPages"), pages.size()));
 
             return CompletableFuture.completedFuture(
-                    "Đã xóa " + pages.size() + " trang: " + pages);
+                    MessageFormat.format(lang().getString("ai.deletedPagesMsg"), pages.size(), pages));
 
         } catch (Exception e) {
             logger.error("Error deleting pages", e);
-            return CompletableFuture.completedFuture("Lỗi khi xóa trang: " + e.getMessage());
+            return CompletableFuture.completedFuture(MessageFormat.format(lang().getString("ai.deleteError"), e.getMessage()));
         }
     }
 
     private CompletableFuture<String> executeReorder(AICommand command, PDFDocument doc) {
         List<Integer> newOrder = command.getNewOrder();
         if (newOrder.isEmpty()) {
-            return CompletableFuture.completedFuture("Vui lòng chỉ định thứ tự mới.");
+            return CompletableFuture.completedFuture(lang().getString("ai.specifyNewOrder"));
         }
 
         int totalPages = doc.getTotalPages();
         
         if (newOrder.size() != totalPages) {
             return CompletableFuture.completedFuture(
-                    "Số trang trong thứ tự mới (" + newOrder.size() + 
-                    ") không khớp với tổng số trang (" + totalPages + ").");
+                    MessageFormat.format(lang().getString("ai.orderMismatch"), newOrder.size(), totalPages));
         }
 
         // Convert to 0-based
@@ -203,14 +207,14 @@ public class AICommandExecutor {
         try {
             reorderService.reorderPages(doc, zeroBasedOrder);
             Platform.runLater(refreshCallback);
-            statusCallback.accept("Đã sắp xếp lại trang");
+            statusCallback.accept(lang().getString("ai.reorderedPages"));
 
             return CompletableFuture.completedFuture(
-                    "Đã sắp xếp lại trang theo thứ tự: " + newOrder);
+                    MessageFormat.format(lang().getString("ai.reorderedPagesMsg"), newOrder));
 
         } catch (Exception e) {
             logger.error("Error reordering pages", e);
-            return CompletableFuture.completedFuture("Lỗi khi sắp xếp: " + e.getMessage());
+            return CompletableFuture.completedFuture(MessageFormat.format(lang().getString("ai.reorderError"), e.getMessage()));
         }
     }
 
@@ -219,17 +223,17 @@ public class AICommandExecutor {
         int page2 = command.getPage2();
 
         if (page1 == -1 || page2 == -1) {
-            return CompletableFuture.completedFuture("Vui lòng chỉ định 2 trang cần hoán đổi.");
+            return CompletableFuture.completedFuture(lang().getString("ai.specifyTwoPages"));
         }
 
         int totalPages = doc.getTotalPages();
         if (page1 < 1 || page1 > totalPages || page2 < 1 || page2 > totalPages) {
             return CompletableFuture.completedFuture(
-                    "Trang không hợp lệ. Document có " + totalPages + " trang.");
+                    MessageFormat.format(lang().getString("ai.invalidPageDoc"), totalPages));
         }
 
         if (page1 == page2) {
-            return CompletableFuture.completedFuture("Hai trang phải khác nhau.");
+            return CompletableFuture.completedFuture(lang().getString("ai.pagesMustDiffer"));
         }
 
         try {
@@ -247,14 +251,14 @@ public class AICommandExecutor {
 
             reorderService.reorderPages(doc, newOrder);
             Platform.runLater(refreshCallback);
-            statusCallback.accept("Đã hoán đổi trang " + page1 + " và " + page2);
+            statusCallback.accept(MessageFormat.format(lang().getString("ai.swappedPages"), page1, page2));
 
             return CompletableFuture.completedFuture(
-                    "Đã hoán đổi trang " + page1 + " và trang " + page2);
+                    MessageFormat.format(lang().getString("ai.swappedPagesMsg"), page1, page2));
 
         } catch (Exception e) {
             logger.error("Error swapping pages", e);
-            return CompletableFuture.completedFuture("Lỗi khi hoán đổi trang: " + e.getMessage());
+            return CompletableFuture.completedFuture(MessageFormat.format(lang().getString("ai.swapError"), e.getMessage()));
         }
     }
 
@@ -263,37 +267,37 @@ public class AICommandExecutor {
         int toPage = command.getToPage();
 
         if (fromPage == -1 || toPage == -1) {
-            return CompletableFuture.completedFuture("Vui lòng chỉ định trang nguồn và vị trí đích.");
+            return CompletableFuture.completedFuture(lang().getString("ai.specifySourceDest"));
         }
 
         int totalPages = doc.getTotalPages();
         if (fromPage < 1 || fromPage > totalPages || toPage < 1 || toPage > totalPages) {
             return CompletableFuture.completedFuture(
-                    "Trang không hợp lệ. Document có " + totalPages + " trang.");
+                    MessageFormat.format(lang().getString("ai.invalidPageDoc"), totalPages));
         }
 
         if (fromPage == toPage) {
-            return CompletableFuture.completedFuture("Trang nguồn và đích phải khác nhau.");
+            return CompletableFuture.completedFuture(lang().getString("ai.sourceDestMustDiffer"));
         }
 
         try {
             reorderService.movePage(doc, fromPage - 1, toPage - 1);
             Platform.runLater(refreshCallback);
-            statusCallback.accept("Đã di chuyển trang " + fromPage + " đến vị trí " + toPage);
+            statusCallback.accept(MessageFormat.format(lang().getString("ai.movedPage"), fromPage, toPage));
 
             return CompletableFuture.completedFuture(
-                    "Đã di chuyển trang " + fromPage + " đến vị trí " + toPage);
+                    MessageFormat.format(lang().getString("ai.movedPageMsg"), fromPage, toPage));
 
         } catch (Exception e) {
             logger.error("Error moving page", e);
-            return CompletableFuture.completedFuture("Lỗi khi di chuyển trang: " + e.getMessage());
+            return CompletableFuture.completedFuture(MessageFormat.format(lang().getString("ai.moveError"), e.getMessage()));
         }
     }
 
     private CompletableFuture<String> executeBookmark(AICommand command, PDFDocument doc) {
         String title = command.getTitle();
         if (title == null || title.isEmpty()) {
-            return CompletableFuture.completedFuture("Vui lòng chỉ định tiêu đề bookmark.");
+            return CompletableFuture.completedFuture(lang().getString("ai.specifyBookmarkTitle"));
         }
 
         int page = command.getPage();
@@ -303,26 +307,26 @@ public class AICommandExecutor {
 
         BookmarkManager bookmarkManager = bookmarkManagerSupplier.get();
         if (bookmarkManager == null) {
-            return CompletableFuture.completedFuture("Bookmark manager không khả dụng.");
+            return CompletableFuture.completedFuture(lang().getString("ai.bookmarkManagerUnavailable"));
         }
 
         int finalPage = page;
         bookmarkManager.addBookmark(finalPage - 1, title); // Convert to 0-based
-        statusCallback.accept("Đã thêm bookmark");
+        statusCallback.accept(lang().getString("ai.addedBookmark"));
 
         return CompletableFuture.completedFuture(
-                "Đã thêm bookmark '" + title + "' tại trang " + finalPage);
+                MessageFormat.format(lang().getString("ai.addedBookmarkMsg"), title, finalPage));
     }
 
     private CompletableFuture<String> executeGoto(AICommand command, PDFDocument doc) {
         int page = command.getPage();
         if (page < 1 || page > doc.getTotalPages()) {
             return CompletableFuture.completedFuture(
-                    "Trang " + page + " không hợp lệ. Document có " + doc.getTotalPages() + " trang.");
+                    MessageFormat.format(lang().getString("ai.invalidPage"), page, doc.getTotalPages()));
         }
 
         Platform.runLater(() -> navigateToPage.accept(page - 1)); // Convert to 0-based
-        return CompletableFuture.completedFuture("Đã chuyển đến trang " + page);
+        return CompletableFuture.completedFuture(MessageFormat.format(lang().getString("ai.gotoPage"), page));
     }
 
     private CompletableFuture<String> executeReadText(AICommand command, PDFDocument doc) {
@@ -345,26 +349,26 @@ public class AICommandExecutor {
                 String text = pdfService.extractTextFromPage(doc, page - 1);
                 if (text != null && !text.trim().isEmpty()) {
                     if (pages.size() > 1) {
-                        result.append("--- Trang ").append(page).append(" ---\n");
+                        result.append(MessageFormat.format(lang().getString("ai.pageText"), page)).append("\n");
                     }
                     // Limit text length to avoid too long response
                     String trimmedText = text.trim();
                     if (trimmedText.length() > 1000) {
-                        trimmedText = trimmedText.substring(0, 1000) + "...\n(Nội dung đã được cắt ngắn)";
+                        trimmedText = trimmedText.substring(0, 1000) + "...\n" + lang().getString("ai.textTruncated");
                     }
                     result.append(trimmedText).append("\n\n");
                 }
             }
 
             if (result.isEmpty()) {
-                return CompletableFuture.completedFuture("Không tìm thấy text trong các trang được chọn.");
+                return CompletableFuture.completedFuture(lang().getString("ai.noTextFound"));
             }
 
             return CompletableFuture.completedFuture(result.toString().trim());
 
         } catch (Exception e) {
             logger.error("Error reading text from PDF", e);
-            return CompletableFuture.completedFuture("Lỗi khi đọc text: " + e.getMessage());
+            return CompletableFuture.completedFuture(MessageFormat.format(lang().getString("ai.readTextError"), e.getMessage()));
         }
     }
 
@@ -392,7 +396,7 @@ public class AICommandExecutor {
             }
 
             if (textContent.isEmpty()) {
-                return CompletableFuture.completedFuture("Không tìm thấy text để tóm tắt.");
+                return CompletableFuture.completedFuture(lang().getString("ai.noTextToSummarize"));
             }
 
             // Limit text for API (max ~3000 chars to avoid token limit)
@@ -407,40 +411,26 @@ public class AICommandExecutor {
                 return CompletableFuture.completedFuture(aiSummary);
             }
             
-            return CompletableFuture.completedFuture("Đã đọc nội dung nhưng không thể tóm tắt.");
+            return CompletableFuture.completedFuture(lang().getString("ai.readButCannotSummarize"));
 
         } catch (Exception e) {
             logger.error("Error summarizing PDF", e);
-            return CompletableFuture.completedFuture("Lỗi khi tóm tắt: " + e.getMessage());
+            return CompletableFuture.completedFuture(MessageFormat.format(lang().getString("ai.summarizeError"), e.getMessage()));
         }
     }
 
     private CompletableFuture<String> executeInfo(PDFDocument doc) {
         StringBuilder info = new StringBuilder();
-        info.append("Thông tin document:\n");
-        info.append("- File: ").append(doc.getFile() != null ? doc.getFile().getName() : "Chưa lưu").append("\n");
-        info.append("- Tổng số trang: ").append(doc.getTotalPages()).append("\n");
-        info.append("- Trang hiện tại: ").append(doc.getCurrentPage() + 1).append("\n");
+        info.append(lang().getString("ai.docInfo")).append("\n");
+        info.append(MessageFormat.format(lang().getString("ai.docFile"), 
+                doc.getFile() != null ? doc.getFile().getName() : lang().getString("ai.docNotSaved"))).append("\n");
+        info.append(MessageFormat.format(lang().getString("ai.docTotalPages"), doc.getTotalPages())).append("\n");
+        info.append(MessageFormat.format(lang().getString("ai.docCurrentPage"), doc.getCurrentPage() + 1)).append("\n");
         
         return CompletableFuture.completedFuture(info.toString());
     }
 
     private CompletableFuture<String> executeHelp() {
-        String help = """
-                Các lệnh có thể sử dụng:
-                
-                - Tách trang: "Tách trang 1-5", "Extract page 1,3,5"
-                - Xóa trang: "Xóa trang 3", "Delete page 2,4,6"
-                - Hoán đổi: "Đổi vị trí trang 1 với trang 2"
-                - Di chuyển: "Di chuyển trang 5 đến vị trí 2"
-                - Bookmark: "Đánh dấu trang này là Chương 1"
-                - Đi đến: "Đi đến trang 10", "Go to page 5"
-                - Đọc text: "Đọc nội dung trang 1"
-                - Tóm tắt: "Tóm tắt trang này", "Tóm tắt 3 trang đầu"
-                - Thông tin: "Thông tin file", "Document info"
-                
-                Bạn có thể dùng tiếng Việt hoặc tiếng Anh!
-                """;
-        return CompletableFuture.completedFuture(help);
+        return CompletableFuture.completedFuture(lang().getString("ai.helpText"));
     }
 }

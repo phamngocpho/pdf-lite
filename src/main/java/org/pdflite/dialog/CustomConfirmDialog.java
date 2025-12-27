@@ -10,6 +10,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.manager.ThemeManager;
 import org.pdflite.util.DialogTitleBar;
 
@@ -20,6 +21,10 @@ public class CustomConfirmDialog {
 
     private Stage dialogStage;
     private boolean confirmed = false;
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     /**
      * Shows a confirmation dialog.
@@ -72,14 +77,14 @@ public class CustomConfirmDialog {
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
         buttonBox.setPadding(new Insets(10, 0, 0, 0));
 
-        Button cancelButton = new Button("Cancel");
+        Button cancelButton = new Button(lang().getString("dialog.cancel"));
         cancelButton.setPrefWidth(80);
         cancelButton.setOnAction(e -> {
             confirmed = false;
             dialogStage.close();
         });
 
-        Button okButton = new Button("OK");
+        Button okButton = new Button(lang().getString("dialog.ok"));
         okButton.setPrefWidth(80);
         okButton.setDefaultButton(true);
         okButton.setOnAction(e -> {

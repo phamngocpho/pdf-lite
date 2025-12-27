@@ -25,6 +25,10 @@
     <!-- PDFBox logger (set to WARN to reduce noise) -->
     <logger name="org.apache.pdfbox" level="WARN"/>
     
+    <!-- FontBox logger (suppress font warnings) -->
+    <logger name="org.apache.fontbox" level="ERROR"/>
+    <logger name="org.apache.fontbox.cff.Type1CharString" level="ERROR"/>
+    
     <!-- Suppress GlyphCache warnings about missing glyphs -->
     <!-- These warnings are common with subset fonts and usually don't affect functionality -->
     <logger name="org.apache.pdfbox.rendering.GlyphCache" level="ERROR"/>

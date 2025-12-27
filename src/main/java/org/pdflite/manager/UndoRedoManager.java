@@ -17,6 +17,10 @@ public class UndoRedoManager {
     private Button undoButton;
     private Button redoButton;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Creates a new UndoRedoManager.
      *
@@ -78,14 +82,14 @@ public class UndoRedoManager {
             try {
                 commandManager.undo();
                 String desc = commandManager.getUndoDescription();
-                uiStateManager.updateStatus("Undone: " + (desc != null ? desc : "action"));
+                uiStateManager.updateStatus(lang().getString("status.undone", desc != null ? desc : ""));
                 logger.debug("Undo successful");
             } catch (Exception e) {
                 logger.error("Error during undo", e);
-                uiStateManager.showError("Undo Error", "Failed to undo: " + e.getMessage());
+                uiStateManager.showError(lang().getString("error.title"), lang().getString("error.undo") + ": " + e.getMessage());
             }
         } else {
-            uiStateManager.updateStatus("Nothing to undo");
+            uiStateManager.updateStatus(lang().getString("status.nothingToUndo"));
             logger.debug("Nothing to undo");
         }
     }
@@ -98,14 +102,14 @@ public class UndoRedoManager {
             try {
                 commandManager.redo();
                 String desc = commandManager.getRedoDescription();
-                uiStateManager.updateStatus("Redone: " + (desc != null ? desc : "action"));
+                uiStateManager.updateStatus(lang().getString("status.redone", desc != null ? desc : ""));
                 logger.debug("Redo successful");
             } catch (Exception e) {
                 logger.error("Error during redo", e);
-                uiStateManager.showError("Redo Error", "Failed to redo: " + e.getMessage());
+                uiStateManager.showError(lang().getString("error.title"), lang().getString("error.redo") + ": " + e.getMessage());
             }
         } else {
-            uiStateManager.updateStatus("Nothing to redo");
+            uiStateManager.updateStatus(lang().getString("status.nothingToRedo"));
             logger.debug("Nothing to redo");
         }
     }

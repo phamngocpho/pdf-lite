@@ -10,6 +10,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.manager.ThemeManager;
 import org.pdflite.util.DialogTitleBar;
 
@@ -19,6 +20,10 @@ import org.pdflite.util.DialogTitleBar;
 public class CustomInfoDialog {
 
     private Stage dialogStage;
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     /**
      * Shows an information dialog.
@@ -71,7 +76,7 @@ public class CustomInfoDialog {
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
         buttonBox.setPadding(new Insets(10, 0, 0, 0));
 
-        Button okButton = new Button("OK");
+        Button okButton = new Button(lang().getString("dialog.ok"));
         okButton.setPrefWidth(80);
         okButton.getStyleClass().add("primary-button");
         okButton.setOnAction(e -> dialogStage.close());

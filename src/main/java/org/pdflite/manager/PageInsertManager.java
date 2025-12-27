@@ -34,6 +34,10 @@ public class PageInsertManager {
     private Supplier<ScrollPane> scrollPaneSupplier;
     private Supplier<RenderingManager> renderingManagerSupplier;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     public PageInsertManager(UIStateManager uiStateManager,
                              DialogManager dialogManager,
                              DocumentOperationManager documentOperationManager,
@@ -78,7 +82,7 @@ public class PageInsertManager {
         RenderingManager currentRenderingManager = renderingManagerSupplier != null ? renderingManagerSupplier.get() : null;
 
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 

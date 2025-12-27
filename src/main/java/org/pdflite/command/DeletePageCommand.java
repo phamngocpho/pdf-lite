@@ -2,11 +2,13 @@ package org.pdflite.command;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.model.Annotation;
 import org.pdflite.model.PDFDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,6 +18,10 @@ import java.util.List;
  */
 public class DeletePageCommand implements Command {
     private static final Logger logger = LoggerFactory.getLogger(DeletePageCommand.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     private final PDFDocument document;
     private final int pageIndex;
@@ -98,6 +104,6 @@ public class DeletePageCommand implements Command {
 
     @Override
     public String getDescription() {
-        return "Delete Page " + (pageIndex + 1);
+        return MessageFormat.format(lang().getString("command.deletePage"), pageIndex + 1);
     }
 }

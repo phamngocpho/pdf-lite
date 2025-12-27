@@ -26,6 +26,10 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
                                        RecentFilesMenuManager recentFilesMenuManager) {
     private static final Logger logger = LoggerFactory.getLogger(DocumentLifecycleManager.class);
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Creates a new DocumentLifecycleManager.
      *
@@ -100,7 +104,7 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
                 }
             });
 
-            uiStateManager.updateStatus("Opened: " + file.getName());
+            uiStateManager.updateStatus(lang().getString("status.opened", file.getName()));
 
             // Add to recent files
             recentFilesManager.addRecentFile(file.getAbsolutePath());
@@ -111,7 +115,7 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
             return newDocument;
         } catch (IOException e) {
             logger.error("Error opening PDF file", e);
-            uiStateManager.showError("Error Opening PDF", "Could not open the PDF file: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.openPdf") + ": " + e.getMessage());
             return null;
         }
     }
@@ -133,11 +137,9 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
         // Check if the document is encrypted
         if (currentDocument.getDocument().isEncrypted()) {
             boolean removePassword = CustomConfirmDialog.show(
-                    "Lưu file đã mã hóa",
-                    "File PDF này có mật khẩu bảo vệ",
-                    "Bạn muốn:\n" +
-                            "- Lưu và GIỮ mật khẩu (chọn Cancel và dùng 'Save As')\n" +
-                            "- Lưu và XÓA mật khẩu (chọn OK)",
+                    lang().getString("menu.file.save"),
+                    lang().getString("message.passwordRequired"),
+                    lang().getString("message.unsavedChanges"),
                     themeManager
             );
 
@@ -148,25 +150,24 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
                     fileManager.save(currentDocument);
 
                     CustomInfoDialog.show(
-                            "Thành công",
-                            "Đã lưu file",
-                            "File đã được lưu và mật khẩu đã được xóa.",
+                            lang().getString("success.title"),
+                            lang().getString("success.saved"),
+                            targetFile.getAbsolutePath(),
                             themeManager
                     );
 
                     success[0] = true;
                 } catch (IOException e) {
                     logger.error("Error saving document", e);
-                    uiStateManager.showError("Save Error", "Could not save the document: " + e.getMessage());
+                    uiStateManager.showError(lang().getString("error.title"), lang().getString("error.saveFailed") + ": " + e.getMessage());
                     success[0] = false;
                 }
             } else {
                 // User wants to keep the password - suggest Save As
                 CustomInfoDialog.show(
-                        "Thông tin",
-                        "Sử dụng Save As",
-                        "Để giữ mật khẩu, vui lòng sử dụng chức năng 'Save As'\n" +
-                                "hoặc chức năng 'Encrypt PDF' để đặt lại mật khẩu mới.",
+                        lang().getString("dialog.info"),
+                        lang().getString("menu.file.saveAs"),
+                        lang().getString("save.keepPasswordMsg"),
                         themeManager
                 );
 
@@ -178,7 +179,7 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
                 fileManager.save(currentDocument);
             } catch (IOException e) {
                 logger.error("Error saving document", e);
-                uiStateManager.showError("Save Error", "Could not save the document: " + e.getMessage());
+                uiStateManager.showError(lang().getString("error.title"), lang().getString("error.saveFailed") + ": " + e.getMessage());
             }
         }
     }

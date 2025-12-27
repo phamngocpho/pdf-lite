@@ -9,6 +9,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.service.PDFMergeService;
 import org.pdflite.util.DialogTitleBar;
 import org.pdflite.util.FileUtils;
@@ -34,6 +35,10 @@ public class MergeDialogController {
 
     private static final Logger logger = LoggerFactory.getLogger(MergeDialogController.class);
     private static final DataFormat SERIALIZED_MIME_TYPE = new DataFormat("application/x-java-serialized-object");
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     @FXML
     private javafx.scene.layout.HBox dialogTitleBar;
@@ -107,11 +112,71 @@ public class MergeDialogController {
         this.dialogStage = dialogStage;
 
         // Create and add a custom title bar
-        String title = dialogStage.getTitle() != null ? dialogStage.getTitle() : "Merge PDF Files";
+        String title = lang().getString("merge.title");
         DialogTitleBar titleBar = new DialogTitleBar(title, dialogStage);
         // Copy children from the title bar to dialogTitleBar HBox
         if (dialogTitleBar != null) {
             dialogTitleBar.getChildren().setAll(titleBar.getTitleBar().getChildren());
+        }
+        
+        // Update all UI text
+        updateAllUIText();
+    }
+    
+    /**
+     * Updates all UI text elements with current language.
+     */
+    private void updateAllUIText() {
+        if (dialogStage == null || dialogStage.getScene() == null) {
+            return;
+        }
+        
+        // Update table columns
+        orderColumn.setText("#");
+        fileNameColumn.setText(lang().getString("merge.addFiles").replace("...", ""));
+        pagesColumn.setText(lang().getString("extract.pages"));
+        sizeColumn.setText(lang().getString("watermark.size"));
+        
+        // Update buttons
+        addFilesButton.setText(lang().getString("merge.addFiles"));
+        removeButton.setText(lang().getString("merge.remove"));
+        moveUpButton.setText("↑ " + lang().getString("merge.moveUp"));
+        moveDownButton.setText("↓ " + lang().getString("merge.moveDown"));
+        mergeButton.setText(lang().getString("menu.tools.merge"));
+        cancelButton.setText(lang().getString("merge.cancel"));
+        
+        // Update status
+        statusLabel.setText(lang().getString("watermark.status.ready"));
+        
+        // Recursively update all Labels in the scene
+        updateNodeText(dialogStage.getScene().getRoot());
+    }
+    
+    /**
+     * Recursively updates text for Labels.
+     */
+    private void updateNodeText(javafx.scene.Node node) {
+        if (node instanceof Label label) {
+            String text = label.getText();
+            if (text != null && !text.isEmpty()) {
+                if (text.contains("Add multiple PDF files")) {
+                    label.setText(lang().getString("merge.title").equals("Merge PDF Files") ?
+                        "Add multiple PDF files, reorder them by dragging, and merge into a single document." :
+                        "Thêm nhiều tệp PDF, sắp xếp lại bằng cách kéo thả, và ghép thành một tài liệu.");
+                } else if (text.equals("Drag rows to reorder")) {
+                    label.setText(lang().getString("merge.title").equals("Merge PDF Files") ?
+                        "Drag rows to reorder" : "Kéo hàng để sắp xếp lại");
+                } else if (text.equals("Ready to merge")) {
+                    label.setText(lang().getString("watermark.status.ready"));
+                }
+            }
+        }
+        
+        // Recursively process children
+        if (node instanceof javafx.scene.Parent parent) {
+            for (javafx.scene.Node child : parent.getChildrenUnmodifiable()) {
+                updateNodeText(child);
+            }
         }
     }
 
@@ -121,7 +186,7 @@ public class MergeDialogController {
     @FXML
     private void handleAddFiles() {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Select PDF Files to Merge");
+        fileChooser.setTitle(lang().getString("merge.selectFiles"));
         fileChooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
         );
@@ -153,7 +218,8 @@ public class MergeDialogController {
             // Validate PDF
             if (!mergeService.isValidPDF(file)) {
                 logger.warn("Invalid PDF file: {}", file.getName());
-                showError("Invalid PDF", "The file '" + file.getName() + "' is not a valid PDF.");
+                showError(lang().getString("merge.error.title"), 
+                        java.text.MessageFormat.format(lang().getString("merge.error.invalid"), file.getName()));
                 skippedCount++;
                 continue;
             }
@@ -179,10 +245,10 @@ public class MergeDialogController {
 
         // Update status
         if (addedCount > 0) {
-            updateStatus(String.format("Added %d file(s)%s", addedCount,
-                    skippedCount > 0 ? " (" + skippedCount + " skipped)" : ""));
+            updateStatus(java.text.MessageFormat.format(lang().getString("merge.status.added"), addedCount) +
+                    (skippedCount > 0 ? " (" + java.text.MessageFormat.format(lang().getString("merge.status.skipped"), skippedCount) + ")" : ""));
         } else if (skippedCount > 0) {
-            updateStatus(String.format("Skipped %d file(s)", skippedCount));
+            updateStatus(java.text.MessageFormat.format(lang().getString("merge.status.skipped"), skippedCount));
         }
 
         logger.info("Added {} files, skipped {}", addedCount, skippedCount);
@@ -204,7 +270,7 @@ public class MergeDialogController {
         fileItems.removeAll(selectedItems);
         updateOrderNumbers();
         updateButtonStates();
-        updateStatus("Removed " + selectedItems.size() + " file(s)");
+        updateStatus(java.text.MessageFormat.format(lang().getString("merge.status.removed"), selectedItems.size()));
     }
 
     /**
@@ -247,13 +313,13 @@ public class MergeDialogController {
     @FXML
     private void handleMerge() {
         if (fileItems.size() < 2) {
-            showError("Not Enough Files", "Please add at least 2 PDF files to merge.");
+            showError(lang().getString("merge.error.title"), lang().getString("merge.error.notEnough"));
             return;
         }
 
         // Choose the output file
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Save Merged PDF");
+        fileChooser.setTitle(lang().getString("merge.saveMerged"));
         fileChooser.setInitialFileName("merged.pdf");
         fileChooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
@@ -277,7 +343,7 @@ public class MergeDialogController {
         progressBar.setVisible(true);
         progressBar.setManaged(true);
         progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
-        updateStatus("Merging PDFs...");
+        updateStatus(lang().getString("merge.status.merging"));
 
         List<File> inputFiles = fileItems.stream()
                 .map(PDFFileItem::getFile)
@@ -289,9 +355,9 @@ public class MergeDialogController {
 
                 Platform.runLater(() -> {
                     progressBar.setProgress(1.0);
-                    updateStatus("Merge completed successfully!");
+                    updateStatus(lang().getString("merge.status.success"));
                     showInfo(
-                            String.format("Successfully merged %d files into:\n%s",
+                            java.text.MessageFormat.format(lang().getString("merge.success.message"),
                                     inputFiles.size(), outputFile.getName()));
 
                     // Close dialog after short delay
@@ -313,8 +379,8 @@ public class MergeDialogController {
                     progressBar.setVisible(false);
                     progressBar.setManaged(false);
                     setUIEnabled(true);
-                    updateStatus("Merge failed!");
-                    showError("Merge Error", "Failed to merge PDFs: " + e.getMessage());
+                    updateStatus(lang().getString("merge.status.failed"));
+                    showError(lang().getString("merge.error.merge"), e.getMessage());
                 });
             }
         });
@@ -442,7 +508,7 @@ public class MergeDialogController {
      */
     private void showInfo(String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Merge Complete");
+        alert.setTitle(lang().getString("merge.success.title"));
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();

@@ -241,7 +241,7 @@ public class ThemeManager {
         try {
             var resource = getClass().getResource(themePath);
             if (resource == null) {
-                System.err.println("Lỗi: Không tìm thấy file theme: " + themePath);
+                logger.error("Theme file not found: {}", themePath);
                 return;
             }
 

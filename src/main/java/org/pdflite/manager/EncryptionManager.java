@@ -23,6 +23,10 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
                                 UIStateManager uiStateManager) {
     private static final Logger logger = LoggerFactory.getLogger(EncryptionManager.class);
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Creates a new EncryptionManager.
      *
@@ -41,42 +45,38 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
      */
     public void showPDFPermissions(PDFDocument currentDocument) {
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF Loaded",
-                    "Please open a PDF file first.");
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"),
+                    lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
         StringBuilder info = new StringBuilder();
-        info.append("Thông tin bảo mật PDF:\n\n");
 
         if (!currentDocument.getDocument().isEncrypted()) {
-            info.append("File không được mã hóa\n");
-            info.append("Không có mật khẩu bảo vệ");
+            info.append(lang().getString("permissions.notEncrypted")).append("\n");
         } else {
-            info.append("File được mã hóa\n\n");
+            info.append(lang().getString("permissions.encrypted")).append("\n\n");
 
             AccessPermission perm =
                     currentDocument.getDocument().getCurrentAccessPermission();
 
             if (perm != null) {
                 if (perm.isOwnerPermission()) {
-                    info.append("Quyền: OWNER (Toàn quyền)\n\n");
+                    info.append("OWNER\n\n");
                 } else {
-                    info.append("Quyền: USER (Hạn chế)\n\n");
+                    info.append("USER\n\n");
                 }
 
-                info.append("Quyền được cấp:\n");
-                info.append("  - In ấn: ").append(perm.canPrint() ? "Có" : "Không").append("\n");
-                info.append("  - Chỉnh sửa: ").append(perm.canModify() ? "Có" : "Không").append("\n");
-                info.append("  - Sao chép text: ").append(perm.canExtractContent() ? "Có" : "Không").append("\n");
-                info.append("  - Chú thích: ").append(perm.canModifyAnnotations() ? "Có" : "Không").append("\n");
-                info.append("  - Điền form: ").append(perm.canFillInForm() ? "Có" : "Không").append("\n");
+                info.append(lang().getString("permissions.info")).append("\n");
+                info.append("  - ").append(lang().getString("menu.file.print")).append(": ").append(perm.canPrint() ? "✓" : "✗").append("\n");
+                info.append("  - ").append(lang().getString("menu.edit")).append(": ").append(perm.canModify() ? "✓" : "✗").append("\n");
+                info.append("  - ").append(lang().getString("menu.tools.extract")).append(": ").append(perm.canExtractContent() ? "✓" : "✗").append("\n");
             }
         }
 
         org.pdflite.dialog.CustomInfoDialog.show(
-                "Quyền PDF",
-                "Thông tin bảo mật và quyền truy cập",
+                lang().getString("permissions.title"),
+                lang().getString("permissions.title"),
                 info.toString(),
                 themeManager
         );
@@ -89,8 +89,8 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
      */
     public void encryptPDF(PDFDocument currentDocument) {
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF Loaded",
-                    "Please open a PDF file first before encrypting.");
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"),
+                    lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
@@ -100,7 +100,7 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
             try {
                 Stage stage = (Stage) rootPane.getScene().getWindow();
                 FileChooser fileChooser = new FileChooser();
-                fileChooser.setTitle("Save Encrypted PDF As");
+                fileChooser.setTitle(lang().getString("dialog.title.save"));
                 fileChooser.setInitialFileName("encrypted_" + currentDocument.getFileName());
                 fileChooser.getExtensionFilters().add(
                         new FileChooser.ExtensionFilter(Constants.PDF_DESCRIPTION, Constants.PDF_EXTENSION)
@@ -121,9 +121,9 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
                 );
 
                 org.pdflite.dialog.CustomInfoDialog.show(
-                        "Thành công",
-                        "PDF đã được mã hóa",
-                        "File đã được lưu tại:\n" + outputFile.getAbsolutePath(),
+                        lang().getString("success.title"),
+                        lang().getString("success.encrypted"),
+                        lang().getString("success.saved") + ":\n" + outputFile.getAbsolutePath(),
                         themeManager
                 );
 
@@ -131,8 +131,8 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
 
             } catch (IOException e) {
                 logger.error("Error encrypting PDF", e);
-                uiStateManager.showError("Encryption Error",
-                        "Could not encrypt PDF: " + e.getMessage());
+                uiStateManager.showError(lang().getString("error.title"),
+                        lang().getString("error.encrypt") + ": " + e.getMessage());
             }
         });
     }
@@ -144,16 +144,16 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
      */
     public void decryptPDF(PDFDocument currentDocument) {
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF Loaded",
-                    "Please open a PDF file first before removing encryption.");
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"),
+                    lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
         if (!currentDocument.getDocument().isEncrypted()) {
             org.pdflite.dialog.CustomInfoDialog.show(
-                    "Thông tin",
-                    "PDF không được mã hóa",
-                    "File PDF này không có mật khẩu bảo vệ.",
+                    lang().getString("dialog.info"),
+                    lang().getString("menu.tools.decrypt"),
+                    lang().getString("message.pdfNotEncrypted"),
                     themeManager
             );
             return;
@@ -165,10 +165,9 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
 
         if (permission == null || !permission.isOwnerPermission()) {
             org.pdflite.dialog.CustomInfoDialog.show(
-                    "Không có quyền",
-                    "Không thể xóa mật khẩu",
-                    "Bạn cần mật khẩu chủ sở hữu (Owner Password) để xóa bảo vệ.\n" +
-                            "Hiện tại bạn chỉ có quyền người dùng (User Permission).",
+                    lang().getString("error.title"),
+                    lang().getString("message.passwordRequired"),
+                    lang().getString("message.incorrectPassword"),
                     themeManager
             );
             return;
@@ -176,10 +175,9 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
 
         // Confirm action
         boolean confirmed = org.pdflite.dialog.CustomConfirmDialog.show(
-                "Xác nhận",
-                "Xóa mật khẩu bảo vệ",
-                "Bạn có chắc muốn xóa mật khẩu bảo vệ khỏi file PDF này?\n" +
-                        "File mới sẽ không có mật khẩu.",
+                lang().getString("confirm.title"),
+                lang().getString("menu.tools.decrypt"),
+                lang().getString("confirm.decrypt"),
                 themeManager
         );
 
@@ -187,7 +185,7 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
             try {
                 Stage stage = (Stage) rootPane.getScene().getWindow();
                 FileChooser fileChooser = new FileChooser();
-                fileChooser.setTitle("Save Decrypted PDF As");
+                fileChooser.setTitle(lang().getString("dialog.title.save"));
                 fileChooser.setInitialFileName("decrypted_" + currentDocument.getFileName());
                 fileChooser.getExtensionFilters().add(
                         new FileChooser.ExtensionFilter(Constants.PDF_DESCRIPTION, Constants.PDF_EXTENSION)
@@ -203,9 +201,9 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
                 pdfService.saveAs(currentDocument, outputFile);
 
                 org.pdflite.dialog.CustomInfoDialog.show(
-                        "Thành công",
-                        "Đã xóa mật khẩu",
-                        "File không có mật khẩu đã được lưu tại:\n" + outputFile.getAbsolutePath(),
+                        lang().getString("success.title"),
+                        lang().getString("success.decrypted"),
+                        lang().getString("success.saved") + ":\n" + outputFile.getAbsolutePath(),
                         themeManager
                 );
 
@@ -213,8 +211,8 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
 
             } catch (IOException e) {
                 logger.error("Error removing encryption", e);
-                uiStateManager.showError("Decryption Error",
-                        "Could not remove encryption: " + e.getMessage());
+                uiStateManager.showError(lang().getString("error.title"),
+                        lang().getString("error.decrypt") + ": " + e.getMessage());
             }
         }
     }

@@ -54,6 +54,10 @@ public class SearchManager {
     private final Map<VBox, ListChangeListener<Node>> pageListeners = new HashMap<>();
     private ListChangeListener<Node> containerListener;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
 
     // Panel position enum
     public enum SearchPanelPosition {
@@ -165,7 +169,7 @@ public class SearchManager {
     private void showPanel(SearchPanelPosition position) {
         PDFDocument currentDocument = mainController.getCurrentDocument();
         if (currentDocument == null) {
-            mainController.showError("No PDF Loaded", "Please open a PDF file first");
+            mainController.showError(lang().getString("error.noPdfLoaded"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 

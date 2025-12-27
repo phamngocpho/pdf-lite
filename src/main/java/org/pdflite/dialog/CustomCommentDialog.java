@@ -11,6 +11,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.manager.ThemeManager;
 import org.pdflite.util.DialogTitleBar;
 
@@ -18,6 +19,10 @@ import org.pdflite.util.DialogTitleBar;
  * Custom comment dialog with a custom title bar.
  */
 public class CustomCommentDialog {
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     private Stage dialogStage;
     private String comment = null;
@@ -55,14 +60,14 @@ public class CustomCommentDialog {
         dialogStage = new Stage();
         dialogStage.initStyle(StageStyle.TRANSPARENT);
         dialogStage.initModality(Modality.APPLICATION_MODAL);
-        dialogStage.setTitle("Add Comment");
+        dialogStage.setTitle(lang().getString("comment.title"));
 
         // Create main container
         VBox mainContainer = new VBox();
         mainContainer.getStyleClass().add("custom-comment-dialog");
 
         // Create custom title bar
-        DialogTitleBar titleBar = new DialogTitleBar("Add Comment", dialogStage);
+        DialogTitleBar titleBar = new DialogTitleBar(lang().getString("comment.title"), dialogStage);
         mainContainer.getChildren().add(titleBar.getTitleBar());
 
         // Create content
@@ -76,9 +81,9 @@ public class CustomCommentDialog {
         Label iconLabel = new Label("💬");
         iconLabel.setStyle("-fx-font-size: 24px;");
         VBox headerTextBox = new VBox(2);
-        Label titleLabel = new Label("Add Comment");
+        Label titleLabel = new Label(lang().getString("comment.title"));
         titleLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
-        Label subtitleLabel = new Label("Enter your comment below");
+        Label subtitleLabel = new Label(lang().getString("comment.subtitle"));
         subtitleLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: gray;");
         headerTextBox.getChildren().addAll(titleLabel, subtitleLabel);
         headerBox.getChildren().addAll(iconLabel, headerTextBox);
@@ -86,11 +91,11 @@ public class CustomCommentDialog {
 
         // Comment text area
         VBox textAreaBox = new VBox(5);
-        Label commentLabel = new Label("Comment:");
+        Label commentLabel = new Label(lang().getString("comment.label"));
         commentLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold;");
         
         commentTextArea = new TextArea();
-        commentTextArea.setPromptText("Type your comment here...");
+        commentTextArea.setPromptText(lang().getString("comment.placeholder"));
         commentTextArea.setWrapText(true);
         commentTextArea.setPrefRowCount(6);
         commentTextArea.setPrefWidth(400);
@@ -106,7 +111,7 @@ public class CustomCommentDialog {
         // Character count
         HBox charCountBox = new HBox();
         charCountBox.setAlignment(Pos.CENTER_RIGHT);
-        charCountLabel = new Label("0 characters");
+        charCountLabel = new Label(java.text.MessageFormat.format(lang().getString("comment.charCount"), 0));
         charCountLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: gray;");
         charCountBox.getChildren().add(charCountLabel);
         contentBox.getChildren().add(charCountBox);
@@ -114,13 +119,13 @@ public class CustomCommentDialog {
         // Update character count
         commentTextArea.textProperty().addListener((obs, oldVal, newVal) -> {
             int length = newVal != null ? newVal.length() : 0;
-            charCountLabel.setText(length + " character" + (length != 1 ? "s" : ""));
+            charCountLabel.setText(java.text.MessageFormat.format(lang().getString("comment.charCount"), length));
         });
 
         // Initialize character count
         if (initialText != null) {
             int length = initialText.length();
-            charCountLabel.setText(length + " character" + (length != 1 ? "s" : ""));
+            charCountLabel.setText(java.text.MessageFormat.format(lang().getString("comment.charCount"), length));
         }
 
         // Buttons
@@ -128,7 +133,7 @@ public class CustomCommentDialog {
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
         buttonBox.setPadding(new Insets(10, 0, 0, 0));
 
-        Button cancelButton = new Button("Cancel");
+        Button cancelButton = new Button(lang().getString("dialog.cancel"));
         cancelButton.setPrefWidth(90);
         cancelButton.getStyleClass().add("secondary-button");
         cancelButton.setOnAction(e -> {
@@ -136,7 +141,7 @@ public class CustomCommentDialog {
             dialogStage.close();
         });
 
-        Button okButton = new Button("Add Comment");
+        Button okButton = new Button(lang().getString("comment.addButton"));
         okButton.setPrefWidth(130);
         okButton.getStyleClass().add("primary-button");
         okButton.setDefaultButton(true);

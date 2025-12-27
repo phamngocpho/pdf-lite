@@ -6,6 +6,7 @@ import javafx.scene.layout.HBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.pdflite.manager.ImageManager;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.model.ImagePlacement;
 import org.pdflite.util.DialogTitleBar;
 import org.slf4j.Logger;
@@ -27,6 +28,10 @@ import java.io.File;
  */
 public class ImagePlacementDialogController {
     private static final Logger logger = LoggerFactory.getLogger(ImagePlacementDialogController.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     @FXML
     private HBox dialogTitleBar;
@@ -102,10 +107,73 @@ public class ImagePlacementDialogController {
         this.dialogStage = dialogStage;
 
         // Create and add a custom title bar
-        String title = dialogStage.getTitle() != null ? dialogStage.getTitle() : "Insert Image";
+        String title = lang().getString("imagePlacement.title");
         DialogTitleBar titleBar = new DialogTitleBar(title, dialogStage);
         // Copy children from the title bar to dialogTitleBar HBox
         dialogTitleBar.getChildren().setAll(titleBar.getTitleBar().getChildren());
+        
+        // Update all UI text
+        updateAllUIText();
+    }
+    
+    /**
+     * Updates all UI text elements with current language.
+     */
+    private void updateAllUIText() {
+        if (dialogStage == null || dialogStage.getScene() == null) {
+            return;
+        }
+        
+        // Recursively update all Labels and Buttons in the scene
+        updateNodeText(dialogStage.getScene().getRoot());
+    }
+    
+    /**
+     * Recursively updates text for Labels and Buttons.
+     */
+    private void updateNodeText(javafx.scene.Node node) {
+        if (node instanceof Label label) {
+            String text = label.getText();
+            if (text != null && !text.isEmpty()) {
+                // Map English text to property keys
+                switch (text) {
+                    case "Image File:" -> label.setText(lang().getString("imagePlacement.browse") + ":");
+                    case "Dimensions:" -> label.setText(lang().getString("imagePlacement.dimensions") + ":");
+                    case "Page:" -> label.setText(lang().getString("imagePlacement.page") + ":");
+                    case "Position (in points):" -> label.setText(lang().getString("imagePlacement.position") + ":");
+                    case "X:" -> label.setText("X:");
+                    case "Y:" -> label.setText("Y:");
+                    case "Size (in points):" -> label.setText(lang().getString("imagePlacement.size") + ":");
+                    case "Width:" -> label.setText(lang().getString("watermark.width") + ":");
+                    case "Height:" -> label.setText(lang().getString("watermark.height") + ":");
+                }
+            }
+        } else if (node instanceof Button button) {
+            String text = button.getText();
+            if (text != null && !text.isEmpty()) {
+                switch (text) {
+                    case "Browse" -> button.setText(lang().getString("imagePlacement.browse"));
+                    case "Insert" -> button.setText(lang().getString("imagePlacement.insert"));
+                    case "Cancel" -> button.setText(lang().getString("imagePlacement.cancel"));
+                }
+            }
+        } else if (node instanceof CheckBox checkBox) {
+            String text = checkBox.getText();
+            if (text != null && !text.isEmpty()) {
+                switch (text) {
+                    case "Maintain aspect ratio" -> checkBox.setText(lang().getString("imagePlacement.maintainAspect"));
+                    case "Insert as rubber stamp annotation" -> checkBox.setText(lang().getString("imagePlacement.asStamp"));
+                    case "Use top-left origin (Y=0 at top)" -> checkBox.setText(lang().getString("imagePlacement.topLeftOrigin"));
+                }
+            }
+        }
+        
+        // Recursively process children
+        if (node instanceof javafx.scene.Parent parent) {
+            for (javafx.scene.Node child : parent.getChildrenUnmodifiable()) {
+                updateNodeText(child);
+            }
+        }
     }
 
     /**
@@ -175,7 +243,7 @@ public class ImagePlacementDialogController {
     @FXML
     private void handleBrowse() {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Select Image File");
+        fileChooser.setTitle(lang().getString("imagePlacement.selectImage"));
 
         // Add file filters
         fileChooser.getExtensionFilters().addAll(
@@ -198,12 +266,12 @@ public class ImagePlacementDialogController {
      */
     private void selectImageFile(File file) {
         if (imageManager == null) {
-            showError("Error", "Image manager not initialized");
+            showError(lang().getString("error.title"), lang().getString("imagePlacement.error.noManager"));
             return;
         }
 
         if (!imageManager.validateImageFile(file)) {
-            showError("Invalid Image", "The selected file is not a valid image file.");
+            showError(lang().getString("error.title"), lang().getString("imagePlacement.error.invalidImage"));
             return;
         }
 
@@ -223,7 +291,7 @@ public class ImagePlacementDialogController {
             widthField.setText(String.format("%.0f", scaled[0]));
             heightField.setText(String.format("%.0f", scaled[1]));
         } else {
-            dimensionsLabel.setText("Unable to read dimensions");
+            dimensionsLabel.setText(lang().getString("imagePlacement.unableToDimensions"));
         }
 
         logger.debug("Selected image file: {}", file.getName());
@@ -301,9 +369,9 @@ public class ImagePlacementDialogController {
             dialogStage.close();
 
         } catch (NumberFormatException e) {
-            showError("Invalid Input", "Please enter valid numbers for position and size.");
+            showError(lang().getString("error.title"), lang().getString("imagePlacement.error.invalidNumber"));
         } catch (IllegalArgumentException e) {
-            showError("Invalid Input", e.getMessage());
+            showError(lang().getString("error.title"), e.getMessage());
         }
     }
 
@@ -324,27 +392,27 @@ public class ImagePlacementDialogController {
      */
     private boolean validateInput() {
         if (selectedImageFile == null) {
-            showError("No Image Selected", "Please select an image file.");
+            showError(lang().getString("error.title"), lang().getString("imagePlacement.error.noImage"));
             return false;
         }
 
         if (xField.getText().trim().isEmpty()) {
-            showError("Invalid Input", "Please enter X coordinate.");
+            showError(lang().getString("error.title"), lang().getString("imagePlacement.error.noX"));
             return false;
         }
 
         if (yField.getText().trim().isEmpty()) {
-            showError("Invalid Input", "Please enter Y coordinate.");
+            showError(lang().getString("error.title"), lang().getString("imagePlacement.error.noY"));
             return false;
         }
 
         if (widthField.getText().trim().isEmpty()) {
-            showError("Invalid Input", "Please enter width.");
+            showError(lang().getString("error.title"), lang().getString("imagePlacement.error.noWidth"));
             return false;
         }
 
         if (heightField.getText().trim().isEmpty()) {
-            showError("Invalid Input", "Please enter height.");
+            showError(lang().getString("error.title"), lang().getString("imagePlacement.error.noHeight"));
             return false;
         }
 
@@ -353,11 +421,11 @@ public class ImagePlacementDialogController {
             double height = Double.parseDouble(heightField.getText());
 
             if (width <= 0 || height <= 0) {
-                showError("Invalid Input", "Width and height must be positive.");
+                showError(lang().getString("error.title"), lang().getString("imagePlacement.error.invalidSize"));
                 return false;
             }
         } catch (NumberFormatException e) {
-            showError("Invalid Input", "Please enter valid numbers for size.");
+            showError(lang().getString("error.title"), lang().getString("imagePlacement.error.invalidNumber"));
             return false;
         }
 

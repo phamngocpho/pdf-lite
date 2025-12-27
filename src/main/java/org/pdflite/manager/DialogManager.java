@@ -32,6 +32,10 @@ import javafx.stage.Stage;
 public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UIStateManager uiStateManager) {
     private static final Logger logger = LoggerFactory.getLogger(DialogManager.class);
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Creates a new DialogManager.
      *
@@ -52,7 +56,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
             Parent root = loader.load();
 
             MergeDialogController controller = loader.getController();
-            Stage dialogStage = createDialogStage(root, "Merge PDF Files");
+            Stage dialogStage = createDialogStage(root, lang().getString("menu.tools.merge"));
 
             controller.setDialogStage(dialogStage);
 
@@ -61,7 +65,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
 
         } catch (IOException e) {
             logger.error("Error opening merge dialog", e);
-            uiStateManager.showError("Error", "Could not open merge dialog: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.openMerge") + ": " + e.getMessage());
         }
     }
 
@@ -72,8 +76,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
      */
     public void openSplitDialog(PDFDocument currentDocument) {
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF Loaded",
-                    "Please open a PDF file first before splitting.");
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
@@ -82,10 +85,9 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
             AccessPermission permission = currentDocument.getDocument().getCurrentAccessPermission();
             if (permission != null && !permission.canExtractContent() && !permission.isOwnerPermission()) {
                 org.pdflite.dialog.CustomInfoDialog.show(
-                        "Không có quyền",
-                        "Không thể tách PDF",
-                        "Bạn không có quyền trích xuất nội dung từ file PDF này.\n" +
-                                "Cần quyền Owner hoặc quyền Extract Content.",
+                        lang().getString("error.noPermission"),
+                        lang().getString("menu.tools.split"),
+                        lang().getString("error.noPermissionExtract"),
                         themeManager
                 );
                 return;
@@ -98,7 +100,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
             Parent root = loader.load();
 
             SplitDialogController controller = loader.getController();
-            Stage dialogStage = createDialogStage(root, "Split PDF File");
+            Stage dialogStage = createDialogStage(root, lang().getString("menu.tools.split"));
 
             controller.setDialogStage(dialogStage);
             controller.setThemeManager(themeManager);
@@ -115,7 +117,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
 
         } catch (IOException e) {
             logger.error("Error opening split dialog", e);
-            uiStateManager.showError("Error", "Could not open split dialog: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.openSplit") + ": " + e.getMessage());
         }
     }
 
@@ -126,8 +128,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
      */
     public void openExtractDialog(PDFDocument currentDocument) {
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF Loaded",
-                    "Please open a PDF file first before extracting pages.");
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
@@ -136,10 +137,9 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
             AccessPermission permission = currentDocument.getDocument().getCurrentAccessPermission();
             if (permission != null && !permission.canExtractContent() && !permission.isOwnerPermission()) {
                 org.pdflite.dialog.CustomInfoDialog.show(
-                        "Không có quyền",
-                        "Không thể trích xuất trang",
-                        "Bạn không có quyền trích xuất nội dung từ file PDF này.\n" +
-                                "Cần quyền Owner hoặc quyền Extract Content.",
+                        lang().getString("error.noPermission"),
+                        lang().getString("menu.tools.extract"),
+                        lang().getString("error.noPermissionExtract"),
                         themeManager
                 );
                 return;
@@ -152,7 +152,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
             Parent root = loader.load();
 
             ExtractDialogController controller = loader.getController();
-            Stage dialogStage = createDialogStage(root, "Extract PDF Pages");
+            Stage dialogStage = createDialogStage(root, lang().getString("menu.tools.extract"));
 
             controller.setDialogStage(dialogStage);
             controller.setThemeManager(themeManager);
@@ -169,7 +169,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
 
         } catch (IOException e) {
             logger.error("Error opening extract dialog", e);
-            uiStateManager.showError("Error", "Could not open extract dialog: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.openExtract") + ": " + e.getMessage());
         }
     }
 
@@ -181,8 +181,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
      */
     public void openPageReorderDialog(PDFDocument currentDocument, Runnable onSuccess) {
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF Loaded",
-                    "Please open a PDF file first before reordering pages.");
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
@@ -191,10 +190,9 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
             AccessPermission permission = currentDocument.getDocument().getCurrentAccessPermission();
             if (permission != null && !permission.canModify() && !permission.isOwnerPermission()) {
                 org.pdflite.dialog.CustomInfoDialog.show(
-                        "Không có quyền",
-                        "Không thể sắp xếp lại trang",
-                        "Bạn không có quyền chỉnh sửa file PDF này.\n" +
-                                "Cần quyền Owner hoặc quyền Modify.",
+                        lang().getString("error.noPermission"),
+                        lang().getString("menu.tools.reorder"),
+                        lang().getString("error.noPermissionModify"),
                         themeManager
                 );
                 return;
@@ -211,7 +209,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
             );
         } catch (Exception e) {
             logger.error("Error opening page reorder dialog", e);
-            uiStateManager.showError("Error", "Could not open page reorder dialog: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.openReorder") + ": " + e.getMessage());
         }
     }
 
@@ -224,14 +222,13 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
      */
     public void openPrintDialog(PDFDocument currentDocument, PDFPrintService printService, int currentPage) {
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF Loaded", "Please open a PDF file first before printing.");
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"), lang().getString("error.noPdfLoadedMsg"));
             return;
         }
 
         // Check if printing is available
         if (!printService.isPrintingAvailable()) {
-            uiStateManager.showError("No Printer Available",
-                    "No printer is available on this system. Please install a printer and try again.");
+            uiStateManager.showError(lang().getString("error.noPrinter"), lang().getString("error.noPrinterMsg"));
             return;
         }
 
@@ -241,7 +238,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
             Parent root = loader.load();
 
             PrintDialogController controller = loader.getController();
-            Stage dialogStage = createDialogStage(root, "Print PDF");
+            Stage dialogStage = createDialogStage(root, lang().getString("menu.file.print"));
 
             controller.setDialogStage(dialogStage);
             controller.setDocument(currentDocument, printService, currentPage);
@@ -250,13 +247,13 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
 
             // Check if the user clicked print
             if (controller.isPrintClicked()) {
-                uiStateManager.updateStatus("Print job sent successfully");
+                uiStateManager.updateStatus(lang().getString("success.printed"));
                 logger.info("Print job completed");
             }
 
         } catch (IOException e) {
             logger.error("Error opening print dialog", e);
-            uiStateManager.showError("Error", "Could not open print dialog: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.openPrint") + ": " + e.getMessage());
         }
     }
 
@@ -312,7 +309,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
      */
     public InsertDialogController openInsertDialog(PDFDocument currentDocument) {
         if (currentDocument == null) {
-            uiStateManager.showError("No PDF", "Please open a PDF file first.");
+            uiStateManager.showError(lang().getString("error.noDocument"), lang().getString("error.noPdfLoadedMsg"));
             return null;
         }
 
@@ -329,7 +326,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
             org.apache.pdfbox.pdmodel.common.PDRectangle currentMediaBox = currentPage.getMediaBox();
             controller.setDefaultSize(currentMediaBox.getWidth(), currentMediaBox.getHeight());
 
-            Stage dialogStage = createDialogStage(root, "Insert Blank Page");
+            Stage dialogStage = createDialogStage(root, lang().getString("pdftools.insertPage"));
             controller.setDialogStage(dialogStage);
             dialogStage.showAndWait();
 
@@ -337,7 +334,7 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
 
         } catch (IOException e) {
             logger.error("Error opening insert dialog", e);
-            uiStateManager.showError("Error", "Could not open insert dialog: " + e.getMessage());
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("error.openInsert") + ": " + e.getMessage());
             return null;
         }
     }
@@ -347,14 +344,11 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
      */
     public void showAboutDialog() {
         org.pdflite.dialog.CustomInfoDialog.show(
-                "About PDF Lite",
-                "PDF Lite - PDF Viewer & Editor",
-                """
-                        Version 1.0
-                        
-                        A lightweight PDF viewer with annotation features.
-                        
-                        Built with JavaFX and Apache PDFBox""",
+                lang().getString("about.title"),
+                lang().getString("about.appName"),
+                lang().getString("about.versionText") + "\n\n" +
+                lang().getString("about.description") + "\n\n" +
+                lang().getString("about.builtWith"),
                 themeManager
         );
     }
@@ -367,16 +361,12 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
      */
     public boolean showEncryptedSaveWarning() {
         Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle("Cảnh báo");
-        alert.setHeaderText("File có mật khẩu bảo vệ");
-        alert.setContentText("""
-                Lưu ý: File mới sẽ KHÔNG CÓ MẬT KHẨU.
-                
-                Nếu muốn giữ mật khẩu hoặc đặt mật khẩu mới,
-                vui lòng sử dụng chức năng 'Encrypt PDF' sau khi lưu.""");
+        alert.setTitle(lang().getString("dialog.warning"));
+        alert.setHeaderText(lang().getString("message.passwordRequired"));
+        alert.setContentText(lang().getString("message.unsavedChanges"));
 
-        ButtonType continueButton = new ButtonType("Tiếp tục lưu", ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancelButton = new ButtonType("Hủy", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType continueButton = new ButtonType(lang().getString("dialog.yes"), ButtonBar.ButtonData.OK_DONE);
+        ButtonType cancelButton = new ButtonType(lang().getString("dialog.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
         alert.getButtonTypes().setAll(continueButton, cancelButton);
 
         if (themeManager != null) {

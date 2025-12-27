@@ -30,17 +30,17 @@ public class CompressionManager {
      * Compression quality levels.
      */
     public enum CompressionLevel {
-        LOW(0.9f, "Low compression (high quality)"),
-        MEDIUM(0.7f, "Medium compression (balanced)"),
-        HIGH(0.5f, "High compression (smaller size)"),
-        MAXIMUM(0.3f, "Maximum compression (lowest quality)");
+        LOW(0.9f, "compression.low"),
+        MEDIUM(0.7f, "compression.medium"),
+        HIGH(0.5f, "compression.high"),
+        MAXIMUM(0.3f, "compression.maximum");
 
         private final float quality;
-        private final String description;
+        private final String descriptionKey;
 
-        CompressionLevel(float quality, String description) {
+        CompressionLevel(float quality, String descriptionKey) {
             this.quality = quality;
-            this.description = description;
+            this.descriptionKey = descriptionKey;
         }
 
         public float getQuality() {
@@ -48,7 +48,11 @@ public class CompressionManager {
         }
 
         public String getDescription() {
-            return description;
+            return LanguageManager.getInstance().getString(descriptionKey);
+        }
+        
+        public String getDescriptionKey() {
+            return descriptionKey;
         }
     }
 

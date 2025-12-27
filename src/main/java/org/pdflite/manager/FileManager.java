@@ -3,6 +3,7 @@ package org.pdflite.manager;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.pdflite.dialog.CustomPasswordDialog;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
 import org.pdflite.util.Constants;
@@ -81,7 +82,7 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
      */
     public File showOpenDialog(Stage stage) {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Open PDF File");
+        fileChooser.setTitle(LanguageManager.getInstance().getString("fileChooser.openPdf"));
         fileChooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter(Constants.PDF_DESCRIPTION, Constants.PDF_EXTENSION)
         );
@@ -123,9 +124,9 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
                 } catch (IOException passwordError) {
                     // Wrong password or other error
                     org.pdflite.dialog.CustomInfoDialog.show(
-                            "Lỗi mở file",
-                            "Không thể mở file PDF",
-                            "Mật khẩu không đúng hoặc file bị lỗi.",
+                            LanguageManager.getInstance().getString("error.openPdf"),
+                            LanguageManager.getInstance().getString("error.openPdfHeader"),
+                            LanguageManager.getInstance().getString("error.wrongPasswordOrCorrupt"),
                             themeManager
                     );
                     throw passwordError;
@@ -178,7 +179,7 @@ public record FileManager(PDFService pdfService, FileOperationListener fileOpera
         }
 
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Save PDF As");
+        fileChooser.setTitle(LanguageManager.getInstance().getString("fileChooser.savePdfAs"));
         fileChooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter(Constants.PDF_DESCRIPTION, Constants.PDF_EXTENSION)
         );

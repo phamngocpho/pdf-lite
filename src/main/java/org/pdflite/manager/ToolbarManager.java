@@ -12,6 +12,10 @@ public class ToolbarManager {
 
     private static final Logger logger = LoggerFactory.getLogger(ToolbarManager.class);
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     private final ToolBar toolbar;
     private final MenuItem toggleToolbarMenuItem;
 
@@ -32,14 +36,14 @@ public class ToolbarManager {
             toolbar.setManaged(false);
             toolbar.setVisible(false);
             if (toggleToolbarMenuItem != null) {
-                toggleToolbarMenuItem.setText("Show Toolbar");
+                toggleToolbarMenuItem.setText(lang().getString("menu.view.showToolbar"));
             }
             logger.debug("Toolbar hidden");
         } else {
             toolbar.setManaged(true);
             toolbar.setVisible(true);
             if (toggleToolbarMenuItem != null) {
-                toggleToolbarMenuItem.setText("Hide Toolbar");
+                toggleToolbarMenuItem.setText(lang().getString("menu.view.hideToolbar"));
             }
             logger.debug("Toolbar shown");
         }

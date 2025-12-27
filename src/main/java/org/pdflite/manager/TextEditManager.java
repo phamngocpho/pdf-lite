@@ -20,6 +20,10 @@ public record TextEditManager(UIStateManager uiStateManager, ContentStreamManage
 
     private static final Logger logger = LoggerFactory.getLogger(TextEditManager.class);
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Creates a text edit callback for the context menu handler.
      */
@@ -29,7 +33,7 @@ public record TextEditManager(UIStateManager uiStateManager, ContentStreamManage
                 // Get current document
                 PDFDocument currentDocument = documentSupplier.get();
                 if (currentDocument == null) {
-                    uiStateManager.updateStatus("No document loaded");
+                    uiStateManager.updateStatus(lang().getString("textEdit.noDocument"));
                     logger.warn("Cannot replace text: no document loaded");
                     return;
                 }
@@ -60,18 +64,18 @@ public record TextEditManager(UIStateManager uiStateManager, ContentStreamManage
                 refreshCurrentPage(currentDocument, pageIndex);
 
                 // Update status
-                uiStateManager.updateStatus("Text replaced successfully");
+                uiStateManager.updateStatus(lang().getString("textEdit.success"));
 
             } catch (IOException e) {
                 logger.error("Error adding text to PDF", e);
-                uiStateManager.updateStatus("Error adding text: " + e.getMessage());
-                showTextEditError("Failed to add text to PDF", e.getMessage());
+                uiStateManager.updateStatus(lang().getString("textEdit.error") + ": " + e.getMessage());
+                showTextEditError(lang().getString("textEdit.errorTitle"), e.getMessage());
 
             } catch (IndexOutOfBoundsException e) {
                 logger.error("Invalid page index: {}", pageIndex, e);
-                uiStateManager.updateStatus("Error: Invalid page index");
-                showTextEditError("Invalid page index",
-                        "Page " + (pageIndex + 1) + " does not exist in the document.");
+                uiStateManager.updateStatus(lang().getString("textEdit.invalidPage"));
+                showTextEditError(lang().getString("textEdit.invalidPage"),
+                        lang().getString("textEdit.invalidPage") + ": " + (pageIndex + 1));
             }
         };
     }
@@ -131,7 +135,7 @@ public record TextEditManager(UIStateManager uiStateManager, ContentStreamManage
     private void showTextEditError(String header, String content) {
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Text Edit Error");
+            alert.setTitle(lang().getString("textEdit.errorTitle"));
             alert.setHeaderText(header);
             alert.setContentText(content);
             alert.showAndWait();

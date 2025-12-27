@@ -3,6 +3,7 @@ package org.pdflite.util;
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import org.pdflite.controller.MainController;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
 import org.pdflite.service.SearchService;
@@ -28,6 +29,10 @@ import java.util.concurrent.Executors;
 public class SearchHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(SearchHandler.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     private final SearchService searchService;
     private ExecutorService searchExecutor;
@@ -142,12 +147,12 @@ public class SearchHandler {
      */
     public boolean validateSearch(String keyword, PDFDocument pdfDocument, SearchUICallbacks callbacks) {
         if (keyword.isEmpty()) {
-            callbacks.showError("Please enter a search keyword");
+            callbacks.showError(lang().getString("search.enterKeyword"));
             return true;
         }
 
         if (pdfDocument == null) {
-            callbacks.showError("No PDF document loaded");
+            callbacks.showError(lang().getString("search.noDocument"));
             return true;
         }
 
@@ -190,7 +195,7 @@ public class SearchHandler {
 
         // Update UI state for search start
         callbacks.onSearchStart();
-        callbacks.updateStatus("Searching...");
+        callbacks.updateStatus(lang().getString("search.searching"));
 
         // Submit the search task
         searchExecutor.submit(() -> performSearch(pdfDocument, callbacks));
@@ -219,10 +224,10 @@ public class SearchHandler {
 
             Platform.runLater(() -> {
                 if (searchService.isCancelled()) {
-                    callbacks.updateStatus("Search cancelled");
+                    callbacks.updateStatus(lang().getString("search.cancelled"));
                 } else {
                     callbacks.getSearchResults().addAll(results);
-                    callbacks.updateStatus(String.format("Found %d result(s)", results.size()));
+                    callbacks.updateStatus(java.text.MessageFormat.format(lang().getString("search.found"), results.size()));
 
                     // Apply highlights to the main viewer
                     MainController mainController = callbacks.getMainController();
@@ -238,8 +243,8 @@ public class SearchHandler {
         } catch (IOException e) {
             logger.error("Error during search", e);
             Platform.runLater(() -> {
-                callbacks.showError("Error during search: " + e.getMessage());
-                callbacks.updateStatus("Search failed");
+                callbacks.showError(lang().getString("search.failed") + ": " + e.getMessage());
+                callbacks.updateStatus(lang().getString("search.failed"));
             });
         } finally {
             Platform.runLater(callbacks::onSearchComplete);

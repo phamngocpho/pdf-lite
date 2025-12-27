@@ -19,6 +19,10 @@ public class NavigationManager {
     private final UIStateManager uiStateManager;
     private final Supplier<PDFDocument> documentSupplier;
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     public NavigationManager(NavigationHelper navigationHelper,
                              PageInfoManager pageInfoManager,
                              UIStateManager uiStateManager,
@@ -40,7 +44,7 @@ public class NavigationManager {
             navigationHelper.jumpToPage(pageNum);
             logger.debug("Navigated to page {}", pageNum);
         } else {
-            uiStateManager.showError("Invalid Input", "Please enter a valid page number");
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("message.invalidFile"));
             pageInfoManager.resetPageFieldToCurrentPage(currentDocument);
         }
     }

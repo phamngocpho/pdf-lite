@@ -8,6 +8,7 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.pdflite.dialog.CustomInfoDialog;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.service.PDFMergeService;
 import org.pdflite.service.PDFService;
 import org.pdflite.service.PDFSplitService;
@@ -36,12 +37,42 @@ public class ExtractDialogController {
 
     private static final Logger logger = LoggerFactory.getLogger(ExtractDialogController.class);
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     @FXML
     private javafx.scene.layout.HBox dialogTitleBar;
+    @FXML
+    private Label fileLabelText;
     @FXML
     private Label fileNameLabel;
     @FXML
     private Label totalPagesLabel;
+    @FXML
+    private Label pagePreviewLabel;
+    @FXML
+    private Label extractOptionsLabel;
+    @FXML
+    private Label selectPagesLabel;
+    @FXML
+    private Label rangeInstructionsLabel;
+    @FXML
+    private Label examplesLabel;
+    @FXML
+    private Label example1Label;
+    @FXML
+    private Label example2Label;
+    @FXML
+    private Label example3Label;
+    @FXML
+    private Label pageRangeLabel;
+    @FXML
+    private Label outputFileLabel;
+    @FXML
+    private Label outputHintLabel;
+    @FXML
+    private Label quickActionsLabel;
     @FXML
     private ScrollPane previewScrollPane;
     @FXML
@@ -84,6 +115,9 @@ public class ExtractDialogController {
     public void initialize() {
         logger.info("Initializing ExtractDialogController");
 
+        // Update all UI text from language manager
+        updateUILanguage();
+
         // Hide the progress bar initially
         progressBar.setVisible(false);
         progressBar.setManaged(false);
@@ -92,6 +126,34 @@ public class ExtractDialogController {
         if (rangeTextArea != null) {
             rangeTextArea.textProperty().addListener((obs, oldVal, newVal) -> validateRange(newVal));
         }
+    }
+
+    /**
+     * Updates all UI text from language manager.
+     */
+    private void updateUILanguage() {
+        if (fileLabelText != null) fileLabelText.setText(lang().getString("extract.fileLabel"));
+        if (fileNameLabel != null) fileNameLabel.setText(lang().getString("extract.noFileSelected"));
+        if (pagePreviewLabel != null) pagePreviewLabel.setText(lang().getString("extract.pagePreview"));
+        if (extractOptionsLabel != null) extractOptionsLabel.setText(lang().getString("extract.extractOptions"));
+        if (selectPagesLabel != null) selectPagesLabel.setText(lang().getString("extract.selectPagesLabel"));
+        if (rangeInstructionsLabel != null) rangeInstructionsLabel.setText(lang().getString("extract.rangeInstructions"));
+        if (examplesLabel != null) examplesLabel.setText(lang().getString("extract.examplesLabel"));
+        if (example1Label != null) example1Label.setText(lang().getString("extract.example1"));
+        if (example2Label != null) example2Label.setText(lang().getString("extract.example2"));
+        if (example3Label != null) example3Label.setText(lang().getString("extract.example3"));
+        if (pageRangeLabel != null) pageRangeLabel.setText(lang().getString("extract.pageRangeLabel"));
+        if (rangeTextArea != null) rangeTextArea.setPromptText(lang().getString("extract.rangePrompt"));
+        if (outputFileLabel != null) outputFileLabel.setText(lang().getString("extract.outputFileLabel"));
+        if (outputFileNameField != null) outputFileNameField.setPromptText(lang().getString("extract.outputPrompt"));
+        if (outputHintLabel != null) outputHintLabel.setText(lang().getString("extract.outputHint"));
+        if (quickActionsLabel != null) quickActionsLabel.setText(lang().getString("extract.quickActions"));
+        if (allPagesButton != null) allPagesButton.setText(lang().getString("extract.allPages"));
+        if (oddPagesButton != null) oddPagesButton.setText(lang().getString("extract.oddPages"));
+        if (evenPagesButton != null) evenPagesButton.setText(lang().getString("extract.evenPages"));
+        if (extractButton != null) extractButton.setText(lang().getString("extract.extractButton"));
+        if (cancelButton != null) cancelButton.setText(lang().getString("extract.cancelButton"));
+        if (statusLabel != null) statusLabel.setText(lang().getString("extract.status.ready"));
     }
 
     /**
@@ -143,7 +205,7 @@ public class ExtractDialogController {
             initializeUI(file, totalPages, true);
         } catch (IOException e) {
             logger.error("Error loading PDF", e);
-            showError("Error", "Failed to load PDF: " + e.getMessage());
+            showError(lang().getString("error.title"), lang().getString("error.openPdf") + ": " + e.getMessage());
         }
     }
 
@@ -171,7 +233,7 @@ public class ExtractDialogController {
      */
     private void initializeUI(File file, int pageCount, boolean loadFromFile) {
         fileNameLabel.setText(file != null ? file.getName() : "Document");
-        totalPagesLabel.setText(String.format("Total Pages: %d", pageCount));
+        totalPagesLabel.setText(java.text.MessageFormat.format(lang().getString("extract.totalPages"), pageCount));
 
         // Load thumbnails
         if (loadFromFile) {
@@ -180,7 +242,7 @@ public class ExtractDialogController {
             loadThumbnailsFromDocument();
         }
 
-        updateStatus("Ready to extract");
+        updateStatus(lang().getString("extract.status.ready"));
 
         // Resize dialog after UI is initialized (workaround for Ubuntu sizing issue)
         if (dialogStage != null) {
@@ -223,11 +285,11 @@ public class ExtractDialogController {
         try {
             List<Integer> pages = parsePageRanges(rangeText);
             if (pages.isEmpty()) {
-                rangeValidationLabel.setText("No valid pages specified");
+                rangeValidationLabel.setText(lang().getString("extract.validation.noPages"));
                 rangeValidationLabel.setStyle("-fx-text-fill: #f44336;");
             } else {
                 rangeValidationLabel.setText(
-                        String.format("✓ %d page(s) will be extracted", pages.size())
+                        java.text.MessageFormat.format(lang().getString("extract.validation.valid"), pages.size())
                 );
                 rangeValidationLabel.setStyle("-fx-text-fill: #4CAF50;");
             }
@@ -304,26 +366,26 @@ public class ExtractDialogController {
     @FXML
     private void handleExtract() {
         if (sourceFile == null) {
-            showError("No File", "Please select a PDF file first");
+            showError(lang().getString("error.title"), lang().getString("extract.error.noFile"));
             return;
         }
 
         String rangeText = rangeTextArea.getText().trim();
         if (rangeText.isEmpty()) {
-            showError("No Pages Selected", "Please enter page ranges to extract");
+            showError(lang().getString("error.title"), lang().getString("extract.error.noPages"));
             return;
         }
 
         try {
             List<Integer> pages = parsePageRanges(rangeText);
             if (pages.isEmpty()) {
-                showError("No Pages", "No valid pages to extract");
+                showError(lang().getString("error.title"), lang().getString("extract.error.noPagesValid"));
                 return;
             }
 
             // Choose an output directory
             DirectoryChooser dirChooser = new DirectoryChooser();
-            dirChooser.setTitle("Select Output Directory");
+            dirChooser.setTitle(lang().getString("extract.selectOutput"));
             File outputDir = dirChooser.showDialog(dialogStage);
 
             if (outputDir == null) {
@@ -346,7 +408,7 @@ public class ExtractDialogController {
             performExtract(pages, outputFile);
 
         } catch (IllegalArgumentException e) {
-            showError("Invalid Range", e.getMessage());
+            showError(lang().getString("error.title"), e.getMessage());
         }
     }
 
@@ -360,7 +422,7 @@ public class ExtractDialogController {
                 progressBar.setVisible(true);
                 progressBar.setManaged(true);
                 progressBar.setProgress(ProgressIndicator.INDETERMINATE_PROGRESS);
-                updateStatus("Extracting pages...");
+                updateStatus(lang().getString("extract.status.extracting"));
 
                 // Create page ranges
                 List<PDFSplitService.PageRange> ranges = createPageRanges(pages, outputFile);
@@ -449,9 +511,9 @@ public class ExtractDialogController {
     private void handleExtractSuccess(File outputFile) {
         Platform.runLater(() -> {
             progressBar.setProgress(1.0);
-            updateStatus("Extract completed successfully!");
+            updateStatus(lang().getString("extract.status.success"));
             showInfo(
-                    String.format("Successfully extracted pages to:\n%s", outputFile.getAbsolutePath()));
+                    java.text.MessageFormat.format(lang().getString("extract.success.message"), outputFile.getAbsolutePath()));
             handleCancel();
         });
     }
@@ -465,8 +527,8 @@ public class ExtractDialogController {
             progressBar.setVisible(false);
             progressBar.setManaged(false);
             setUIEnabled(true);
-            updateStatus("Extract failed!");
-            showError("Extract Error", "Failed to extract pages: " + e.getMessage());
+            updateStatus(lang().getString("extract.status.failed"));
+            showError(lang().getString("error.title"), lang().getString("extract.error.extract") + ": " + e.getMessage());
         });
     }
 
@@ -560,7 +622,7 @@ public class ExtractDialogController {
     private void showError(String title, String message) {
         Platform.runLater(() -> CustomInfoDialog.show(
                 title,
-                "Error",
+                lang().getString("error.title"),
                 message,
                 themeManager
         ));
@@ -571,8 +633,8 @@ public class ExtractDialogController {
      */
     private void showInfo(String message) {
         Platform.runLater(() -> CustomInfoDialog.show(
-                "Extract Complete",
-                "Success",
+                lang().getString("extract.success.title"),
+                lang().getString("success.title"),
                 message,
                 themeManager
         ));

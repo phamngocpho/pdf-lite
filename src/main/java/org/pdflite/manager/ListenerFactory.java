@@ -18,6 +18,10 @@ import java.util.function.Supplier;
 public class ListenerFactory {
     private static final Logger logger = LoggerFactory.getLogger(ListenerFactory.class);
 
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Creates a zoom change listener with dynamic context.
      * The context can be updated later when the document is opened.
@@ -155,12 +159,12 @@ public class ListenerFactory {
 
             @Override
             public void onFileSaved(String fileName) {
-                uiStateManager.updateStatus("Saved: " + fileName);
+                uiStateManager.updateStatus(lang().getString("status.saved", fileName));
             }
 
             @Override
             public void onFileSaveAs(String fileName) {
-                uiStateManager.updateStatus("Saved As: " + fileName);
+                uiStateManager.updateStatus(lang().getString("status.saved", fileName));
             }
 
             @Override
@@ -170,7 +174,7 @@ public class ListenerFactory {
 
             @Override
             public void onPageDeleted(int pageNumber) {
-                uiStateManager.updateStatus("Deleted page " + pageNumber);
+                uiStateManager.updateStatus(lang().getString("success.deleted"));
             }
         };
     }

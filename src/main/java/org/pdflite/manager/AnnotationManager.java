@@ -21,6 +21,11 @@ import javafx.scene.layout.VBox;
  * and toggle button deselection behavior.
  */
 public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManager, PDFDocument currentDocument) {
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
+
     /**
      * Creates a new AnnotationManager.
      *
@@ -39,7 +44,7 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
     public void updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode mode) {
         if (pagesContainer == null) return;
         processAllAnnotationLayers(layer -> layer.setAnnotationMode(mode));
-        uiStateManager.updateStatus("Tool: " + mode);
+        uiStateManager.updateStatus(java.text.MessageFormat.format(lang().getString("annotation.tool"), mode));
     }
 
     /**
@@ -57,7 +62,7 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
             layer.redraw();
         });
 
-        uiStateManager.updateStatus("Drawing style updated");
+        uiStateManager.updateStatus(lang().getString("annotation.styleUpdated"));
     }
 
     /**
@@ -73,7 +78,7 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
             layer.redraw();
         });
 
-        uiStateManager.updateStatus("Highlight color updated");
+        uiStateManager.updateStatus(lang().getString("annotation.highlightColorUpdated"));
     }
 
     /**
@@ -100,7 +105,7 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
         List<Annotation> anns = currentDocument.getAnnotations();
 
         if (anns.isEmpty()) {
-            uiStateManager.updateStatus("Nothing to undo");
+            uiStateManager.updateStatus(lang().getString("annotation.nothingToUndo"));
             return;
         }
 
@@ -111,7 +116,7 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
 
         refreshPageAnnotations(pageIndexOfLastAnn);
 
-        uiStateManager.updateStatus("Undid last action");
+        uiStateManager.updateStatus(lang().getString("annotation.undone"));
     }
 
     /**

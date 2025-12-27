@@ -1,5 +1,8 @@
 package org.pdflite.model;
 
+import org.pdflite.manager.LanguageManager;
+
+import java.text.MessageFormat;
 import java.util.Objects;
 
 /**
@@ -14,7 +17,7 @@ public record SearchResult(int pageNumber, int startIndex, int endIndex, String 
     }
 
     public String getDisplayText() {
-        return String.format("Page %d: ...%s...",
+        return MessageFormat.format(LanguageManager.getInstance().getString("search.pageResult"),
                 pageNumber, getFullContext().trim());
     }
 

@@ -43,31 +43,31 @@
             <!-- Menu Bar -->
             <MenuBar fx:id="menuBar">
                 <Menu text="File">
-                    <MenuItem text="Open PDF..." onAction="#handleOpenPDF" accelerator="Ctrl+O"/>
+                    <MenuItem text="Open PDF" onAction="#handleOpenPDF" accelerator="Ctrl+O"/>
                     <Menu fx:id="recentFilesMenu" text="Recent Files">
                         <MenuItem text="No recent files" disable="true"/>
                     </Menu>
                     <MenuItem text="Clear Recent Files" onAction="#handleClearRecentFiles"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Export..." onAction="#handleExport" accelerator="Ctrl+Shift+E"/>
-                    <MenuItem text="Print..." onAction="#handlePrint" accelerator="Ctrl+P"/>
+                    <MenuItem text="Export" onAction="#handleExport" accelerator="Ctrl+Shift+E"/>
+                    <MenuItem text="Print" onAction="#handlePrint" accelerator="Ctrl+P"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Save" onAction="#handleSave" accelerator="Ctrl+S"/>
-                    <MenuItem text="Save As..." onAction="#handleSaveAs"/>
+                    <MenuItem text="Save As" onAction="#handleSaveAs"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Optimize PDF..." onAction="#handleOptimizePDF" accelerator="Ctrl+Shift+O"/>
-                    <MenuItem text="Document Properties..." onAction="#handleDocumentProperties" accelerator="Ctrl+D"/>
+                    <MenuItem text="Optimize PDF" onAction="#handleOptimizePDF" accelerator="Ctrl+Shift+O"/>
+                    <MenuItem text="Document Properties" onAction="#handleDocumentProperties" accelerator="Ctrl+D"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Exit" onAction="#handleExit"/>
                 </Menu>
 
                 <Menu text="Edit">
-                    <MenuItem text="Edit Text..." onAction="#handleEditText" accelerator="Ctrl+E"/>
+                    <MenuItem text="Edit Text" onAction="#handleEditText" accelerator="Ctrl+E"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Insert Image..." onAction="#handleInsertImage" accelerator="Ctrl+I"/>
-                    <MenuItem text="Insert Stamp..." onAction="#handleInsertStamp"/>
+                    <MenuItem text="Insert Image" onAction="#handleInsertImage" accelerator="Ctrl+I"/>
+                    <MenuItem text="Insert Stamp" onAction="#handleInsertStamp"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Find..." onAction="#handleSearch" accelerator="Ctrl+F"/>
+                    <MenuItem text="Find" onAction="#handleSearch" accelerator="Ctrl+F"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Hide Search Panel" onAction="#handleHideSearch" accelerator="Escape"/>
                 </Menu>
@@ -79,38 +79,38 @@
                     <MenuItem text="Fit to Page" onAction="#handleFitToPage"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Toggle Bookmarks" onAction="#handleToggleBookmarks" accelerator="Ctrl+B"/>
-                    <MenuItem text="Add Bookmark..." onAction="#handleAddBookmark" accelerator="Ctrl+Shift+B"/>
+                    <MenuItem text="Add Bookmark" onAction="#handleAddBookmark" accelerator="Ctrl+Shift+B"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Smart Bookmarks (AI-Powered)..." onAction="#handleSmartBookmarks"/>
-                    <MenuItem text="Import from PDF Outline..." onAction="#handleImportOutlineBookmarks"/>
+                    <MenuItem text="Smart Bookmarks (AI)" onAction="#handleSmartBookmarks"/>
+                    <MenuItem text="Import from PDF Outline" onAction="#handleImportOutlineBookmarks"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Clear All Bookmarks..." onAction="#handleClearAllBookmarks"/>
+                    <MenuItem text="Clear All Bookmarks" onAction="#handleClearAllBookmarks"/>
                     <SeparatorMenuItem/>
                     <MenuItem fx:id="toggleToolbarMenuItem" text="Hide Toolbar" onAction="#handleToggleToolbar"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Toggle Full Screen" onAction="#handleToggleFullScreen" accelerator="F11"/>
+                    <MenuItem fx:id="fullScreenMenuItem" text="Toggle Full Screen" onAction="#handleToggleFullScreen" accelerator="F11"/>
                 </Menu>
 
                 <Menu text="Tools">
                     <MenuItem text="Highlight" onAction="#handleHighlight"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Add Watermark..." onAction="#handleAddWatermark"/>
+                    <MenuItem text="Add Watermark" onAction="#handleAddWatermark"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Merge PDFs..." onAction="#handleMergePDFs"/>
-                    <MenuItem text="Split PDF..." onAction="#handleSplitPDF"/>
-                    <MenuItem text="Extract Pages..." onAction="#handleExtractPages"/>
-                    <MenuItem text="Reorder Pages..." onAction="#handleReorderPages"/>
+                    <MenuItem text="Merge PDFs" onAction="#handleMergePDFs"/>
+                    <MenuItem text="Split PDF" onAction="#handleSplitPDF"/>
+                    <MenuItem text="Extract Pages" onAction="#handleExtractPages"/>
+                    <MenuItem text="Reorder Pages" onAction="#handleReorderPages"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Encrypt PDF..." onAction="#handleEncryptPDF"/>
-                    <MenuItem text="Remove Password..." onAction="#handleDecryptPDF"/>
-                    <MenuItem text="Show Permissions..." onAction="#handleShowPDFPermissions"/>
+                    <MenuItem text="Encrypt PDF" onAction="#handleEncryptPDF"/>
+                    <MenuItem text="Remove Password" onAction="#handleDecryptPDF"/>
+                    <MenuItem text="Show Permissions" onAction="#handleShowPDFPermissions"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Delete Page" onAction="#handleDeletePage"/>
-                    <MenuItem text="Duplicate Page..." onAction="#handleDuplicatePage"/>
+                    <MenuItem text="Duplicate Page" onAction="#handleDuplicatePage"/>
                 </Menu>
 
                 <Menu text="Help">
-                    <MenuItem text="AI Assistant..." onAction="#handleOpenChat" accelerator="Ctrl+Shift+A"/>
+                    <MenuItem text="AI Assistant" onAction="#handleOpenChat" accelerator="Ctrl+Shift+A"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="About" onAction="#handleAbout"/>
                 </Menu>
@@ -120,19 +120,26 @@
                     <RadioMenuItem fx:id="lightThemeItem" text="Light" onAction="#setLightTheme" toggleGroup="$themeGroup"/>
                     <RadioMenuItem fx:id="darkThemeItem" text="Dark" onAction="#setDarkTheme" toggleGroup="$themeGroup"/>
                 </Menu>
+                <Menu fx:id="languageMenu" text="Language">
+                    <fx:define>
+                        <ToggleGroup fx:id="languageGroup"/>
+                    </fx:define>
+                    <RadioMenuItem fx:id="englishItem" text="English" onAction="#setEnglish" toggleGroup="$languageGroup"/>
+                    <RadioMenuItem fx:id="vietnameseItem" text="Tiếng Việt" onAction="#setVietnamese" toggleGroup="$languageGroup"/>
+                </Menu>
             </MenuBar>
 
             <!-- Modern Minimalist Toolbar -->
             <ToolBar fx:id="toolbar" styleClass="main-toolbar">
 
                 <!-- File Operations -->
-                <Button text="Open" onAction="#handleOpenPDF">
+                <Button fx:id="openButton" text="Open" onAction="#handleOpenPDF">
                     <tooltip><Tooltip text="Open PDF (Ctrl+O)"/></tooltip>
                 </Button>
-                <Button text="Save" onAction="#handleSave">
+                <Button fx:id="saveButton" text="Save" onAction="#handleSave">
                     <tooltip><Tooltip text="Save (Ctrl+S)"/></tooltip>
                 </Button>
-                <Button text="Print" onAction="#handlePrint">
+                <Button fx:id="printButton" text="Print" onAction="#handlePrint">
                     <tooltip><Tooltip text="Print (Ctrl+P)"/></tooltip>
                 </Button>
 
@@ -150,15 +157,15 @@
 
                 <!-- Zoom Group -->
                 <HBox spacing="3" alignment="CENTER">
-                    <Button text="Zoom Out" onAction="#handleZoomOut"/>
+                    <Button fx:id="zoomOutButton" text="Zoom Out" onAction="#handleZoomOut"/>
                     <ComboBox fx:id="zoomComboBox" onAction="#handleZoomChange" prefWidth="90" minWidth="90"/>
-                    <Button text="Zoom In" onAction="#handleZoomIn"/>
+                    <Button fx:id="zoomInButton" text="Zoom In" onAction="#handleZoomIn"/>
                 </HBox>
 
                 <Region prefWidth="20"/>
 
                 <!-- Bookmark Button -->
-                <Button text="Bookmarks" onAction="#handleToggleBookmarks">
+                <Button fx:id="bookmarksButton" text="Bookmarks" onAction="#handleToggleBookmarks">
                     <tooltip><Tooltip text="Toggle Bookmarks (Ctrl+B)"/></tooltip>
                 </Button>
 
@@ -166,7 +173,7 @@
 
                 <!-- Drawing Tools Group -->
                 <HBox spacing="5" alignment="CENTER" styleClass="drawing-tools-group">
-                    <MenuButton fx:id="drawingToolsMenu" text="✏ Draw">
+                    <MenuButton fx:id="drawingToolsMenu" text="Draw">
                         <tooltip><Tooltip text="Drawing Tools"/></tooltip>
                         <items>
                             <CustomMenuItem hideOnClick="false">
@@ -174,7 +181,7 @@
                                     <VBox spacing="12" styleClass="drawing-tools-popup" style="-fx-padding: 16;">
                                         <!-- Drawing Tools Section -->
                                         <VBox spacing="8">
-                                            <Label text="Drawing Tools" styleClass="drawing-tools-section-label"/>
+                                            <Label fx:id="drawingToolsLabel" text="Drawing Tools" styleClass="drawing-tools-section-label"/>
                                             <HBox spacing="8" alignment="CENTER">
                                                 <ToggleButton fx:id="btnDrawRect" toggleGroup="$drawingToolsGroup"
                                                               prefWidth="50" prefHeight="50">
@@ -195,7 +202,7 @@
                                         
                                         <!-- Drawing Color Section -->
                                         <VBox spacing="8">
-                                            <Label text="Drawing Color" styleClass="drawing-tools-section-label"/>
+                                            <Label fx:id="drawingColorLabel" text="Drawing Color" styleClass="drawing-tools-section-label"/>
                                             <ColorPicker fx:id="colorPicker" prefWidth="178" prefHeight="32" maxWidth="178"
                                                          style="-fx-color-label-visible: true;"/>
                                         </VBox>
@@ -204,7 +211,7 @@
                                         
                                         <!-- Highlight Color Section -->
                                         <VBox spacing="8">
-                                            <Label text="Highlight Color" styleClass="drawing-tools-section-label"/>
+                                            <Label fx:id="highlightColorLabel" text="Highlight Color" styleClass="drawing-tools-section-label"/>
                                             <ColorPicker fx:id="highlightColorPicker" prefWidth="178" prefHeight="32" maxWidth="178"
                                                          style="-fx-color-label-visible: true;"/>
                                         </VBox>
@@ -214,7 +221,7 @@
                                         <!-- Stroke Width Section -->
                                         <VBox spacing="8">
                                             <HBox spacing="5" alignment="CENTER_LEFT">
-                                                <Label text="Stroke Width" styleClass="drawing-tools-section-label"/>
+                                                <Label fx:id="strokeWidthTitleLabel" text="Stroke Width" styleClass="drawing-tools-section-label"/>
                                                 <Region HBox.hgrow="ALWAYS"/>
                                                 <Label fx:id="strokeWidthLabel" text="2" styleClass="stroke-width-value"/>
                                             </HBox>
@@ -286,8 +293,8 @@
                 <Region HBox.hgrow="ALWAYS"/>
 
                 <!-- AI Chat Button -->
-                <Button text="AI Chat" onAction="#handleOpenChat" styleClass="ai-chat-button">
-                    <tooltip><Tooltip text="AI Assistant (Ctrl+Shift+A)"/></tooltip>
+                <Button fx:id="aiChatButton" text="AI Chat" onAction="#handleOpenChat" styleClass="ai-chat-button">
+                    <tooltip><Tooltip fx:id="aiChatTooltip" text="AI Assistant (Ctrl+Shift+A)"/></tooltip>
                 </Button>
             </ToolBar>
         </VBox>

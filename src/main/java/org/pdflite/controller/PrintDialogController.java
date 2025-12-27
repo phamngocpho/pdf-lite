@@ -4,6 +4,7 @@ import javafx.fxml.FXML;
 import javafx.print.Printer;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
+import org.pdflite.manager.LanguageManager;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFPrintService;
 import org.pdflite.util.DialogTitleBar;
@@ -21,6 +22,10 @@ import org.slf4j.LoggerFactory;
 public class PrintDialogController {
 
     private static final Logger logger = LoggerFactory.getLogger(PrintDialogController.class);
+
+    private static LanguageManager lang() {
+        return LanguageManager.getInstance();
+    }
 
     @FXML
     private javafx.scene.layout.HBox dialogTitleBar;
@@ -110,7 +115,7 @@ public class PrintDialogController {
         this.currentPage = currentPage;
 
         if (document != null) {
-            lblTotalPages.setText("Total pages: " + document.getTotalPages());
+            lblTotalPages.setText(java.text.MessageFormat.format(lang().getString("page.total"), document.getTotalPages()));
         }
 
         // Load available printers
@@ -166,7 +171,7 @@ public class PrintDialogController {
                 // Print page range
                 String rangeText = tfPageRange.getText().trim();
                 if (rangeText.isEmpty()) {
-                    showError("Invalid Page Range", "Please enter a page range (e.g., 1-5, 7, 9-12)");
+                    showError(lang().getString("error.title"), lang().getString("print.error.noPageRange"));
                     return;
                 }
 
@@ -180,7 +185,7 @@ public class PrintDialogController {
 
         } catch (Exception e) {
             logger.error("Error during print", e);
-            showError("Print Error", "An error occurred while printing: " + e.getMessage());
+            showError(lang().getString("error.title"), lang().getString("print.error.print") + ": " + e.getMessage());
         }
     }
 
@@ -206,7 +211,7 @@ public class PrintDialogController {
                     // Range (e.g., "1-5")
                     String[] range = part.split("-");
                     if (range.length != 2) {
-                        showError("Invalid Page Range", "Invalid range format: " + part);
+                        showError(lang().getString("error.title"), lang().getString("print.error.invalidRange") + ": " + part);
                         return false;
                     }
 
@@ -214,8 +219,8 @@ public class PrintDialogController {
                     int end = Integer.parseInt(range[1].trim()) - 1;
 
                     if (start < 0 || end >= document.getTotalPages() || start > end) {
-                        showError("Invalid Page Range",
-                                "Invalid page range: " + (start + 1) + "-" + (end + 1));
+                        showError(lang().getString("error.title"),
+                                lang().getString("print.error.invalidPageRange") + ": " + (start + 1) + "-" + (end + 1));
                         return false;
                     }
 
@@ -228,8 +233,8 @@ public class PrintDialogController {
                     int page = Integer.parseInt(part.trim()) - 1; // Convert to 0-based
 
                     if (page < 0 || page >= document.getTotalPages()) {
-                        showError("Invalid Page Number",
-                                "Invalid page number: " + (page + 1));
+                        showError(lang().getString("error.title"),
+                                lang().getString("print.error.invalidPageNumber") + ": " + (page + 1));
                         return false;
                     }
 
@@ -243,7 +248,7 @@ public class PrintDialogController {
             return success;
 
         } catch (NumberFormatException e) {
-            showError("Invalid Page Range", "Please enter valid page numbers");
+            showError(lang().getString("error.title"), lang().getString("print.error.invalidNumbers"));
             return false;
         }
     }
