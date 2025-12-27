@@ -227,7 +227,8 @@ public class SearchHandler {
                     callbacks.updateStatus(lang().getString("search.cancelled"));
                 } else {
                     callbacks.getSearchResults().addAll(results);
-                    callbacks.updateStatus(java.text.MessageFormat.format(lang().getString("search.found"), results.size()));
+                    String message = lang().getString("search.found").replace("{0}", String.valueOf(results.size()));
+                    callbacks.updateStatus(message);
 
                     // Apply highlights to the main viewer
                     MainController mainController = callbacks.getMainController();

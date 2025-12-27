@@ -67,7 +67,7 @@
                     <MenuItem text="Insert Image" onAction="#handleInsertImage" accelerator="Ctrl+I"/>
                     <MenuItem text="Insert Stamp" onAction="#handleInsertStamp"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Find" onAction="#handleSearch" accelerator="Ctrl+F"/>
+                    <MenuItem text="Find" onAction="#handleSearchLeft" accelerator="Ctrl+F"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Hide Search Panel" onAction="#handleHideSearch" accelerator="Escape"/>
                 </Menu>

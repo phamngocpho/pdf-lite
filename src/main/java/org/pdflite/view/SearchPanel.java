@@ -89,19 +89,29 @@ public class SearchPanel extends VBox {
 
         Label searchLabel = new Label(lang().getString("search.title") + ":");
         searchLabel.getStyleClass().add("search-title");
+        searchLabel.setStyle("-fx-font-size: 13px;");
 
         searchField.setPromptText(lang().getString("search.keyword"));
         searchField.getStyleClass().add("search-input");
+        searchField.setStyle("-fx-font-size: 12px;");
 
-        HBox searchBox = new HBox(10);
+        // Set minimum width for buttons to prevent text truncation
+        searchButton.setMinWidth(70);
+        searchButton.setPrefWidth(70);
+        cancelButton.setMinWidth(70);
+        cancelButton.setPrefWidth(70);
+
+        HBox searchBox = new HBox(8);
         searchBox.getChildren().addAll(searchField, searchButton, cancelButton, progressIndicator);
         HBox.setHgrow(searchField, Priority.ALWAYS);
 
         HBox optionsBox = new HBox(20);
         caseSensitiveCheckbox.setText(lang().getString("search.caseSensitive"));
         caseSensitiveCheckbox.getStyleClass().add("search-checkbox");
+        caseSensitiveCheckbox.setStyle("-fx-font-size: 12px;");
         wholeWordCheckbox.setText(lang().getString("search.wholeWord"));
         wholeWordCheckbox.getStyleClass().add("search-checkbox");
+        wholeWordCheckbox.setStyle("-fx-font-size: 12px;");
         optionsBox.getChildren().addAll(caseSensitiveCheckbox, wholeWordCheckbox);
 
         searchControls.getChildren().addAll(searchLabel, searchBox, optionsBox);
@@ -110,11 +120,12 @@ public class SearchPanel extends VBox {
         VBox resultsSection = new VBox(5);
         resultsSection.getStyleClass().add("search-results");
 
-        HBox resultsHeader = new HBox(10);
+        HBox resultsHeader = new HBox(8);
         resultsHeader.setAlignment(Pos.CENTER_LEFT);
 
-        Label resultsLabel = new Label(lang().getString("search.results"));
+        Label resultsLabel = new Label(lang().getString("search.resultsLabel"));
         resultsLabel.getStyleClass().add("search-title");
+        resultsLabel.setStyle("-fx-font-size: 13px;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -122,13 +133,20 @@ public class SearchPanel extends VBox {
 
         prevResultButton.setText(lang().getString("search.prev"));
         prevResultButton.getStyleClass().add("search-nav-btn");
+        prevResultButton.setStyle("-fx-font-size: 11px;");
+        prevResultButton.setMinWidth(55);
+        prevResultButton.setPrefWidth(55);
         nextResultButton.setText(lang().getString("search.next"));
         nextResultButton.getStyleClass().add("search-nav-btn");
+        nextResultButton.setStyle("-fx-font-size: 11px;");
+        nextResultButton.setMinWidth(55);
+        nextResultButton.setPrefWidth(55);
 
         resultsHeader.getChildren().addAll(resultsLabel, spacer, prevResultButton, nextResultButton);
 
         resultsListView.setItems(searchResults);
         resultsListView.setCellFactory(lv -> new SearchResultCell());
+        resultsListView.setStyle("-fx-font-size: 11px;");
         VBox.setVgrow(resultsListView, Priority.ALWAYS);
 
         resultsSection.getChildren().addAll(resultsHeader, resultsListView);
@@ -136,20 +154,26 @@ public class SearchPanel extends VBox {
         // Status bar
         HBox statusBar = new HBox();
         statusBar.getStyleClass().add("search-status-bar");
+        statusLabel.setStyle("-fx-font-size: 11px;");
         statusBar.getChildren().add(statusLabel);
 
         // Add all sections
         getChildren().addAll(searchControls, resultsSection, statusBar);
+        
+        // Make results section grow to fill available space
+        VBox.setVgrow(resultsSection, Priority.ALWAYS);
 
         // Initial state
         progressIndicator.setMaxSize(20, 20);
         progressIndicator.setVisible(false);
         cancelButton.setDisable(true);
+        cancelButton.setStyle("-fx-font-size: 12px;");
         prevResultButton.setDisable(true);
         nextResultButton.setDisable(true);
 
         // Style buttons
         searchButton.getStyleClass().add("search-button");
+        searchButton.setStyle("-fx-font-size: 12px;");
     }
 
     /**
