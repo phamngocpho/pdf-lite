@@ -8,20 +8,12 @@ import org.slf4j.LoggerFactory;
 /**
  * Manager for toolbar visibility operations.
  */
-public class ToolbarManager {
+public record ToolbarManager(ToolBar toolbar, MenuItem toggleToolbarMenuItem) {
 
     private static final Logger logger = LoggerFactory.getLogger(ToolbarManager.class);
 
     private static LanguageManager lang() {
         return LanguageManager.getInstance();
-    }
-
-    private final ToolBar toolbar;
-    private final MenuItem toggleToolbarMenuItem;
-
-    public ToolbarManager(ToolBar toolbar, MenuItem toggleToolbarMenuItem) {
-        this.toolbar = toolbar;
-        this.toggleToolbarMenuItem = toggleToolbarMenuItem;
     }
 
     /**

@@ -1,9 +1,11 @@
 package org.pdflite.manager;
 
+import java.util.List;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 
 import org.pdflite.controller.PageRenderer;
+import org.pdflite.model.Annotation;
 import org.pdflite.model.CommentAnnotation;
 import org.pdflite.model.PDFDocument;
 import org.slf4j.Logger;
@@ -14,17 +16,13 @@ import javafx.scene.paint.Color;
 /**
  * Manages comment annotation operations.
  */
-public class CommentManager {
+public record CommentManager(UIStateManager uiStateManager, Supplier<PDFDocument> documentSupplier,
+                             DoubleSupplier zoomSupplier, Supplier<AnnotationManager> annotationManagerSupplier) {
     private static final Logger logger = LoggerFactory.getLogger(CommentManager.class);
 
     private static LanguageManager lang() {
         return LanguageManager.getInstance();
     }
-
-    private final UIStateManager uiStateManager;
-    private final Supplier<PDFDocument> documentSupplier;
-    private final DoubleSupplier zoomSupplier;
-    private final Supplier<AnnotationManager> annotationManagerSupplier;
 
     /**
      * Creates a new CommentManager.
@@ -100,17 +98,17 @@ public class CommentManager {
 
                         // Find comment at cursor position
                         CommentAnnotation targetComment = null;
-                        java.util.List<org.pdflite.model.Annotation> allAnnotations = currentDocument.getAnnotations();
-                        
+                        List<Annotation> allAnnotations = currentDocument.getAnnotations();
+
                         double iconSize = 24;
                         for (int i = allAnnotations.size() - 1; i >= 0; i--) {
-                            org.pdflite.model.Annotation annotation = allAnnotations.get(i);
+                            Annotation annotation = allAnnotations.get(i);
                             if (annotation.getPageNumber() != pageIndex) {
                                 continue;
                             }
                             if (annotation instanceof CommentAnnotation comment) {
                                 if (canvasX >= comment.getX() && canvasX <= comment.getX() + iconSize &&
-                                    canvasY >= comment.getY() && canvasY <= comment.getY() + iconSize) {
+                                        canvasY >= comment.getY() && canvasY <= comment.getY() + iconSize) {
                                     targetComment = comment;
                                     break;
                                 }

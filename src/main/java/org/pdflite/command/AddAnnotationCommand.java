@@ -5,16 +5,15 @@ import org.pdflite.model.PDFDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.function.Consumer;
+
 /**
  * Command for adding an annotation to a PDF document.
  * Supports undo by removing the annotation.
  */
-public class AddAnnotationCommand implements Command {
+public record AddAnnotationCommand(PDFDocument document, Annotation annotation,
+                                   Consumer<Integer> refreshCallback) implements Command {
     private static final Logger logger = LoggerFactory.getLogger(AddAnnotationCommand.class);
-
-    private final PDFDocument document;
-    private final Annotation annotation;
-    private final java.util.function.Consumer<Integer> refreshCallback;
 
     /**
      * Creates a new AddAnnotationCommand.
@@ -23,11 +22,7 @@ public class AddAnnotationCommand implements Command {
      * @param annotation      the annotation to add
      * @param refreshCallback callback to refresh the page display (takes page index)
      */
-    public AddAnnotationCommand(PDFDocument document, Annotation annotation,
-                                java.util.function.Consumer<Integer> refreshCallback) {
-        this.document = document;
-        this.annotation = annotation;
-        this.refreshCallback = refreshCallback;
+    public AddAnnotationCommand {
     }
 
     @Override
