@@ -50,7 +50,13 @@ public class SmartTextSelector {
         }
 
         public Rectangle2D.Float getBounds() {
-            return new Rectangle2D.Float(x, y - height, width, height);
+            // Extend highlight region to cover descenders (below) only
+            // y is the baseline, so we need to:
+            // - Go up by height * 0.75 (just enough to cover normal letters)
+            // - Go down by height * 0.25 to cover descenders (p, g, y, q)
+            // Total height: 0.75 + 0.25 = 1.0
+            float yTop = y - height * 0.75f;  // Start from the top of normal letters
+            return new Rectangle2D.Float(x, yTop, width, height);
         }
 
         public String getText() {
