@@ -495,15 +495,20 @@ public class ContextMenuHandler {
                     float height = (float) (maxY - minY);
 
                     // Convert to PDF User Space coordinates (bottom-left origin)
-                    // For the covering rectangle. We need the bottom-left corner
-                    // to Extend upward for diacritics and downward for descenders
-                    float coverY = currentPageHeight - yJava - height - 3.0f;  // Extend down 3 points
-                    float coverHeight = height + 9.0f;  // Extend up 6 points plus down 3 points = total 9
+                    // The highlight region now uses 0.75x above baseline and 0.25x below
+                    // So we need to adjust the cover rectangle accordingly
+                    // Extend down a bit more to ensure full coverage of descenders
+                    float extendDown = height * 0.05f;  // Extend down 5% of height
+                    float extendUp = height * 0.1f;     // Extend up 10% of height for diacritics
+                    
+                    float coverY = currentPageHeight - yJava - height - extendDown;
+                    float coverHeight = height + extendDown + extendUp;
 
                     // For text placement, we need the baseline position
-                    // Since coverY was extended down by 3 points, add 3 to compensate and keep text position
-                    // Then add the original offset (12% of height)
-                    float textY = coverY + 3.0f;
+                    // The baseline should be at the bottom of the highlight region plus the descender space
+                    // Since highlight goes 0.75x above and 0.25x below baseline:
+                    // baseline = coverY + (height * 0.25) + extendDown
+                    float textY = coverY + (height * 0.25f) + extendDown;
 
                     // Extract font and font size from the first TextPosition
                     PDFont originalFont = null;

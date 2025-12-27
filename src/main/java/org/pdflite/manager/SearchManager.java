@@ -195,8 +195,8 @@ public class SearchManager {
 
         searchPanel.setVisible(true);
         searchPanel.setManaged(true);
-        searchPanel.setPrefWidth(320);
-        searchPanel.setMinWidth(250);
+        searchPanel.setPrefWidth(350);
+        searchPanel.setMinWidth(300);
         searchPanel.setMaxWidth(450);
 
         if (position == SearchPanelPosition.LEFT) {

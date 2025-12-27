@@ -232,9 +232,9 @@ public class BookmarkUIManager {
         }
 
         boolean confirm = CustomConfirmDialog.show(
-            lang().getString("menu.view.smartBookmarks"),
-            lang().getString("menu.view.smartBookmarks"),
-            lang().getString("menu.view.smartBookmarks"),
+            lang().getString("smartBookmark.confirmTitle"),
+            lang().getString("smartBookmark.confirmHeader"),
+            lang().getString("smartBookmark.confirmMessage"),
             themeManager
         );
 
@@ -267,10 +267,8 @@ public class BookmarkUIManager {
                     
                 } catch (Exception e) {
                     logger.error("Error creating smart bookmarks", e);
-                    Platform.runLater(() -> {
-                        uiStateManager.showError(lang().getString("error.title"), 
-                            lang().getString("error.bookmark") + ": " + e.getMessage());
-                    });
+                    Platform.runLater(() -> uiStateManager.showError(lang().getString("error.title"),
+                        lang().getString("error.bookmark") + ": " + e.getMessage()));
                 }
             }, "SmartBookmarkAnalyzer").start();
         }

@@ -11,33 +11,15 @@ import org.slf4j.LoggerFactory;
 /**
  * Manages document saving operations including save, save as, and highlight persistence.
  */
-public class SaveManager {
+public record SaveManager(FileManager fileManager, DocumentLifecycleManager documentLifecycleManager,
+                          HighlightPersistenceManager highlightPersistenceManager, AutoSaveManager autoSaveManager,
+                          SaveStatusManager saveStatusManager, UIStateManager uiStateManager,
+                          DialogManager dialogManager) {
 
     private static final Logger logger = LoggerFactory.getLogger(SaveManager.class);
 
-    private final FileManager fileManager;
-    private final DocumentLifecycleManager documentLifecycleManager;
-    private final HighlightPersistenceManager highlightPersistenceManager;
-    private final AutoSaveManager autoSaveManager;
-    private final SaveStatusManager saveStatusManager;
-    private final UIStateManager uiStateManager;
-    private final DialogManager dialogManager;
-
     private static LanguageManager lang() {
         return LanguageManager.getInstance();
-    }
-
-    public SaveManager(FileManager fileManager, DocumentLifecycleManager documentLifecycleManager,
-                       HighlightPersistenceManager highlightPersistenceManager, AutoSaveManager autoSaveManager,
-                       SaveStatusManager saveStatusManager, UIStateManager uiStateManager,
-                       DialogManager dialogManager) {
-        this.fileManager = fileManager;
-        this.documentLifecycleManager = documentLifecycleManager;
-        this.highlightPersistenceManager = highlightPersistenceManager;
-        this.autoSaveManager = autoSaveManager;
-        this.saveStatusManager = saveStatusManager;
-        this.uiStateManager = uiStateManager;
-        this.dialogManager = dialogManager;
     }
 
     /**

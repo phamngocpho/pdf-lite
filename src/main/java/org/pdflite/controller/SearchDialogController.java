@@ -280,7 +280,7 @@ public class SearchDialogController {
                 if (text != null) {
                     switch (text) {
                         case "Search:" -> label.setText(lang().getString("search.label"));
-                        case "Results:" -> label.setText(lang().getString("search.results"));
+                        case "Results:" -> label.setText(lang().getString("search.resultsLabel"));
                     }
                 }
             } else if (node instanceof javafx.scene.Parent p) {

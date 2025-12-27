@@ -10,27 +10,13 @@ import java.util.function.Supplier;
 /**
  * Manager for page navigation operations.
  */
-public class NavigationManager {
+public record NavigationManager(NavigationHelper navigationHelper, PageInfoManager pageInfoManager,
+                                UIStateManager uiStateManager, Supplier<PDFDocument> documentSupplier) {
 
     private static final Logger logger = LoggerFactory.getLogger(NavigationManager.class);
 
-    private final NavigationHelper navigationHelper;
-    private final PageInfoManager pageInfoManager;
-    private final UIStateManager uiStateManager;
-    private final Supplier<PDFDocument> documentSupplier;
-
     private static LanguageManager lang() {
         return LanguageManager.getInstance();
-    }
-
-    public NavigationManager(NavigationHelper navigationHelper,
-                             PageInfoManager pageInfoManager,
-                             UIStateManager uiStateManager,
-                             Supplier<PDFDocument> documentSupplier) {
-        this.navigationHelper = navigationHelper;
-        this.pageInfoManager = pageInfoManager;
-        this.uiStateManager = uiStateManager;
-        this.documentSupplier = documentSupplier;
     }
 
     /**
@@ -39,7 +25,7 @@ public class NavigationManager {
     public void handleGoToPage() {
         PDFDocument currentDocument = documentSupplier.get();
         int pageNum = pageInfoManager.getPageNumberFromField();
-        
+
         if (pageNum > 0) {
             navigationHelper.jumpToPage(pageNum);
             logger.debug("Navigated to page {}", pageNum);
@@ -64,7 +50,7 @@ public class NavigationManager {
      */
     public void handleNextPage() {
         PDFDocument currentDocument = documentSupplier.get();
-        if (currentDocument != null 
+        if (currentDocument != null
                 && currentDocument.getCurrentPage() < currentDocument.getTotalPages() - 1) {
             navigationHelper.navigateToPage(currentDocument.getCurrentPage() + 1);
         }
