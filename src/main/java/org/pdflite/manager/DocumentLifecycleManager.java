@@ -178,8 +178,14 @@ public record DocumentLifecycleManager(PDFService pdfService, FileManager fileMa
             try {
                 fileManager.save(currentDocument);
             } catch (IOException e) {
-                logger.error("Error saving document", e);
-                uiStateManager.showError(lang().getString("error.title"), lang().getString("error.saveFailed") + ": " + e.getMessage());
+                // Check if this is a signed PDF warning (not a real error)
+                if (e.getMessage() != null && e.getMessage().contains("digital signatures")) {
+                    logger.warn("Cannot save signed PDF: {}", e.getMessage());
+                    uiStateManager.showError(lang().getString("error.title"), lang().getString("error.saveSignedPdf"));
+                } else {
+                    logger.error("Error saving document", e);
+                    uiStateManager.showError(lang().getString("error.title"), lang().getString("error.saveFailed") + ": " + e.getMessage());
+                }
             }
         }
     }

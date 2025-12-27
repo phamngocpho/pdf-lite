@@ -103,6 +103,21 @@ public class AutoSaveManager {
         }
 
         try {
+            // Check if document has digital signatures - skip auto-save to avoid invalidating them
+            PDDocument pdDoc = document.getDocument();
+            if (pdDoc != null) {
+                try {
+                    java.util.List<org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature> signatures =
+                            pdDoc.getSignatureDictionaries();
+                    if (signatures != null && !signatures.isEmpty()) {
+                        logger.debug("Skipping auto-save for signed document to preserve signatures");
+                        return;
+                    }
+                } catch (Exception e) {
+                    logger.debug("Could not check signatures, proceeding with auto-save");
+                }
+            }
+
             // Auto-save directly to the original file (not backup)
             File originalFile = document.getFile();
             if (originalFile != null) {
@@ -110,7 +125,6 @@ public class AutoSaveManager {
                 // This ensures proper handling of content stream modifications
                 // by saving to temp file, closing, and reloading the document
                 
-                PDDocument pdDoc = document.getDocument();
                 if (pdDoc != null) {
                     // Save to temporary file first
                     File tempFile = new File(originalFile.getParent(),
@@ -174,7 +188,6 @@ public class AutoSaveManager {
                 File autoSaveFile = getAutoSaveFile(document);
                 File metadataFile = getMetadataFile(document);
 
-                PDDocument pdDoc = document.getDocument();
                 if (pdDoc != null) {
                     // CRITICAL: Synchronize on the document to prevent concurrent access
                     synchronized (pdDoc) {
