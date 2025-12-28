@@ -53,19 +53,21 @@
                     <MenuItem text="Print" onAction="#handlePrint" accelerator="Ctrl+P"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Save" onAction="#handleSave" accelerator="Ctrl+S"/>
-                    <MenuItem text="Save As" onAction="#handleSaveAs"/>
+                    <MenuItem text="Save As" onAction="#handleSaveAs" accelerator="Ctrl+Shift+S"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Optimize PDF" onAction="#handleOptimizePDF" accelerator="Ctrl+Shift+O"/>
                     <MenuItem text="Document Properties" onAction="#handleDocumentProperties" accelerator="Ctrl+D"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Exit" onAction="#handleExit"/>
+                    <MenuItem text="Settings" onAction="#handleSettings" accelerator="Ctrl+Alt+S"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="Exit" onAction="#handleExit" accelerator="Alt+F4"/>
                 </Menu>
 
                 <Menu text="Edit">
                     <MenuItem text="Edit Text" onAction="#handleEditText" accelerator="Ctrl+E"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Insert Image" onAction="#handleInsertImage" accelerator="Ctrl+I"/>
-                    <MenuItem text="Insert Stamp" onAction="#handleInsertStamp"/>
+                    <MenuItem text="Insert Stamp" onAction="#handleInsertStamp" accelerator="Ctrl+Shift+I"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Find" onAction="#handleSearchLeft" accelerator="Ctrl+F"/>
                     <SeparatorMenuItem/>
@@ -75,31 +77,31 @@
                 <Menu text="View">
                     <MenuItem text="Zoom In" onAction="#handleZoomIn" accelerator="Ctrl+Plus"/>
                     <MenuItem text="Zoom Out" onAction="#handleZoomOut" accelerator="Ctrl+Minus"/>
-                    <MenuItem text="Fit to Width" onAction="#handleFitToWidth"/>
-                    <MenuItem text="Fit to Page" onAction="#handleFitToPage"/>
+                    <MenuItem text="Fit to Width" onAction="#handleFitToWidth" accelerator="Ctrl+0"/>
+                    <MenuItem text="Fit to Page" onAction="#handleFitToPage" accelerator="Ctrl+1"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Toggle Bookmarks" onAction="#handleToggleBookmarks" accelerator="Ctrl+B"/>
                     <MenuItem text="Add Bookmark" onAction="#handleAddBookmark" accelerator="Ctrl+Shift+B"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Smart Bookmarks (AI)" onAction="#handleSmartBookmarks"/>
-                    <MenuItem text="Import from PDF Outline" onAction="#handleImportOutlineBookmarks"/>
+                    <MenuItem text="Smart Bookmarks (AI)" onAction="#handleSmartBookmarks" accelerator="Ctrl+Alt+B"/>
+                    <MenuItem text="Import from PDF Outline" onAction="#handleImportOutlineBookmarks" accelerator="Ctrl+Alt+O"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Clear All Bookmarks" onAction="#handleClearAllBookmarks"/>
+                    <MenuItem text="Clear All Bookmarks" onAction="#handleClearAllBookmarks" accelerator="Ctrl+Shift+Delete"/>
                     <SeparatorMenuItem/>
-                    <MenuItem fx:id="toggleToolbarMenuItem" text="Hide Toolbar" onAction="#handleToggleToolbar"/>
+                    <MenuItem fx:id="toggleToolbarMenuItem" text="Hide Toolbar" onAction="#handleToggleToolbar" accelerator="Ctrl+T"/>
                     <SeparatorMenuItem/>
                     <MenuItem fx:id="fullScreenMenuItem" text="Toggle Full Screen" onAction="#handleToggleFullScreen" accelerator="F11"/>
                 </Menu>
 
                 <Menu text="Tools">
-                    <MenuItem text="Highlight" onAction="#handleHighlight"/>
+                    <MenuItem text="Highlight" onAction="#handleHighlight" accelerator="Ctrl+H"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Add Watermark" onAction="#handleAddWatermark"/>
+                    <MenuItem text="Add Watermark" onAction="#handleAddWatermark" accelerator="Ctrl+W"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Merge PDFs" onAction="#handleMergePDFs"/>
-                    <MenuItem text="Split PDF" onAction="#handleSplitPDF"/>
-                    <MenuItem text="Extract Pages" onAction="#handleExtractPages"/>
-                    <MenuItem text="Reorder Pages" onAction="#handleReorderPages"/>
+                    <MenuItem text="Merge PDFs" onAction="#handleMergePDFs" accelerator="Ctrl+M"/>
+                    <MenuItem text="Split PDF" onAction="#handleSplitPDF" accelerator="Ctrl+Shift+P"/>
+                    <MenuItem text="Extract Pages" onAction="#handleExtractPages" accelerator="Ctrl+Shift+X"/>
+                    <MenuItem text="Reorder Pages" onAction="#handleReorderPages" accelerator="Ctrl+Shift+R"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Encrypt PDF" onAction="#handleEncryptPDF"/>
                     <MenuItem text="Digital Signature" onAction="#handleDigitalSignature"/>
@@ -107,14 +109,14 @@
                     <MenuItem text="Remove Password" onAction="#handleDecryptPDF"/>
                     <MenuItem text="Show Permissions" onAction="#handleShowPDFPermissions"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Delete Page" onAction="#handleDeletePage"/>
-                    <MenuItem text="Duplicate Page" onAction="#handleDuplicatePage"/>
+                    <MenuItem text="Delete Page" onAction="#handleDeletePage" accelerator="Delete"/>
+                    <MenuItem text="Duplicate Page" onAction="#handleDuplicatePage" accelerator="Ctrl+Shift+D"/>
                 </Menu>
 
                 <Menu text="Help">
                     <MenuItem text="AI Assistant" onAction="#handleOpenChat" accelerator="Ctrl+Shift+A"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="About" onAction="#handleAbout"/>
+                    <MenuItem text="About" onAction="#handleAbout" accelerator="F1"/>
                 </Menu>
                 <Menu text="Theme">
                     <RadioMenuItem fx:id="systemThemeItem" text="System" onAction="#setSystemTheme" selected="true" toggleGroup="$themeGroup"/>

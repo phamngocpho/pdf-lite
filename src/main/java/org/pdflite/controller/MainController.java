@@ -6,13 +6,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.pdflite.manager.ChatUIManager;
-import org.pdflite.service.AICommandExecutor;
 import org.pdflite.service.GroqService;
 
 import javafx.scene.control.*;
+import org.pdflite.dialog.SettingsDialog;
 import org.pdflite.manager.*;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
@@ -1143,6 +1142,21 @@ public class MainController {
     @FXML
     private void handleAbout() {
         dialogManager.showAboutDialog();
+    }
+
+    // ==================== Settings Dialog ====================
+
+    @FXML
+    private void handleSettings() {
+        SettingsDialog settingsDialog = new SettingsDialog(themeManager);
+        boolean saved = settingsDialog.showAndWait();
+        if (saved) {
+            // Refresh UI after settings change
+            if (uiLanguageManager != null) {
+                uiLanguageManager.updateUILanguage();
+            }
+            logger.info("Settings saved and applied");
+        }
     }
 
     // ==================== Document Properties ====================

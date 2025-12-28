@@ -1147,6 +1147,125 @@
     -fx-background-color: rgba(0, 0, 0, 0.1);
 }
 
+/* ==================== SETTINGS DIALOG ==================== */
+.settings-content {
+    -fx-background-color: transparent;
+}
+
+.settings-sidebar {
+    -fx-background-color: #f5f5f7;
+    -fx-padding: 15;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 0 1 0 0;
+}
+
+.settings-nav-item {
+    -fx-background-color: transparent;
+    -fx-text-fill: #666666;
+    -fx-font-size: 13px;
+    -fx-padding: 10 12;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+
+.settings-nav-item:hover {
+    -fx-background-color: rgba(0,0,0,0.05);
+}
+
+.settings-nav-item.active {
+    -fx-background-color: #e8e8ed;
+    -fx-text-fill: #1a1a1a;
+    -fx-font-weight: bold;
+}
+
+.settings-main {
+    -fx-background-color: #ffffff;
+}
+
+.settings-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+
+.settings-scroll .viewport {
+    -fx-background-color: transparent;
+}
+
+.settings-section {
+    -fx-background-color: transparent;
+}
+
+.settings-group {
+    -fx-padding: 0 0 15 0;
+}
+
+.settings-group-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #333333;
+}
+
+.settings-group-desc {
+    -fx-font-size: 11px;
+    -fx-text-fill: #888888;
+}
+
+.settings-combo {
+    -fx-background-color: #f5f5f7;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 6 10;
+}
+
+.settings-radio {
+    -fx-font-size: 13px;
+    -fx-text-fill: #333333;
+}
+
+.settings-checkbox {
+    -fx-font-size: 13px;
+    -fx-text-fill: #333333;
+}
+
+.settings-spinner {
+    -fx-background-color: #f5f5f7;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.settings-label-small {
+    -fx-font-size: 12px;
+    -fx-text-fill: #666666;
+}
+
+.settings-btn {
+    -fx-background-color: #f5f5f7;
+    -fx-text-fill: #333333;
+    -fx-border-color: #e0e0e0;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 6 14;
+    -fx-cursor: hand;
+}
+
+.settings-btn:hover {
+    -fx-background-color: #e8e8ed;
+}
+
+.settings-reset-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #888888;
+    -fx-font-size: 11px;
+    -fx-padding: 8 12;
+    -fx-cursor: hand;
+}
+
+.settings-reset-btn:hover {
+    -fx-text-fill: #ff6b6b;
+}
+
 
 /* ==================== CHAT SIDEBAR ==================== */
 .chat-sidebar {
