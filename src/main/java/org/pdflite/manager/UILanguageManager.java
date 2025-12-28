@@ -270,7 +270,7 @@ public class UILanguageManager {
 
     private void updatePDFToolsMenuItems(MenuButton menuBtn) {
         var items = menuBtn.getItems();
-        if (items.size() >= 13) {
+        if (items.size() >= 15) {
             setMenuItemText(items, 0, "pdftools.insertPage");
             setMenuItemText(items, 1, "menu.tools.watermark");
             setMenuItemText(items, 3, "menu.tools.merge");
@@ -278,10 +278,12 @@ public class UILanguageManager {
             setMenuItemText(items, 5, "menu.tools.extract");
             setMenuItemText(items, 6, "menu.tools.reorder");
             setMenuItemText(items, 8, "menu.tools.encrypt");
-            setMenuItemText(items, 9, "menu.tools.decrypt");
-            setMenuItemText(items, 10, "menu.tools.permissions");
-            setMenuItemText(items, 12, "menu.tools.deletePage");
-            setMenuItemText(items, 13, "menu.tools.duplicatePage");
+            setMenuItemText(items, 9, "menu.tools.digitalSignature");
+            setMenuItemText(items, 10, "menu.tools.verifySignatures");
+            setMenuItemText(items, 11, "menu.tools.decrypt");
+            setMenuItemText(items, 12, "menu.tools.permissions");
+            setMenuItemText(items, 14, "menu.tools.deletePage");
+            setMenuItemText(items, 15, "menu.tools.duplicatePage");
         }
     }
 
@@ -392,7 +394,7 @@ public class UILanguageManager {
 
     private void updateToolsMenuItems(Menu menu) {
         var items = menu.getItems();
-        if (items.size() >= 15) {
+        if (items.size() >= 17) {
             setMenuItemText(items, 0, "menu.tools.highlight");
             setMenuItemText(items, 2, "menu.tools.watermark");
             setMenuItemText(items, 4, "menu.tools.merge");
@@ -400,10 +402,12 @@ public class UILanguageManager {
             setMenuItemText(items, 6, "menu.tools.extract");
             setMenuItemText(items, 7, "menu.tools.reorder");
             setMenuItemText(items, 9, "menu.tools.encrypt");
-            setMenuItemText(items, 10, "menu.tools.decrypt");
-            setMenuItemText(items, 11, "menu.tools.permissions");
-            setMenuItemText(items, 13, "menu.tools.deletePage");
-            setMenuItemText(items, 14, "menu.tools.duplicatePage");
+            setMenuItemText(items, 10, "menu.tools.digitalSignature");
+            setMenuItemText(items, 11, "menu.tools.verifySignatures");
+            setMenuItemText(items, 12, "menu.tools.decrypt");
+            setMenuItemText(items, 13, "menu.tools.permissions");
+            setMenuItemText(items, 15, "menu.tools.deletePage");
+            setMenuItemText(items, 16, "menu.tools.duplicatePage");
         }
     }
 

@@ -102,6 +102,8 @@
                     <MenuItem text="Reorder Pages" onAction="#handleReorderPages"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Encrypt PDF" onAction="#handleEncryptPDF"/>
+                    <MenuItem text="Digital Signature" onAction="#handleDigitalSignature"/>
+                    <MenuItem text="Verify Signatures" onAction="#handleVerifySignatures"/>
                     <MenuItem text="Remove Password" onAction="#handleDecryptPDF"/>
                     <MenuItem text="Show Permissions" onAction="#handleShowPDFPermissions"/>
                     <SeparatorMenuItem/>
@@ -259,6 +261,8 @@
                         <MenuItem text="Reorder Pages..." onAction="#handleReorderPages"/>
                         <SeparatorMenuItem/>
                         <MenuItem text="Encrypt PDF..." onAction="#handleEncryptPDF"/>
+                        <MenuItem text="Digital Signature..." onAction="#handleDigitalSignature"/>
+                        <MenuItem text="Verify Signatures..." onAction="#handleVerifySignatures"/>
                         <MenuItem text="Remove Password..." onAction="#handleDecryptPDF"/>
                         <MenuItem text="Show Permissions..." onAction="#handleShowPDFPermissions"/>
                         <SeparatorMenuItem/>

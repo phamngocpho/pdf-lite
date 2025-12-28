@@ -1124,6 +1124,16 @@ public class MainController {
     }
 
     @FXML
+    private void handleDigitalSignature() {
+        encryptionManager.digitalSignature(getActiveDocument());
+    }
+
+    @FXML
+    private void handleVerifySignatures() {
+        encryptionManager.verifySignatures(getActiveDocument());
+    }
+
+    @FXML
     private void handleDecryptPDF() {
         encryptionManager.decryptPDF(getActiveDocument());
     }

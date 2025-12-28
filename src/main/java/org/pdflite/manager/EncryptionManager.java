@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
+import org.pdflite.dialog.DigitalSignatureDialog;
 import org.pdflite.dialog.EncryptionDialog;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
@@ -135,6 +136,149 @@ public record EncryptionManager(BorderPane rootPane, PDFService pdfService, Them
                         lang().getString("error.encrypt") + ": " + e.getMessage());
             }
         });
+    }
+
+    /**
+     * Opens digital signature dialog to sign a PDF file.
+     *
+     * @param currentDocument the current PDF document
+     */
+    public void digitalSignature(PDFDocument currentDocument) {
+        if (currentDocument == null) {
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"),
+                    lang().getString("error.noPdfLoadedMsg"));
+            return;
+        }
+
+        DigitalSignatureDialog dialog = new DigitalSignatureDialog();
+        dialog.setTotalPages(currentDocument.getDocument().getNumberOfPages());
+
+        dialog.showAndWait(themeManager).ifPresent(result -> {
+            try {
+                Stage stage = (Stage) rootPane.getScene().getWindow();
+                FileChooser fileChooser = new FileChooser();
+                fileChooser.setTitle(lang().getString("dialog.title.save"));
+                fileChooser.setInitialFileName("signed_" + currentDocument.getFileName());
+                fileChooser.getExtensionFilters().add(
+                        new FileChooser.ExtensionFilter(Constants.PDF_DESCRIPTION, Constants.PDF_EXTENSION)
+                );
+
+                File outputFile = fileChooser.showSaveDialog(stage);
+                if (outputFile == null) {
+                    return; // User cancelled
+                }
+
+                // Sign the PDF
+                pdfService.signPDF(
+                        currentDocument.getFile(),
+                        outputFile,
+                        result.keystorePath(),
+                        result.keystorePassword(),
+                        result.alias(),
+                        result.keyPassword(),
+                        result.reason(),
+                        result.location(),
+                        result.contact(),
+                        result.visibleSignature(),
+                        result.page(),
+                        result.x(),
+                        result.y(),
+                        result.width(),
+                        result.height()
+                );
+
+                org.pdflite.dialog.CustomInfoDialog.show(
+                        lang().getString("success.title"),
+                        lang().getString("signature.success"),
+                        lang().getString("success.saved") + ":\n" + outputFile.getAbsolutePath(),
+                        themeManager
+                );
+
+                logger.info("Successfully signed PDF: {}", outputFile.getName());
+
+            } catch (Exception e) {
+                logger.error("Error signing PDF", e);
+                uiStateManager.showError(lang().getString("error.title"),
+                        lang().getString("signature.error") + ": " + e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * Verifies digital signatures in a PDF file.
+     *
+     * @param currentDocument the current PDF document
+     */
+    public void verifySignatures(PDFDocument currentDocument) {
+        if (currentDocument == null) {
+            uiStateManager.showError(lang().getString("error.noPdfLoaded"),
+                    lang().getString("error.noPdfLoadedMsg"));
+            return;
+        }
+
+        try {
+            java.util.List<PDFService.SignatureVerificationResult> results =
+                    pdfService.verifySignatures(currentDocument);
+
+            if (results.isEmpty()) {
+                org.pdflite.dialog.CustomInfoDialog.show(
+                        lang().getString("signature.verify.title"),
+                        lang().getString("signature.verify.noSignatures"),
+                        lang().getString("signature.verify.noSignaturesMsg"),
+                        themeManager
+                );
+                return;
+            }
+
+            // Build result message
+            StringBuilder sb = new StringBuilder();
+            int index = 1;
+            for (PDFService.SignatureVerificationResult result : results) {
+                sb.append(lang().getString("signature.verify.signature")).append(" ").append(index++).append(":\n");
+                sb.append("  ").append(lang().getString("signature.verify.status")).append(": ");
+
+                if (result.isValid()) {
+                    sb.append(lang().getString("signature.verify.valid")).append("\n");
+                } else {
+                    sb.append(lang().getString("signature.verify.invalid")).append("\n");
+                }
+
+                if (result.signerName() != null && !result.signerName().isEmpty()) {
+                    sb.append("  ").append(lang().getString("signature.verify.signer")).append(": ")
+                            .append(result.signerName()).append("\n");
+                }
+
+                sb.append("  ").append(lang().getString("signature.verify.date")).append(": ")
+                        .append(result.getFormattedSignDate()).append("\n");
+
+                if (result.reason() != null && !result.reason().isEmpty()) {
+                    sb.append("  ").append(lang().getString("signature.reason")).append(": ")
+                            .append(result.reason()).append("\n");
+                }
+
+                if (result.location() != null && !result.location().isEmpty()) {
+                    sb.append("  ").append(lang().getString("signature.location")).append(": ")
+                            .append(result.location()).append("\n");
+                }
+
+                sb.append("  ").append(lang().getString("signature.verify.details")).append(": ")
+                        .append(result.details()).append("\n\n");
+            }
+
+            org.pdflite.dialog.CustomInfoDialog.show(
+                    lang().getString("signature.verify.title"),
+                    lang().getString("signature.verify.results"),
+                    sb.toString(),
+                    themeManager
+            );
+
+            logger.info("Verified {} signature(s) in PDF", results.size());
+
+        } catch (Exception e) {
+            logger.error("Error verifying signatures", e);
+            uiStateManager.showError(lang().getString("error.title"),
+                    lang().getString("signature.verify.error") + ": " + e.getMessage());
+        }
     }
 
     /**

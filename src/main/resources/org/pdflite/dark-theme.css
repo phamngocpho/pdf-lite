@@ -1360,3 +1360,51 @@
     -fx-background-color: #2d2d2d;
     -fx-background-radius: 12;
 }
+
+
+/* ==================== DIGITAL SIGNATURE DIALOG ==================== */
+.signature-dialog {
+    -fx-background-color: #252525;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+}
+
+.signature-dialog > .custom-title-bar {
+    -fx-background-color: #2a2a2a;
+    -fx-border-color: transparent transparent #404040 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-background-radius: 12 12 0 0;
+}
+
+.signature-dialog .label {
+    -fx-text-fill: #e0e0e0;
+}
+
+.signature-dialog .text-field,
+.signature-dialog .password-field {
+    -fx-background-color: #2d2d2d;
+    -fx-text-fill: #e0e0e0;
+    -fx-border-color: transparent;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.signature-dialog .text-field:focused,
+.signature-dialog .password-field:focused {
+    -fx-background-color: #3a3a3a;
+    -fx-border-color: #0A84FF;
+    -fx-border-width: 2;
+}
+
+.signature-dialog .check-box {
+    -fx-text-fill: #e0e0e0;
+}
+
+.signature-dialog .spinner {
+    -fx-background-color: #2d2d2d;
+}
+
+.signature-dialog .spinner .text-field {
+    -fx-background-color: #2d2d2d;
+    -fx-text-fill: #e0e0e0;
+}
