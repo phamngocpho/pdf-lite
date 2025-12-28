@@ -338,9 +338,9 @@ public class UILanguageManager {
 
     private void updateFileMenuItems(Menu menu) {
         var items = menu.getItems();
-        if (items.size() >= 12) {
+        if (items.size() >= 14) {
             setMenuItemText(items, 0, "menu.file.open");
-            ((Menu) items.get(1)).setText(languageManager.getString("menu.file.recentFiles"));
+            items.get(1).setText(languageManager.getString("menu.file.recentFiles"));
             setMenuItemText(items, 2, "menu.file.clearRecent");
             setMenuItemText(items, 4, "menu.file.export");
             setMenuItemText(items, 5, "menu.file.print");
@@ -348,7 +348,8 @@ public class UILanguageManager {
             setMenuItemText(items, 8, "menu.file.saveAs");
             setMenuItemText(items, 10, "menu.file.optimize");
             setMenuItemText(items, 11, "menu.file.properties");
-            setMenuItemText(items, 13, "menu.file.exit");
+            setMenuItemText(items, 13, "menu.file.settings");
+            setMenuItemText(items, 15, "menu.file.exit");
         }
     }
 
@@ -430,7 +431,7 @@ public class UILanguageManager {
 
     private void setMenuItemText(javafx.collections.ObservableList<MenuItem> items, int index, String key) {
         if (index < items.size()) {
-            ((MenuItem) items.get(index)).setText(languageManager.getString(key));
+            items.get(index).setText(languageManager.getString(key));
         }
     }
 }

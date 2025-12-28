@@ -1,7 +1,5 @@
 package org.pdflite.manager;
 
-import java.io.*;
-import java.nio.file.*;
 import java.text.MessageFormat;
 import java.util.*;
 
@@ -11,12 +9,12 @@ import org.slf4j.LoggerFactory;
 /**
  * Manages application language/localization.
  * Supports switching between languages at runtime.
+ * Now uses UserPreferencesManager for unified settings storage.
  */
 public class LanguageManager {
 
     private static final Logger logger = LoggerFactory.getLogger(LanguageManager.class);
     private static final String BUNDLE_BASE_NAME = "org.pdflite.i18n.messages";
-    private static final String LANGUAGE_PREF_FILE = ".pdflite/language.txt";
 
     private static LanguageManager instance;
     private ResourceBundle bundle;
@@ -41,11 +39,15 @@ public class LanguageManager {
      * Loads the saved language preference or defaults to system locale.
      */
     private void loadSavedLanguage() {
-        Locale savedLocale = loadLanguagePreference();
-        if (savedLocale != null) {
-            setLocale(savedLocale, false);
-        } else {
-            // Default to system locale, fallback to English
+        try {
+            String lang = UserPreferencesManager.getInstance().getPreferences().getLanguage();
+            if ("vi".equals(lang)) {
+                setLocale(VIETNAMESE, false);
+            } else {
+                setLocale(ENGLISH, false);
+            }
+        } catch (Exception e) {
+            // Fallback to system locale
             Locale systemLocale = Locale.getDefault();
             if (systemLocale.getLanguage().equals("vi")) {
                 setLocale(VIETNAMESE, false);
@@ -153,35 +155,17 @@ public class LanguageManager {
     }
 
     /**
-     * Saves language preference to file.
+     * Saves language preference using UserPreferencesManager.
      */
     private void saveLanguagePreference(Locale locale) {
         try {
-            Path prefFile = Paths.get(System.getProperty("user.dir"), LANGUAGE_PREF_FILE);
-            Files.createDirectories(prefFile.getParent());
-            Files.writeString(prefFile, locale.toLanguageTag());
-            logger.debug("Saved language preference: {}", locale.toLanguageTag());
-        } catch (IOException e) {
+            String lang = locale.getLanguage().equals("vi") ? "vi" : "en";
+            UserPreferencesManager.getInstance().getPreferences().setLanguage(lang);
+            UserPreferencesManager.getInstance().savePreferences();
+            logger.debug("Saved language preference: {}", lang);
+        } catch (Exception e) {
             logger.error("Failed to save language preference", e);
         }
-    }
-
-    /**
-     * Loads language preference from file.
-     */
-    private Locale loadLanguagePreference() {
-        try {
-            Path prefFile = Paths.get(System.getProperty("user.dir"), LANGUAGE_PREF_FILE);
-            if (Files.exists(prefFile)) {
-                String tag = Files.readString(prefFile).trim();
-                Locale locale = Locale.forLanguageTag(tag);
-                logger.debug("Loaded language preference: {}", tag);
-                return locale;
-            }
-        } catch (IOException e) {
-            logger.error("Failed to load language preference", e);
-        }
-        return null;
     }
 
     /**

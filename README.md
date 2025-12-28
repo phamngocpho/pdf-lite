@@ -42,14 +42,14 @@ A lightweight, modern PDF viewer and editor built with JavaFX. PDF Lite provides
 - Extract and analyze text
 - Powered by Groq API
 
-To enable AI features, create `.pdflite/ai-config.json` with your Groq API key:
+To enable AI features, add your Groq API key in Settings (File > Settings > Files section) or edit `.pdflite/preferences.json`:
 
 ```json
 {
-  "groqApiKey": "your-api-key-here",
-  "model": "llama-3.3-70b-versatile",
-  "fastModel": "llama-3.1-8b-instant",
-  "enabled": true
+  "aiApiKey": "your-api-key-here",
+  "aiModel": "llama-3.3-70b-versatile",
+  "aiFastModel": "llama-3.1-8b-instant",
+  "aiEnabled": true
 }
 ```
 
@@ -62,6 +62,7 @@ Get your API key at: https://console.groq.com/keys
 - Auto-save and recovery
 - Recent files tracking
 - Keyboard shortcuts
+- Centralized settings panel (File > Settings)
 
 ## Requirements
 
@@ -95,20 +96,39 @@ java -jar target/pdf-lite-1.0-SNAPSHOT.jar
 | Save | Ctrl+S |
 | Save As | Ctrl+Shift+S |
 | Print | Ctrl+P |
+| Export | Ctrl+Shift+E |
+| Optimize PDF | Ctrl+Shift+O |
+| Document Properties | Ctrl+D |
+| Settings | Ctrl+Alt+S |
+| Exit | Alt+F4 |
+| Edit Text | Ctrl+E |
+| Insert Image | Ctrl+I |
+| Insert Stamp | Ctrl+Shift+I |
 | Search | Ctrl+F |
-| Go to page | Ctrl+G |
+| Hide Search | Escape |
 | Zoom in | Ctrl++ |
 | Zoom out | Ctrl+- |
 | Fit width | Ctrl+0 |
 | Fit page | Ctrl+1 |
-| First page | Home |
-| Last page | End |
-| Previous page | Page Up |
-| Next page | Page Down |
+| Toggle bookmarks | Ctrl+B |
+| Add bookmark | Ctrl+Shift+B |
+| Smart Bookmarks | Ctrl+Alt+B |
+| Import Outline | Ctrl+Alt+O |
+| Clear Bookmarks | Ctrl+Shift+Delete |
+| Toggle Toolbar | Ctrl+T |
 | Fullscreen | F11 |
-| Toggle theme | Ctrl+T |
+| Highlight | Ctrl+H |
+| Add Watermark | Ctrl+W |
+| Merge PDFs | Ctrl+M |
+| Split PDF | Ctrl+Shift+P |
+| Extract Pages | Ctrl+Shift+X |
+| Reorder Pages | Ctrl+Shift+R |
+| Delete page | Delete |
+| Duplicate page | Ctrl+Shift+D |
 | Undo | Ctrl+Z |
 | Redo | Ctrl+Y |
+| AI Assistant | Ctrl+Shift+A |
+| About | F1 |
 
 ## Dependencies
 
@@ -116,6 +136,26 @@ java -jar target/pdf-lite-1.0-SNAPSHOT.jar
 - Apache PDFBox 3.0.3 - PDF processing
 - Gson 2.10.1 - JSON serialization
 - SLF4J 2.0.9 + Logback 1.5.20 - Logging
+
+## Configuration
+
+All settings are stored in `.pdflite/preferences.json`:
+
+```json
+{
+  "defaultZoom": 1.0,
+  "fitMode": "none",
+  "themeMode": "SYSTEM",
+  "language": "en",
+  "sidebarPosition": "left",
+  "autoSaveEnabled": true,
+  "autoSaveDelaySeconds": 5,
+  "maxRecentFiles": 10,
+  "aiApiKey": "",
+  "aiModel": "llama-3.3-70b-versatile",
+  "aiEnabled": true
+}
+```
 
 ## Project Structure
 
