@@ -260,6 +260,9 @@ public class MainController {
     // OCR Manager
     private OCRManager ocrManager;
 
+    // Reading Mode Manager
+    private ReadingModeManager readingModeManager;
+
     // New refactored managers
     private ToolbarManager toolbarManager;
     private HighlightModeManager highlightModeManager;
@@ -833,6 +836,15 @@ public class MainController {
         ocrManager.setDocumentSupplier(this::getActiveDocument);
         if (themeManager != null) {
             ocrManager.setThemeManager(themeManager);
+        }
+
+        // Reading Mode Manager
+        readingModeManager = new ReadingModeManager(uiStateManager);
+        readingModeManager.setPagesContainerSupplier(this::getCurrentPagesContainer);
+        
+        // Connect reading mode to page renderer for new pages
+        if (pageRenderer != null) {
+            pageRenderer.setReadingModeEffectSupplier(() -> readingModeManager.getEffect());
         }
     }
 
@@ -1422,6 +1434,40 @@ public class MainController {
     private void handleOCR() {
         if (ocrManager != null) {
             ocrManager.openOCRDialog();
+        }
+    }
+
+    // ==================== READING MODE OPERATIONS ====================
+
+    @FXML
+    private void handleNormalMode() {
+        if (readingModeManager != null) {
+            readingModeManager.setMode(ReadingModeManager.ReadingMode.NORMAL);
+            readingModeManager.applyToPages();
+        }
+    }
+
+    @FXML
+    private void handleNightMode() {
+        if (readingModeManager != null) {
+            readingModeManager.setMode(ReadingModeManager.ReadingMode.NIGHT);
+            readingModeManager.applyToPages();
+        }
+    }
+
+    @FXML
+    private void handleSepiaMode() {
+        if (readingModeManager != null) {
+            readingModeManager.setMode(ReadingModeManager.ReadingMode.SEPIA);
+            readingModeManager.applyToPages();
+        }
+    }
+
+    @FXML
+    private void handleLowBlueMode() {
+        if (readingModeManager != null) {
+            readingModeManager.setMode(ReadingModeManager.ReadingMode.LOW_BLUE);
+            readingModeManager.applyToPages();
         }
     }
 

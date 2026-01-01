@@ -90,6 +90,16 @@
                     <SeparatorMenuItem/>
                     <MenuItem fx:id="toggleToolbarMenuItem" text="Hide Toolbar" onAction="#handleToggleToolbar" accelerator="Ctrl+T"/>
                     <SeparatorMenuItem/>
+                    <Menu text="Reading Mode">
+                        <fx:define>
+                            <ToggleGroup fx:id="readingModeGroup"/>
+                        </fx:define>
+                        <RadioMenuItem text="Normal" onAction="#handleNormalMode" selected="true" toggleGroup="$readingModeGroup"/>
+                        <RadioMenuItem text="Night Mode" onAction="#handleNightMode" toggleGroup="$readingModeGroup"/>
+                        <RadioMenuItem text="Sepia" onAction="#handleSepiaMode" toggleGroup="$readingModeGroup"/>
+                        <RadioMenuItem text="Low Blue Light" onAction="#handleLowBlueMode" toggleGroup="$readingModeGroup"/>
+                    </Menu>
+                    <SeparatorMenuItem/>
                     <MenuItem fx:id="fullScreenMenuItem" text="Toggle Full Screen" onAction="#handleToggleFullScreen" accelerator="F11"/>
                 </Menu>
 
