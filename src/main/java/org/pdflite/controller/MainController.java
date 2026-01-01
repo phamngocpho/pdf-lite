@@ -263,6 +263,9 @@ public class MainController {
     // Reading Mode Manager
     private ReadingModeManager readingModeManager;
 
+    // Auto Hide UI Manager
+    private AutoHideUIManager autoHideUIManager;
+
     // New refactored managers
     private ToolbarManager toolbarManager;
     private HighlightModeManager highlightModeManager;
@@ -423,13 +426,18 @@ public class MainController {
             }
         });
 
-        // Setup keyboard shortcuts
+        // Setup keyboard shortcuts and auto-hide UI
         rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (oldScene != null && keyboardShortcutManager != null) {
                 keyboardShortcutManager.removeKeyboardShortcuts(oldScene);
             }
-            if (newScene != null && keyboardShortcutManager != null) {
-                keyboardShortcutManager.setupKeyboardShortcuts(newScene);
+            if (newScene != null) {
+                if (keyboardShortcutManager != null) {
+                    keyboardShortcutManager.setupKeyboardShortcuts(newScene);
+                }
+                if (autoHideUIManager != null) {
+                    autoHideUIManager.setupSceneTracking(newScene);
+                }
             }
         });
     }
@@ -846,6 +854,10 @@ public class MainController {
         if (pageRenderer != null) {
             pageRenderer.setReadingModeEffectSupplier(() -> readingModeManager.getEffect());
         }
+
+        // Auto Hide UI Manager
+        autoHideUIManager = new AutoHideUIManager(menuBar, toolbar, rootPane);
+        autoHideUIManager.setTabPane(documentTabPane);
     }
 
     // ==================== File Operations ====================
@@ -1468,6 +1480,13 @@ public class MainController {
         if (readingModeManager != null) {
             readingModeManager.setMode(ReadingModeManager.ReadingMode.LOW_BLUE);
             readingModeManager.applyToPages();
+        }
+    }
+
+    @FXML
+    private void handleAutoHideUI() {
+        if (autoHideUIManager != null) {
+            autoHideUIManager.toggle();
         }
     }
 

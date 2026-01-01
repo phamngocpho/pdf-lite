@@ -89,6 +89,7 @@
                     <MenuItem text="Clear All Bookmarks" onAction="#handleClearAllBookmarks" accelerator="Ctrl+Shift+Delete"/>
                     <SeparatorMenuItem/>
                     <MenuItem fx:id="toggleToolbarMenuItem" text="Hide Toolbar" onAction="#handleToggleToolbar" accelerator="Ctrl+T"/>
+                    <CheckMenuItem text="Auto Hide UI" onAction="#handleAutoHideUI" accelerator="Ctrl+Shift+H"/>
                     <SeparatorMenuItem/>
                     <Menu text="Reading Mode">
                         <fx:define>
