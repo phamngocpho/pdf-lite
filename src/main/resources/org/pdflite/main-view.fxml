@@ -96,6 +96,8 @@
                 <Menu text="Tools">
                     <MenuItem text="Highlight" onAction="#handleHighlight" accelerator="Ctrl+H"/>
                     <SeparatorMenuItem/>
+                    <MenuItem text="OCR (Text Recognition)" onAction="#handleOCR" accelerator="Ctrl+Shift+T"/>
+                    <SeparatorMenuItem/>
                     <MenuItem text="Add Watermark" onAction="#handleAddWatermark" accelerator="Ctrl+W"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Merge PDFs" onAction="#handleMergePDFs" accelerator="Ctrl+M"/>
@@ -256,6 +258,8 @@
                     <items>
                         <MenuItem text="Insert page" onAction="#handleInsertPage"/>
                         <MenuItem text="Add Watermark..." onAction="#handleAddWatermark"/>
+                        <SeparatorMenuItem/>
+                        <MenuItem text="OCR (Text Recognition)" onAction="#handleOCR"/>
                         <SeparatorMenuItem/>
                         <MenuItem text="Merge PDFs..." onAction="#handleMergePDFs"/>
                         <MenuItem text="Split PDF..." onAction="#handleSplitPDF"/>

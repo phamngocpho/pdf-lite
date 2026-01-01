@@ -18,9 +18,6 @@ import org.slf4j.LoggerFactory;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -360,21 +357,12 @@ public record DialogManager(BorderPane rootPane, ThemeManager themeManager, UISt
      * @return true if the user wants to continue saving, false if canceled
      */
     public boolean showEncryptedSaveWarning() {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle(lang().getString("dialog.warning"));
-        alert.setHeaderText(lang().getString("message.passwordRequired"));
-        alert.setContentText(lang().getString("message.unsavedChanges"));
-
-        ButtonType continueButton = new ButtonType(lang().getString("dialog.yes"), ButtonBar.ButtonData.OK_DONE);
-        ButtonType cancelButton = new ButtonType(lang().getString("dialog.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
-        alert.getButtonTypes().setAll(continueButton, cancelButton);
-
-        if (themeManager != null) {
-            themeManager.applyThemeToScene(alert.getDialogPane().getScene());
-        }
-
-        var result = alert.showAndWait();
-        return result.isPresent() && result.get() == continueButton;
+        return org.pdflite.dialog.CustomConfirmDialog.show(
+                lang().getString("dialog.warning"),
+                lang().getString("message.passwordRequired"),
+                lang().getString("message.unsavedChanges"),
+                themeManager
+        );
     }
 }
 

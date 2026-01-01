@@ -1527,3 +1527,115 @@
     -fx-background-color: #2d2d2d;
     -fx-text-fill: #e0e0e0;
 }
+
+
+/* ==================== OCR RESULT AREA ==================== */
+.ocr-result-area {
+    -fx-background-color: #1e1e1e;
+    -fx-text-fill: #e0e0e0;
+    -fx-border-color: #0A84FF;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 0;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.ocr-result-area:focused {
+    -fx-border-color: #0A84FF;
+    -fx-border-width: 1;
+    -fx-background-color: #1e1e1e;
+}
+
+.ocr-result-area .content {
+    -fx-background-color: #1e1e1e;
+    -fx-padding: 10;
+}
+
+.ocr-result-area .scroll-pane {
+    -fx-background-color: #1e1e1e;
+    -fx-background: #1e1e1e;
+}
+
+.ocr-result-area .scroll-pane .viewport {
+    -fx-background-color: #1e1e1e;
+}
+
+.ocr-result-area .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-pref-width: 10;
+}
+
+.ocr-result-area .scroll-bar:vertical .track {
+    -fx-background-color: transparent;
+}
+
+.ocr-result-area .scroll-bar:vertical .thumb {
+    -fx-background-color: #505050;
+    -fx-background-radius: 5;
+}
+
+.ocr-result-area .scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #606060;
+}
+
+
+/* ==================== OCR DIALOG COMBOBOX ==================== */
+.ocr-combo {
+    -fx-background-color: #2d2d2d;
+    -fx-border-color: #505050;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 0;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.ocr-combo:focused {
+    -fx-border-color: #0A84FF;
+    -fx-background-color: #2d2d2d;
+}
+
+.ocr-combo:hover {
+    -fx-border-color: #606060;
+}
+
+.ocr-combo .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #e0e0e0;
+    -fx-padding: 6 10;
+}
+
+.ocr-combo .arrow-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0 8;
+}
+
+.ocr-combo .arrow {
+    -fx-background-color: #808080;
+}
+
+.ocr-combo-popup .list-view {
+    -fx-background-color: #2d2d2d;
+    -fx-border-color: #505050;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.ocr-combo-popup .list-cell {
+    -fx-background-color: #2d2d2d;
+    -fx-text-fill: #e0e0e0;
+    -fx-padding: 8 12;
+}
+
+.ocr-combo-popup .list-cell:hover {
+    -fx-background-color: #3a3a3a;
+}
+
+.ocr-combo-popup .list-cell:selected {
+    -fx-background-color: #0A84FF;
+    -fx-text-fill: white;
+}

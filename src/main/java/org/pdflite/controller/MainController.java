@@ -257,6 +257,9 @@ public class MainController {
     private GroqService groqService;
     private ChatUIManager chatUIManager;
 
+    // OCR Manager
+    private OCRManager ocrManager;
+
     // New refactored managers
     private ToolbarManager toolbarManager;
     private HighlightModeManager highlightModeManager;
@@ -823,6 +826,13 @@ public class MainController {
         }
         if (groqService != null) {
             aiChatManager.setGroqService(groqService);
+        }
+
+        // OCR Manager
+        ocrManager = new OCRManager(rootPane, uiStateManager);
+        ocrManager.setDocumentSupplier(this::getActiveDocument);
+        if (themeManager != null) {
+            ocrManager.setThemeManager(themeManager);
         }
     }
 
@@ -1402,6 +1412,16 @@ public class MainController {
     private void handleOpenChat() {
         if (aiChatManager != null) {
             aiChatManager.handleOpenChat();
+        }
+    }
+
+    /**
+     * Opens the OCR dialog for text recognition.
+     */
+    @FXML
+    private void handleOCR() {
+        if (ocrManager != null) {
+            ocrManager.openOCRDialog();
         }
     }
 

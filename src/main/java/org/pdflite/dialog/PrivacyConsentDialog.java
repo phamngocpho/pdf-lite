@@ -8,7 +8,6 @@ import javafx.scene.control.CheckBox;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.SVGPath;
@@ -60,22 +59,17 @@ public class PrivacyConsentDialog {
 
         // Warning icon and header
         SVGPath warningIcon = new SVGPath();
-        warningIcon.setContent("m130-172 350-604 350 604H130Zm48-28h604L480-720 178-200Zm302-60q8.5 0 14.25-5.75T500-280q0-8.5-5.75-14.25T480-300q-8.5 0-14.25 5.75T460-280q0 8.5 5.75 14.25T480-260Zm-14-80h28v-200h-28v200Zm14-120Z");
-        warningIcon.setFill(Color.web("#ff9800"));
-        
-        StackPane iconContainer = new StackPane(warningIcon);
-        iconContainer.setMinSize(20, 20);
-        iconContainer.setMaxSize(20, 20);
-        double scale = 20.0 / 960.0;
-        warningIcon.setScaleX(scale);
-        warningIcon.setScaleY(scale);
+        warningIcon.setContent("M12 2L1 21h22L12 2zm0 3.5L20.5 19h-17L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z");
+        warningIcon.setFill(Color.web("#f0ad4e"));
+        warningIcon.setScaleX(0.9);
+        warningIcon.setScaleY(0.9);
 
         Label headerLabel = new Label(lang.getString("privacy.header"));
         headerLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
         
-        HBox headerBox = new HBox(8);
+        HBox headerBox = new HBox(12);
         headerBox.setAlignment(Pos.CENTER_LEFT);
-        headerBox.getChildren().addAll(iconContainer, headerLabel);
+        headerBox.getChildren().addAll(warningIcon, headerLabel);
         contentBox.getChildren().add(headerBox);
 
         // Description
@@ -126,9 +120,7 @@ public class PrivacyConsentDialog {
         });
 
         // Enable accept button only when checkbox is checked
-        consentCheckbox.selectedProperty().addListener((obs, oldVal, newVal) -> {
-            acceptButton.setDisable(!newVal);
-        });
+        consentCheckbox.selectedProperty().addListener((obs, oldVal, newVal) -> acceptButton.setDisable(!newVal));
 
         buttonBox.getChildren().addAll(cancelButton, acceptButton);
         contentBox.getChildren().add(buttonBox);
