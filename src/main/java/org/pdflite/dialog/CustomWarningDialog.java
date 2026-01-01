@@ -17,33 +17,30 @@ import org.pdflite.manager.ThemeManager;
 import org.pdflite.util.DialogTitleBar;
 
 /**
- * Custom confirmation dialog with a custom title bar and warning icon.
- * Returns true if user confirms, false if canceled.
+ * Custom warning dialog with a custom title bar and warning icon.
  */
-public class CustomConfirmDialog {
+public class CustomWarningDialog {
 
     private Stage dialogStage;
-    private boolean result = false;
 
     private static LanguageManager lang() {
         return LanguageManager.getInstance();
     }
 
     /**
-     * Shows a confirmation dialog with Yes/Cancel buttons.
+     * Shows a warning dialog.
      *
      * @param title        the dialog title
      * @param header       the header text
      * @param content      the content text
      * @param themeManager the theme manager (can be null)
-     * @return true if user clicked Yes, false otherwise
      */
-    public static boolean show(String title, String header, String content, ThemeManager themeManager) {
-        CustomConfirmDialog dialog = new CustomConfirmDialog();
-        return dialog.showAndWait(title, header, content, themeManager);
+    public static void show(String title, String header, String content, ThemeManager themeManager) {
+        CustomWarningDialog dialog = new CustomWarningDialog();
+        dialog.showAndWait(title, header, content, themeManager);
     }
 
-    private boolean showAndWait(String title, String header, String content, ThemeManager themeManager) {
+    private void showAndWait(String title, String header, String content, ThemeManager themeManager) {
         dialogStage = new Stage();
         dialogStage.initStyle(StageStyle.TRANSPARENT);
         dialogStage.initModality(Modality.APPLICATION_MODAL);
@@ -84,27 +81,17 @@ public class CustomConfirmDialog {
         contentLabel.getStyleClass().add("info-content-label");
         contentBox.getChildren().add(contentLabel);
 
-        // Buttons
-        HBox buttonBox = new HBox(10);
+        // Button
+        HBox buttonBox = new HBox();
         buttonBox.setAlignment(Pos.CENTER_RIGHT);
         buttonBox.setPadding(new Insets(10, 0, 0, 0));
 
-        Button yesButton = new Button(lang().getString("dialog.yes"));
-        yesButton.setPrefWidth(80);
-        yesButton.getStyleClass().add("primary-button");
-        yesButton.setOnAction(e -> {
-            result = true;
-            dialogStage.close();
-        });
+        Button okButton = new Button(lang().getString("dialog.ok"));
+        okButton.setPrefWidth(80);
+        okButton.getStyleClass().add("primary-button");
+        okButton.setOnAction(e -> dialogStage.close());
 
-        Button cancelButton = new Button(lang().getString("dialog.cancel"));
-        cancelButton.setPrefWidth(80);
-        cancelButton.setOnAction(e -> {
-            result = false;
-            dialogStage.close();
-        });
-
-        buttonBox.getChildren().addAll(yesButton, cancelButton);
+        buttonBox.getChildren().add(okButton);
         contentBox.getChildren().add(buttonBox);
 
         mainContainer.getChildren().add(contentBox);
@@ -113,6 +100,7 @@ public class CustomConfirmDialog {
         scene.setFill(javafx.scene.paint.Color.TRANSPARENT);
         dialogStage.setScene(scene);
 
+        // Don't set fixed min height, let it size to content
         dialogStage.setMinWidth(500);
 
         // Apply theme if available
@@ -121,7 +109,6 @@ public class CustomConfirmDialog {
         }
 
         dialogStage.showAndWait();
-        return result;
     }
 
     /**
@@ -129,8 +116,9 @@ public class CustomConfirmDialog {
      */
     private SVGPath createWarningIcon() {
         SVGPath icon = new SVGPath();
+        // Warning triangle path
         icon.setContent("M12 2L1 21h22L12 2zm0 3.5L20.5 19h-17L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z");
-        icon.setFill(Color.web("#f0ad4e"));
+        icon.setFill(Color.web("#f0ad4e")); // Warning orange/yellow color
         icon.setScaleX(0.9);
         icon.setScaleY(0.9);
         return icon;
