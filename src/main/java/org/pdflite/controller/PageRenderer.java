@@ -46,6 +46,7 @@ public class PageRenderer {
     private boolean isTextSelectionActive = true; // Default to true (like browsers)
     private org.pdflite.command.CommandManager commandManager;
     private java.util.function.Consumer<Integer> refreshAnnotationsCallback;
+    private java.util.function.Supplier<javafx.scene.effect.Effect> readingModeEffectSupplier;
 
     /**
      * Creates a new PageRenderer with the specified service and executor.
@@ -143,6 +144,15 @@ public class PageRenderer {
      */
     public void setRefreshAnnotationsCallback(java.util.function.Consumer<Integer> callback) {
         this.refreshAnnotationsCallback = callback;
+    }
+
+    /**
+     * Sets the supplier for reading mode effect.
+     *
+     * @param supplier supplier that returns the current reading mode effect
+     */
+    public void setReadingModeEffectSupplier(java.util.function.Supplier<javafx.scene.effect.Effect> supplier) {
+        this.readingModeEffectSupplier = supplier;
     }
 
     /**
@@ -294,6 +304,11 @@ public class PageRenderer {
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
         imageView.setCache(true);
+
+        // Apply reading mode effect if available
+        if (readingModeEffectSupplier != null) {
+            imageView.setEffect(readingModeEffectSupplier.get());
+        }
 
         imageView.setPickOnBounds(false);
         imageView.setMouseTransparent(false);

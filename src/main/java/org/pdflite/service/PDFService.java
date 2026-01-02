@@ -1143,6 +1143,12 @@ public class PDFService {
 
         boolean isValid = false;
         String status = "Unknown";
+        
+        // Check if file exists and is readable
+        if (pdfFile == null || !pdfFile.exists() || !pdfFile.canRead()) {
+            return new SignatureVerificationResult(signerName, reason, location, contactInfo,
+                    signDate, false, "Error", "PDF file is not accessible. Please save the document first.");
+        }
         String details = "";
 
         try {

@@ -260,6 +260,12 @@ public class MainController {
     // OCR Manager
     private OCRManager ocrManager;
 
+    // Reading Mode Manager
+    private ReadingModeManager readingModeManager;
+
+    // Auto Hide UI Manager
+    private AutoHideUIManager autoHideUIManager;
+
     // New refactored managers
     private ToolbarManager toolbarManager;
     private HighlightModeManager highlightModeManager;
@@ -420,13 +426,18 @@ public class MainController {
             }
         });
 
-        // Setup keyboard shortcuts
+        // Setup keyboard shortcuts and auto-hide UI
         rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (oldScene != null && keyboardShortcutManager != null) {
                 keyboardShortcutManager.removeKeyboardShortcuts(oldScene);
             }
-            if (newScene != null && keyboardShortcutManager != null) {
-                keyboardShortcutManager.setupKeyboardShortcuts(newScene);
+            if (newScene != null) {
+                if (keyboardShortcutManager != null) {
+                    keyboardShortcutManager.setupKeyboardShortcuts(newScene);
+                }
+                if (autoHideUIManager != null) {
+                    autoHideUIManager.setupSceneTracking(newScene);
+                }
             }
         });
     }
@@ -834,6 +845,19 @@ public class MainController {
         if (themeManager != null) {
             ocrManager.setThemeManager(themeManager);
         }
+
+        // Reading Mode Manager
+        readingModeManager = new ReadingModeManager(uiStateManager);
+        readingModeManager.setPagesContainerSupplier(this::getCurrentPagesContainer);
+        
+        // Connect reading mode to page renderer for new pages
+        if (pageRenderer != null) {
+            pageRenderer.setReadingModeEffectSupplier(() -> readingModeManager.getEffect());
+        }
+
+        // Auto Hide UI Manager
+        autoHideUIManager = new AutoHideUIManager(menuBar, toolbar, rootPane);
+        autoHideUIManager.setTabPane(documentTabPane);
     }
 
     // ==================== File Operations ====================
@@ -1422,6 +1446,47 @@ public class MainController {
     private void handleOCR() {
         if (ocrManager != null) {
             ocrManager.openOCRDialog();
+        }
+    }
+
+    // ==================== READING MODE OPERATIONS ====================
+
+    @FXML
+    private void handleNormalMode() {
+        if (readingModeManager != null) {
+            readingModeManager.setMode(ReadingModeManager.ReadingMode.NORMAL);
+            readingModeManager.applyToPages();
+        }
+    }
+
+    @FXML
+    private void handleNightMode() {
+        if (readingModeManager != null) {
+            readingModeManager.setMode(ReadingModeManager.ReadingMode.NIGHT);
+            readingModeManager.applyToPages();
+        }
+    }
+
+    @FXML
+    private void handleSepiaMode() {
+        if (readingModeManager != null) {
+            readingModeManager.setMode(ReadingModeManager.ReadingMode.SEPIA);
+            readingModeManager.applyToPages();
+        }
+    }
+
+    @FXML
+    private void handleLowBlueMode() {
+        if (readingModeManager != null) {
+            readingModeManager.setMode(ReadingModeManager.ReadingMode.LOW_BLUE);
+            readingModeManager.applyToPages();
+        }
+    }
+
+    @FXML
+    private void handleAutoHideUI() {
+        if (autoHideUIManager != null) {
+            autoHideUIManager.toggle();
         }
     }
 
