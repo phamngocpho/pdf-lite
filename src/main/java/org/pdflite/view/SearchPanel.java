@@ -5,6 +5,7 @@ import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import org.pdflite.controller.MainController;
 import org.pdflite.manager.LanguageManager;
@@ -166,7 +167,7 @@ public class SearchPanel extends VBox {
         // Initial state
         progressIndicator.setMaxSize(20, 20);
         progressIndicator.setVisible(false);
-        cancelButton.setDisable(true);
+        cancelButton.setDisable(false);
         cancelButton.setStyle("-fx-font-size: 12px;");
         prevResultButton.setDisable(true);
         nextResultButton.setDisable(true);
@@ -192,6 +193,27 @@ public class SearchPanel extends VBox {
                         handleResultSelected(newVal);
                     }
                 });
+
+        // Keyboard navigation: Left = previous result, Right = next result.
+        // Keep normal caret movement when user is typing in the search field.
+        addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
+            if (searchResults.isEmpty()) {
+                return;
+            }
+
+            Object target = event.getTarget();
+            if (target == searchField || target instanceof TextInputControl) {
+                return;
+            }
+
+            if (event.getCode() == KeyCode.LEFT) {
+                handlePreviousResult();
+                event.consume();
+            } else if (event.getCode() == KeyCode.RIGHT) {
+                handleNextResult();
+                event.consume();
+            }
+        });
     }
 
 
@@ -272,7 +294,7 @@ public class SearchPanel extends VBox {
             @Override
             public void onSearchComplete() {
                 searchButton.setDisable(false);
-                cancelButton.setDisable(true);
+                cancelButton.setDisable(false);
                 progressIndicator.setVisible(false);
             }
 
@@ -296,7 +318,10 @@ public class SearchPanel extends VBox {
      */
     private void handleCancel() {
         searchHandler.cancelSearch();
-        cancelButton.setDisable(true);
+        cancelButton.setDisable(false);
+        if (mainController != null) {
+            mainController.hideSearchPanel();
+        }
     }
 
     /**
