@@ -1122,6 +1122,10 @@ public class MainController {
         searchManager.navigateToResult(result);
     }
 
+    public void hideSearchPanel() {
+        searchManager.clearSearch();
+    }
+
     // ==================== Image Insertion Operations ====================
 
     @FXML
