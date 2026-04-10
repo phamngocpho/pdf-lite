@@ -35,21 +35,18 @@ public final class ShortcutCatalog {
                         new ShortcutEntry("menu.view.zoomIn", "Ctrl+Plus"),
                         new ShortcutEntry("menu.view.zoomOut", "Ctrl+Minus"),
                         new ShortcutEntry("menu.view.fitWidth", "Ctrl+0"),
-                        new ShortcutEntry("menu.view.fitPage", "Ctrl+1"),
-                        new ShortcutEntry("shortcuts.action.zoomWheel", "Shortcut+MouseWheel")
+                        new ShortcutEntry("menu.view.fitPage", "Ctrl+1")
                 )),
                 new ShortcutGroup("shortcuts.group.search", List.of(
                         new ShortcutEntry("menu.edit.find", "Ctrl+F"),
                         new ShortcutEntry("menu.edit.hideSearch", "Escape")
                 )),
                 new ShortcutGroup("shortcuts.group.sidebar", List.of(
-                        new ShortcutEntry("menu.view.toggleSidebar", "Shortcut+BACK_SLASH"),
                         new ShortcutEntry("menu.view.toggleBookmarks", "Ctrl+B"),
                         new ShortcutEntry("menu.view.addBookmark", "Ctrl+Shift+B"),
                         new ShortcutEntry("menu.view.smartBookmarks", "Ctrl+Alt+B"),
                         new ShortcutEntry("menu.view.importOutline", "Ctrl+Alt+O"),
                         new ShortcutEntry("menu.view.clearBookmarks", "Ctrl+Shift+Delete"),
-                        new ShortcutEntry("menu.view.pageLabels", "Ctrl+Shift+L"),
                         new ShortcutEntry("menu.view.hideToolbar", "Ctrl+T"),
                         new ShortcutEntry("menu.view.autoHideUI", "Ctrl+Shift+H"),
                         new ShortcutEntry("menu.view.fullScreen", "F11")
