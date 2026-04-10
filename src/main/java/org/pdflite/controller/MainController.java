@@ -13,7 +13,6 @@ import org.pdflite.service.GroqService;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
 import org.pdflite.dialog.SettingsDialog;
-import org.pdflite.dialog.KeyboardShortcutsDialog;
 import org.pdflite.manager.*;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
@@ -154,8 +153,6 @@ public class MainController {
     private StackPane saveStatusIndicator;
     @FXML
     private javafx.scene.control.MenuItem toggleToolbarMenuItem;
-    @FXML
-    private javafx.scene.control.MenuItem toggleSidebarMenuItem;
     @FXML
     private javafx.scene.control.MenuItem fullScreenMenuItem;
     @FXML
@@ -549,7 +546,7 @@ public class MainController {
                 fileManager, autoSaveManager, recoveryManager, renderExecutor, autoSaveExecutor);
 
         // Keyboard Shortcut Manager
-        keyboardShortcutManager = new KeyboardShortcutManager(undoRedoManager, this::handleKeyboardShortcuts);
+        keyboardShortcutManager = new KeyboardShortcutManager(undoRedoManager);
 
         // Document Setup Manager
         documentSetupManager = new DocumentSetupManager(
@@ -629,8 +626,8 @@ public class MainController {
             titleLabel, menuBar, toolbar, openButton, saveButton, printButton,
             prevButton, nextButton, zoomOutButton, zoomInButton, bookmarksButton,
             aiChatButton, aiChatTooltip, drawingToolsMenu, drawingToolsLabel,
-             drawingColorLabel, highlightColorLabel, strokeWidthTitleLabel,
-            englishItem, vietnameseItem, toggleToolbarMenuItem, toggleSidebarMenuItem, fullScreenMenuItem, uiStateManager
+            drawingColorLabel, highlightColorLabel, strokeWidthTitleLabel,
+            englishItem, vietnameseItem, toggleToolbarMenuItem, fullScreenMenuItem, uiStateManager
         );
         
         // Update UI with current language
@@ -644,12 +641,7 @@ public class MainController {
         renderingManager = new RenderingManager(pdfService, pageRenderer, scrollHandler, zoomManager);
 
         // Now create zoom change listener with renderingManager supplier
-        zoomChangeListener = ListenerFactory.createZoomChangeListener(
-                () -> renderingManager,
-                () -> zoomManager,
-                searchManager,
-                uiStateManager
-        );
+        zoomChangeListener = ListenerFactory.createZoomChangeListener(() -> renderingManager, searchManager, uiStateManager);
 
         // Set the listener to zoomManager
         zoomManager.setZoomChangeListener(zoomChangeListener);
@@ -1122,13 +1114,6 @@ public class MainController {
         searchManager.clearSearch();
     }
 
-    @FXML
-    private void handleToggleSidebar() {
-        if (tabManager != null) {
-            tabManager.toggleCurrentSidebar();
-        }
-    }
-
     public void handleSearchDialog() {
         searchDialogManager.openSearchDialog(getActiveDocument(), this);
     }
@@ -1202,11 +1187,6 @@ public class MainController {
     }
 
     @FXML
-    private void handleKeyboardShortcuts() {
-        KeyboardShortcutsDialog.show(themeManager);
-    }
-
-    @FXML
     private void handlePageLabels() {
         PDFDocument document = getActiveDocument();
         if (document == null) {
@@ -1268,9 +1248,6 @@ public class MainController {
                     PageLabelManager.NumberingStyle style = styleComboBox.getValue();
                     pageLabelManager.applyCustomRule(document, startPage, style, prefixField.getText(), startNumber);
                     updatePageInfo();
-                    if (tabManager != null) {
-                        tabManager.refreshCurrentTabSidebar();
-                    }
                     uiStateManager.updateStatus(lang().getString("pageLabels.applied"));
                 } catch (NumberFormatException ex) {
                     uiStateManager.showError(lang().getString("error.title"), lang().getString("pageLabels.invalidInput"));
@@ -1278,9 +1255,6 @@ public class MainController {
             } else if (result == resetType) {
                 pageLabelManager.resetToDefault(document);
                 updatePageInfo();
-                if (tabManager != null) {
-                    tabManager.refreshCurrentTabSidebar();
-                }
                 uiStateManager.updateStatus(lang().getString("pageLabels.applied"));
             }
         });
@@ -1420,9 +1394,6 @@ public class MainController {
         PDFDocument doc = getCurrentDocument();
         if (doc != null) {
             pageInfoManager.updatePageInfo(doc);
-            if (tabManager != null) {
-                tabManager.syncSidebarToCurrentPage();
-            }
         }
     }
 

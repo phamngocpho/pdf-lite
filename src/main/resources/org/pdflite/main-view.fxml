@@ -89,7 +89,6 @@
                     <MenuItem text="Clear All Bookmarks" onAction="#handleClearAllBookmarks" accelerator="Ctrl+Shift+Delete"/>
                     <MenuItem text="Page Labels..." onAction="#handlePageLabels" accelerator="Ctrl+Shift+L"/>
                     <SeparatorMenuItem/>
-                    <MenuItem fx:id="toggleSidebarMenuItem" text="Toggle Sidebar" onAction="#handleToggleSidebar" accelerator="Shortcut+BACK_SLASH"/>
                     <MenuItem fx:id="toggleToolbarMenuItem" text="Hide Toolbar" onAction="#handleToggleToolbar" accelerator="Ctrl+T"/>
                     <CheckMenuItem text="Auto Hide UI" onAction="#handleAutoHideUI" accelerator="Ctrl+Shift+H"/>
                     <SeparatorMenuItem/>
@@ -130,8 +129,6 @@
 
                 <Menu text="Help">
                     <MenuItem text="AI Assistant" onAction="#handleOpenChat" accelerator="Ctrl+Shift+A"/>
-                    <SeparatorMenuItem/>
-                    <MenuItem text="Keyboard Shortcuts" onAction="#handleKeyboardShortcuts" accelerator="Ctrl+/"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="About" onAction="#handleAbout" accelerator="F1"/>
                 </Menu>
