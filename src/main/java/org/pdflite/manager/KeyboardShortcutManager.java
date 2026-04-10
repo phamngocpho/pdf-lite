@@ -9,9 +9,17 @@ import org.slf4j.LoggerFactory;
 /**
  * Manages keyboard shortcuts for the application.
  */
-public record KeyboardShortcutManager(UndoRedoManager undoRedoManager) {
+public class KeyboardShortcutManager {
 
     private static final Logger logger = LoggerFactory.getLogger(KeyboardShortcutManager.class);
+
+    private final UndoRedoManager undoRedoManager;
+    private final Runnable openShortcutsHelpAction;
+
+    public KeyboardShortcutManager(UndoRedoManager undoRedoManager, Runnable openShortcutsHelpAction) {
+        this.undoRedoManager = undoRedoManager;
+        this.openShortcutsHelpAction = openShortcutsHelpAction;
+    }
 
     /**
      * Sets up keyboard shortcuts for the given scene.
@@ -36,33 +44,35 @@ public record KeyboardShortcutManager(UndoRedoManager undoRedoManager) {
         scene.removeEventFilter(KeyEvent.KEY_PRESSED, this::handleKeyboardShortcuts);
     }
 
-    /**
-     * Handles keyboard shortcuts for undo/redo operations.
-     */
     private void handleKeyboardShortcuts(KeyEvent event) {
-        if (event.isControlDown()) {
-            if (event.getCode() == KeyCode.Z) {
-                handleUndo();
-                event.consume();
-            } else if (event.getCode() == KeyCode.Y) {
-                handleRedo();
+        if (!event.isShortcutDown()) {
+            return;
+        }
+
+        if (event.getCode() == KeyCode.Z) {
+            handleUndo();
+            event.consume();
+            return;
+        }
+        if (event.getCode() == KeyCode.Y) {
+            handleRedo();
+            event.consume();
+            return;
+        }
+        if (event.getCode() == KeyCode.SLASH) {
+            if (openShortcutsHelpAction != null) {
+                openShortcutsHelpAction.run();
                 event.consume();
             }
         }
     }
 
-    /**
-     * Handles undo operation.
-     */
     private void handleUndo() {
         if (undoRedoManager != null) {
             undoRedoManager.handleUndo();
         }
     }
 
-    /**
-     * Handles redo operation.
-     */
     private void handleRedo() {
         if (undoRedoManager != null) {
             undoRedoManager.handleRedo();
