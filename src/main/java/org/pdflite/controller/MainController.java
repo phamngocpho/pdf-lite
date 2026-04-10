@@ -11,7 +11,9 @@ import org.pdflite.manager.ChatUIManager;
 import org.pdflite.service.GroqService;
 
 import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
 import org.pdflite.dialog.SettingsDialog;
+import org.pdflite.dialog.KeyboardShortcutsDialog;
 import org.pdflite.manager.*;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
@@ -153,6 +155,8 @@ public class MainController {
     @FXML
     private javafx.scene.control.MenuItem toggleToolbarMenuItem;
     @FXML
+    private javafx.scene.control.MenuItem toggleSidebarMenuItem;
+    @FXML
     private javafx.scene.control.MenuItem fullScreenMenuItem;
     @FXML
     private RadioMenuItem systemThemeItem;
@@ -192,6 +196,7 @@ public class MainController {
     private ThemeManager themeManager;
     private RecentFilesManager recentFilesManager;
     private ListenerFactory.ZoomChangeListenerWithContext zoomChangeListener;
+    private PageLabelManager pageLabelManager;
 
     // New managers
     private DialogManager dialogManager;
@@ -405,7 +410,7 @@ public class MainController {
             });
             pageNumberField.setTextFormatter(new TextFormatter<>(change -> {
                 String next = change.getControlNewText();
-                return next.matches("\\d*") ? change : null;
+                return next.matches("[A-Za-z0-9\\-]*") ? change : null;
             }));
         }
 
@@ -544,7 +549,7 @@ public class MainController {
                 fileManager, autoSaveManager, recoveryManager, renderExecutor, autoSaveExecutor);
 
         // Keyboard Shortcut Manager
-        keyboardShortcutManager = new KeyboardShortcutManager(undoRedoManager);
+        keyboardShortcutManager = new KeyboardShortcutManager(undoRedoManager, this::handleKeyboardShortcuts);
 
         // Document Setup Manager
         documentSetupManager = new DocumentSetupManager(
@@ -584,7 +589,7 @@ public class MainController {
         // Initialize TabManager with DocumentSetupManager and DrawingToolsSetupManager
         tabManager = new TabManager(documentTabPane, pdfService, fileManager, pageRenderer, zoomManager,
                 pageInfoManager, uiStateManager, recentFilesManager, recentFilesMenuManager,
-                documentSetupManager, drawingToolsSetupManager, bookmarkManager, autoSaveManager);
+                documentSetupManager, drawingToolsSetupManager, bookmarkManager, autoSaveManager, pageLabelManager);
         tabManager.setRenderingManager(renderingManager);
         tabManager.setZoomChangeListener(zoomChangeListener);
         tabManager.setScrollHandler(scrollHandler);
@@ -624,8 +629,8 @@ public class MainController {
             titleLabel, menuBar, toolbar, openButton, saveButton, printButton,
             prevButton, nextButton, zoomOutButton, zoomInButton, bookmarksButton,
             aiChatButton, aiChatTooltip, drawingToolsMenu, drawingToolsLabel,
-            drawingColorLabel, highlightColorLabel, strokeWidthTitleLabel,
-            englishItem, vietnameseItem, toggleToolbarMenuItem, fullScreenMenuItem, uiStateManager
+             drawingColorLabel, highlightColorLabel, strokeWidthTitleLabel,
+            englishItem, vietnameseItem, toggleToolbarMenuItem, toggleSidebarMenuItem, fullScreenMenuItem, uiStateManager
         );
         
         // Update UI with current language
@@ -639,7 +644,12 @@ public class MainController {
         renderingManager = new RenderingManager(pdfService, pageRenderer, scrollHandler, zoomManager);
 
         // Now create zoom change listener with renderingManager supplier
-        zoomChangeListener = ListenerFactory.createZoomChangeListener(() -> renderingManager, searchManager, uiStateManager);
+        zoomChangeListener = ListenerFactory.createZoomChangeListener(
+                () -> renderingManager,
+                () -> zoomManager,
+                searchManager,
+                uiStateManager
+        );
 
         // Set the listener to zoomManager
         zoomManager.setZoomChangeListener(zoomChangeListener);
@@ -651,7 +661,8 @@ public class MainController {
         fullscreenManager = new FullscreenManager(rootPane, toolbar, ListenerFactory.createFullscreenListener(uiStateManager));
 
         // Page Info Manager
-        pageInfoManager = new PageInfoManager(totalPagesLabel, pageNumberField, prevButton, nextButton);
+        pageLabelManager = new PageLabelManager();
+        pageInfoManager = new PageInfoManager(totalPagesLabel, pageNumberField, prevButton, nextButton, pageLabelManager);
 
         // Search Dialog Manager
         searchDialogManager = new SearchDialogManager(rootPane, pageRenderer, zoomManager, renderingManager, uiStateManager, themeManager);
@@ -792,7 +803,8 @@ public class MainController {
                 navigationHelper,
                 pageInfoManager,
                 uiStateManager,
-                this::getActiveDocument
+                this::getActiveDocument,
+                pageLabelManager
         );
 
         // Page Reorder UI Manager
@@ -1110,6 +1122,13 @@ public class MainController {
         searchManager.clearSearch();
     }
 
+    @FXML
+    private void handleToggleSidebar() {
+        if (tabManager != null) {
+            tabManager.toggleCurrentSidebar();
+        }
+    }
+
     public void handleSearchDialog() {
         searchDialogManager.openSearchDialog(getActiveDocument(), this);
     }
@@ -1180,6 +1199,101 @@ public class MainController {
     @FXML
     private void handleAbout() {
         dialogManager.showAboutDialog();
+    }
+
+    @FXML
+    private void handleKeyboardShortcuts() {
+        KeyboardShortcutsDialog.show(themeManager);
+    }
+
+    @FXML
+    private void handlePageLabels() {
+        PDFDocument document = getActiveDocument();
+        if (document == null) {
+            uiStateManager.showError(lang().getString("error.noDocument"), lang().getString("error.noPdfLoadedMsg"));
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle(lang().getString("pageLabels.title"));
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.APPLY, ButtonType.CANCEL);
+        ButtonType resetType = new ButtonType(lang().getString("pageLabels.reset"), ButtonBar.ButtonData.LEFT);
+        dialog.getDialogPane().getButtonTypes().add(resetType);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+
+        TextField startPageField = new TextField("1");
+        TextField prefixField = new TextField();
+        TextField startNumberField = new TextField("1");
+
+        ComboBox<PageLabelManager.NumberingStyle> styleComboBox = new ComboBox<>();
+        styleComboBox.getItems().addAll(PageLabelManager.NumberingStyle.values());
+        styleComboBox.setValue(PageLabelManager.NumberingStyle.DECIMAL);
+        styleComboBox.setCellFactory(listView -> new ListCell<>() {
+            @Override
+            protected void updateItem(PageLabelManager.NumberingStyle item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : getStyleDisplayName(item));
+            }
+        });
+        styleComboBox.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(PageLabelManager.NumberingStyle item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : getStyleDisplayName(item));
+            }
+        });
+
+        grid.add(new Label(lang().getString("pageLabels.startPage")), 0, 0);
+        grid.add(startPageField, 1, 0);
+        grid.add(new Label(lang().getString("pageLabels.prefix")), 0, 1);
+        grid.add(prefixField, 1, 1);
+        grid.add(new Label(lang().getString("pageLabels.numberStyle")), 0, 2);
+        grid.add(styleComboBox, 1, 2);
+        grid.add(new Label(lang().getString("pageLabels.startNumber")), 0, 3);
+        grid.add(startNumberField, 1, 3);
+
+        dialog.getDialogPane().setContent(grid);
+        if (themeManager != null) {
+            themeManager.applyThemeToDialog(dialog.getDialogPane());
+        }
+
+        dialog.showAndWait().ifPresent(result -> {
+            if (result == ButtonType.APPLY) {
+                try {
+                    int startPage = Integer.parseInt(startPageField.getText().trim());
+                    int startNumber = Integer.parseInt(startNumberField.getText().trim());
+                    PageLabelManager.NumberingStyle style = styleComboBox.getValue();
+                    pageLabelManager.applyCustomRule(document, startPage, style, prefixField.getText(), startNumber);
+                    updatePageInfo();
+                    if (tabManager != null) {
+                        tabManager.refreshCurrentTabSidebar();
+                    }
+                    uiStateManager.updateStatus(lang().getString("pageLabels.applied"));
+                } catch (NumberFormatException ex) {
+                    uiStateManager.showError(lang().getString("error.title"), lang().getString("pageLabels.invalidInput"));
+                }
+            } else if (result == resetType) {
+                pageLabelManager.resetToDefault(document);
+                updatePageInfo();
+                if (tabManager != null) {
+                    tabManager.refreshCurrentTabSidebar();
+                }
+                uiStateManager.updateStatus(lang().getString("pageLabels.applied"));
+            }
+        });
+    }
+
+    private String getStyleDisplayName(PageLabelManager.NumberingStyle style) {
+        return switch (style) {
+            case DECIMAL -> lang().getString("pageLabels.style.decimal");
+            case ROMAN_UPPER -> lang().getString("pageLabels.style.romanUpper");
+            case ROMAN_LOWER -> lang().getString("pageLabels.style.romanLower");
+            case LETTER_UPPER -> lang().getString("pageLabels.style.letterUpper");
+            case LETTER_LOWER -> lang().getString("pageLabels.style.letterLower");
+        };
     }
 
     // ==================== Settings Dialog ====================
@@ -1306,6 +1420,9 @@ public class MainController {
         PDFDocument doc = getCurrentDocument();
         if (doc != null) {
             pageInfoManager.updatePageInfo(doc);
+            if (tabManager != null) {
+                tabManager.syncSidebarToCurrentPage();
+            }
         }
     }
 

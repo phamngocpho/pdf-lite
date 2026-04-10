@@ -5,13 +5,15 @@ import org.pdflite.util.NavigationHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.OptionalInt;
 import java.util.function.Supplier;
 
 /**
  * Manager for page navigation operations.
  */
 public record NavigationManager(NavigationHelper navigationHelper, PageInfoManager pageInfoManager,
-                                UIStateManager uiStateManager, Supplier<PDFDocument> documentSupplier) {
+                                UIStateManager uiStateManager, Supplier<PDFDocument> documentSupplier,
+                                PageLabelManager pageLabelManager) {
 
     private static final Logger logger = LoggerFactory.getLogger(NavigationManager.class);
 
@@ -24,13 +26,17 @@ public record NavigationManager(NavigationHelper navigationHelper, PageInfoManag
      */
     public void handleGoToPage() {
         PDFDocument currentDocument = documentSupplier.get();
-        int pageNum = pageInfoManager.getPageNumberFromField();
+        String pageInput = pageInfoManager.getPageInputFromField();
+        OptionalInt resolvedPageIndex = pageLabelManager != null
+                ? pageLabelManager.resolvePageIndex(currentDocument, pageInput)
+                : OptionalInt.empty();
 
-        if (pageNum > 0) {
-            navigationHelper.jumpToPage(pageNum);
-            logger.debug("Navigated to page {}", pageNum);
+        if (resolvedPageIndex.isPresent()) {
+            int pageIndex = resolvedPageIndex.getAsInt();
+            navigationHelper.navigateToPage(pageIndex);
+            logger.debug("Navigated to page index {} from input {}", pageIndex, pageInput);
         } else {
-            uiStateManager.showError(lang().getString("error.title"), lang().getString("message.invalidFile"));
+            uiStateManager.showError(lang().getString("error.title"), lang().getString("navigation.invalidPageInput"));
             pageInfoManager.resetPageFieldToCurrentPage(currentDocument);
         }
     }
