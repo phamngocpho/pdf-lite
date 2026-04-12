@@ -1,18 +1,20 @@
 package org.pdflite.manager;
 
+import org.apache.pdfbox.pdmodel.common.PDPageLabelRange;
+import org.apache.pdfbox.pdmodel.common.PDPageLabels;
 import org.pdflite.model.PDFDocument;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
 import java.util.OptionalInt;
-import java.util.WeakHashMap;
 
 /**
  * Manages page labels and custom numbering rules per document.
  */
 public class PageLabelManager {
+
+    private static final Logger logger = LoggerFactory.getLogger(PageLabelManager.class);
 
     public enum NumberingStyle {
         DECIMAL,
@@ -22,59 +24,58 @@ public class PageLabelManager {
         LETTER_LOWER
     }
 
-    private record LabelRule(int startPageIndex, NumberingStyle style, String prefix, int startNumber) {
-    }
-
-    private final Map<PDFDocument, List<LabelRule>> labelRulesByDocument = new WeakHashMap<>();
-
     public void initializeDocument(PDFDocument document) {
         if (document == null) {
             return;
         }
-        labelRulesByDocument.computeIfAbsent(document, doc -> defaultRules());
     }
 
     public void resetToDefault(PDFDocument document) {
-        if (document == null) {
+        if (document == null || document.getDocument() == null) {
             return;
         }
-        labelRulesByDocument.put(document, defaultRules());
+
+        PDPageLabels labels = new PDPageLabels(document.getDocument());
+        labels.setLabelItem(0, createRange(NumberingStyle.DECIMAL, "", 1));
+        document.getDocument().getDocumentCatalog().setPageLabels(labels);
+        document.setHasUnsavedEdits(true);
     }
 
     public void applyCustomRule(PDFDocument document, int startPageOneBased, NumberingStyle style,
                                 String prefix, int startNumber) {
-        if (document == null) {
+        if (document == null || document.getDocument() == null || document.getTotalPages() == 0) {
             return;
         }
 
-        int startPageIndex = Math.max(0, startPageOneBased - 1);
+        int startPageIndex = Math.max(0, Math.min(startPageOneBased - 1, document.getTotalPages() - 1));
         NumberingStyle numberingStyle = style != null ? style : NumberingStyle.DECIMAL;
         String safePrefix = prefix != null ? prefix : "";
         int safeStartNumber = Math.max(1, startNumber);
 
-        List<LabelRule> rules = labelRulesByDocument.computeIfAbsent(document, doc -> defaultRules());
-        rules.removeIf(rule -> rule.startPageIndex() == startPageIndex);
-        rules.add(new LabelRule(startPageIndex, numberingStyle, safePrefix, safeStartNumber));
-        rules.sort(Comparator.comparingInt(LabelRule::startPageIndex));
+        PDPageLabels labels = getOrCreatePageLabels(document);
+        labels.setLabelItem(startPageIndex, createRange(numberingStyle, safePrefix, safeStartNumber));
+        document.getDocument().getDocumentCatalog().setPageLabels(labels);
+        document.setHasUnsavedEdits(true);
     }
 
     public String getPageLabel(PDFDocument document, int pageIndex) {
-        if (document == null || pageIndex < 0) {
+        if (document == null || document.getDocument() == null || pageIndex < 0 || pageIndex >= document.getTotalPages()) {
             return "";
         }
 
-        List<LabelRule> rules = labelRulesByDocument.computeIfAbsent(document, doc -> defaultRules());
-        LabelRule rule = rules.getFirst();
-        for (LabelRule candidate : rules) {
-            if (candidate.startPageIndex() <= pageIndex) {
-                rule = candidate;
-            } else {
-                break;
+        try {
+            PDPageLabels labels = document.getDocument().getDocumentCatalog().getPageLabels();
+            if (labels != null) {
+                String[] labelsByPage = labels.getLabelsByPageIndices();
+                if (pageIndex < labelsByPage.length && labelsByPage[pageIndex] != null) {
+                    return labelsByPage[pageIndex];
+                }
             }
+        } catch (IOException ex) {
+            logger.warn("Unable to read PDF page labels", ex);
         }
 
-        int sequenceValue = rule.startNumber() + (pageIndex - rule.startPageIndex());
-        return rule.prefix() + formatValue(sequenceValue, rule.style());
+        return String.valueOf(pageIndex + 1);
     }
 
     /**
@@ -105,55 +106,34 @@ public class PageLabelManager {
         return OptionalInt.empty();
     }
 
-    private List<LabelRule> defaultRules() {
-        List<LabelRule> rules = new ArrayList<>();
-        rules.add(new LabelRule(0, NumberingStyle.DECIMAL, "", 1));
-        return rules;
-    }
-
-    private String formatValue(int value, NumberingStyle style) {
-        return switch (style) {
-            case DECIMAL -> String.valueOf(value);
-            case ROMAN_UPPER -> toRoman(value);
-            case ROMAN_LOWER -> toRoman(value).toLowerCase();
-            case LETTER_UPPER -> toAlphabetic(value, true);
-            case LETTER_LOWER -> toAlphabetic(value, false);
-        };
-    }
-
-    private String toRoman(int value) {
-        if (value <= 0) {
-            return "0";
-        }
-
-        int[] numbers = {1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1};
-        String[] symbols = {"M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"};
-
-        int remaining = value;
-        StringBuilder result = new StringBuilder();
-        for (int i = 0; i < numbers.length; i++) {
-            while (remaining >= numbers[i]) {
-                result.append(symbols[i]);
-                remaining -= numbers[i];
+    private PDPageLabels getOrCreatePageLabels(PDFDocument document) {
+        try {
+            PDPageLabels labels = document.getDocument().getDocumentCatalog().getPageLabels();
+            if (labels != null) {
+                return labels;
             }
+        } catch (IOException ex) {
+            logger.warn("Unable to read existing PDF page labels; creating a new labels dictionary", ex);
         }
-        return result.toString();
+        return new PDPageLabels(document.getDocument());
     }
 
-    private String toAlphabetic(int value, boolean upper) {
-        if (value <= 0) {
-            return "0";
-        }
+    private PDPageLabelRange createRange(NumberingStyle style, String prefix, int startNumber) {
+        PDPageLabelRange range = new PDPageLabelRange();
+        range.setStyle(toPdfBoxStyle(style));
+        range.setPrefix(prefix);
+        range.setStart(startNumber);
+        return range;
+    }
 
-        int current = value;
-        StringBuilder result = new StringBuilder();
-        while (current > 0) {
-            current--;
-            char ch = (char) ((upper ? 'A' : 'a') + (current % 26));
-            result.insert(0, ch);
-            current /= 26;
-        }
-        return result.toString();
+    private String toPdfBoxStyle(NumberingStyle style) {
+        return switch (style) {
+            case DECIMAL -> PDPageLabelRange.STYLE_DECIMAL;
+            case ROMAN_UPPER -> PDPageLabelRange.STYLE_ROMAN_UPPER;
+            case ROMAN_LOWER -> PDPageLabelRange.STYLE_ROMAN_LOWER;
+            case LETTER_UPPER -> PDPageLabelRange.STYLE_LETTERS_UPPER;
+            case LETTER_LOWER -> PDPageLabelRange.STYLE_LETTERS_LOWER;
+        };
     }
 
     private String normalize(String value) {
