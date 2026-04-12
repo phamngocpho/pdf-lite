@@ -535,7 +535,8 @@ public class TabManager {
         context.setTabRoot(container);
         context.setSplitPane(splitPane);
         context.setSidebarContainer(sidebar);
-        context.setSidebarCollapsed(false);
+        context.setSidebarCollapsed(true);
+        splitPane.getItems().remove(sidebar);
 
         container.setCenter(splitPane);
 
