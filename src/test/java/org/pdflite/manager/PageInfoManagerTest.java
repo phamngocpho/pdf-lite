@@ -1,5 +1,8 @@
 package org.pdflite.manager;
 
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.junit.jupiter.api.AfterEach;
@@ -48,13 +51,13 @@ class PageInfoManagerTest {
 
     @Test
     void testPageInfoManagerCreation() {
-        PageInfoManager manager = new PageInfoManager(null, null, null, null, null);
+        PageInfoManager manager = new PageInfoManager(null, null, null, null);
         assertNotNull(manager);
     }
 
     @Test
     void testUpdatePageInfoWithNullDocument() {
-        PageInfoManager manager = new PageInfoManager(null, null, null, null, null);
+        PageInfoManager manager = new PageInfoManager(null, null, null, null);
         
         // Should not throw exception
         assertDoesNotThrow(() -> manager.updatePageInfo(null));
@@ -62,16 +65,16 @@ class PageInfoManagerTest {
 
     @Test
     void testResetPageFieldToCurrentPageWithNullDocument() {
-        PageInfoManager manager = new PageInfoManager(null, null, null, null, null);
+        PageInfoManager manager = new PageInfoManager(null, null, null, null);
         
         // Should not throw exception
         assertDoesNotThrow(() -> manager.resetPageFieldToCurrentPage(null));
     }
 
     @Test
-    void testGetPageInputFromFieldWithNullField() {
-        PageInfoManager manager = new PageInfoManager(null, null, null, null, null);
+    void testGetPageNumberFromFieldWithNullField() {
+        PageInfoManager manager = new PageInfoManager(null, null, null, null);
         
-        assertEquals("", manager.getPageInputFromField());
+        assertEquals(-1, manager.getPageNumberFromField());
     }
 }

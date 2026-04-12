@@ -14,11 +14,8 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
-import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
-import javafx.scene.input.ScrollEvent;
-import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -29,7 +26,6 @@ import org.pdflite.controller.ScrollHandler;
 import org.pdflite.model.DocumentContext;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
-import org.pdflite.util.ScrollCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,8 +50,6 @@ public class TabManager {
     private final DrawingToolsSetupManager drawingToolsSetupManager;
     private final BookmarkManager bookmarkManager;
     private final AutoSaveManager autoSaveManager;
-    private final PageLabelManager pageLabelManager;
-    private final DocumentSidebarManager documentSidebarManager;
 
     private Tab welcomeTab;
     private RenderingManager renderingManager;
@@ -82,7 +76,7 @@ public class TabManager {
                       UIStateManager uiStateManager, RecentFilesManager recentFilesManager,
                       RecentFilesMenuManager recentFilesMenuManager, DocumentSetupManager documentSetupManager,
                       DrawingToolsSetupManager drawingToolsSetupManager, BookmarkManager bookmarkManager,
-                      AutoSaveManager autoSaveManager, PageLabelManager pageLabelManager) {
+                      AutoSaveManager autoSaveManager) {
         this.documentTabPane = documentTabPane;
         this.pdfService = pdfService;
         this.fileManager = fileManager;
@@ -96,8 +90,6 @@ public class TabManager {
         this.drawingToolsSetupManager = drawingToolsSetupManager;
         this.bookmarkManager = bookmarkManager;
         this.autoSaveManager = autoSaveManager;
-        this.pageLabelManager = pageLabelManager;
-        this.documentSidebarManager = new DocumentSidebarManager(pdfService, pageLabelManager);
     }
 
     public void initialize() {
@@ -256,9 +248,6 @@ public class TabManager {
 
             // Reset to page 1 when opening a new file
             newDocument.setCurrentPage(0);
-            if (pageLabelManager != null) {
-                pageLabelManager.initializeDocument(newDocument);
-            }
 
             // Set initial zoom to 100%
             double initialZoom = 1.0;
@@ -289,12 +278,8 @@ public class TabManager {
             ScrollHandler tabScrollHandler = new ScrollHandler(pageRenderer, scrollPane);
             tabScrollHandler.setDocumentLoading(true); // Block scroll during load
             tabScrollHandler.setDocument(newDocument, pagesContainer);
-            tabScrollHandler.setPageChangeListener(newPageIndex -> Platform.runLater(() -> {
-                if (pageInfoManager != null) {
-                    pageInfoManager.updatePageInfo(newDocument);
-                }
-                documentSidebarManager.syncCurrentPage(newDocument, newPageIndex);
-            }));
+            tabScrollHandler.setPageChangeListener(
+                    ListenerFactory.createPageChangeListener(newDocument, pageInfoManager));
             
             // Store scroll handler in context
             context.setScrollHandler(tabScrollHandler);
@@ -305,7 +290,6 @@ public class TabManager {
                     tabScrollHandler.handleScroll();
                 }
             });
-            attachZoomWheelHandler(scrollPane, tab);
 
             // Create per-tab rendering manager
             RenderingManager tabRenderingManager = new RenderingManager(
@@ -354,7 +338,6 @@ public class TabManager {
                 if (pagesContainer != null) {
                     pageRenderer.setSelectionModeActive(pagesContainer, true);
                 }
-                documentSidebarManager.syncCurrentPage(newDocument, 0);
                 // Enable scroll after a short delay to ensure initial pages are loaded
                 Platform.runLater(() -> tabScrollHandler.setDocumentLoading(false));
             });
@@ -413,12 +396,8 @@ public class TabManager {
 
         if (scrollHandler != null) {
             scrollHandler.setDocument(document, pagesContainer);
-            scrollHandler.setPageChangeListener(newPageIndex -> Platform.runLater(() -> {
-                if (pageInfoManager != null) {
-                    pageInfoManager.updatePageInfo(document);
-                }
-                documentSidebarManager.syncCurrentPage(document, newPageIndex);
-            }));
+            scrollHandler.setPageChangeListener(
+                    ListenerFactory.createPageChangeListener(document, pageInfoManager));
         }
 
         if (pageRenderer != null) {
@@ -435,7 +414,6 @@ public class TabManager {
         if (pageInfoManager != null) {
             pageInfoManager.updatePageInfo(document);
         }
-        documentSidebarManager.syncCurrentPage(document, document.getCurrentPage());
 
         if (uiStateManager != null) {
             uiStateManager.updateUIState(true);
@@ -491,7 +469,8 @@ public class TabManager {
         tab.setGraphic(tabGraphic);
 
         // Create the tab content
-        tab.setContent(buildDocumentContent(context));
+        ScrollPane scrollPane = context.getScrollPane();
+        tab.setContent(scrollPane);
 
         // Store context
         tabContextMap.put(tab, context);
@@ -508,76 +487,6 @@ public class TabManager {
         }
 
         return tab;
-    }
-
-    private BorderPane buildDocumentContent(DocumentContext context) {
-        if (context.getTabRoot() != null) {
-            return context.getTabRoot();
-        }
-
-        BorderPane container = new BorderPane();
-        ScrollPane scrollPane = context.getScrollPane();
-        PDFDocument document = context.getDocument();
-
-        VBox sidebar = documentSidebarManager.createSidebar(
-                document,
-                pageIndex -> navigateToPage(context, pageIndex),
-                () -> toggleSidebarForContext(context)
-        );
-        SplitPane splitPane = new SplitPane(sidebar, scrollPane);
-        splitPane.setDividerPositions(context.getSidebarDividerPosition());
-        splitPane.getDividers().getFirst().positionProperty().addListener((obs, oldVal, newVal) -> {
-            if (!context.isSidebarCollapsed()) {
-                context.setSidebarDividerPosition(newVal.doubleValue());
-            }
-        });
-
-        context.setTabRoot(container);
-        context.setSplitPane(splitPane);
-        context.setSidebarContainer(sidebar);
-        context.setSidebarCollapsed(false);
-
-        container.setCenter(splitPane);
-
-        return container;
-    }
-
-    private void navigateToPage(DocumentContext context, int pageIndex) {
-        PDFDocument document = context.getDocument();
-        VBox pagesContainer = context.getPagesContainer();
-        ScrollPane scrollPane = context.getScrollPane();
-        ScrollHandler tabScrollHandler = context.getScrollHandler();
-
-        if (document == null || pagesContainer == null || scrollPane == null
-                || pageIndex < 0 || pageIndex >= document.getTotalPages()) {
-            return;
-        }
-
-        document.setCurrentPage(pageIndex);
-        if (tabScrollHandler != null) {
-            tabScrollHandler.lockPageUpdates();
-        }
-
-        Platform.runLater(() -> {
-            try {
-                pagesContainer.layout();
-                double currentY = ScrollCalculator.calculatePageYPosition(pagesContainer, pageIndex);
-                double contentHeight = pagesContainer.getHeight();
-                double viewportHeight = scrollPane.getViewportBounds().getHeight();
-
-                if (contentHeight > viewportHeight) {
-                    double targetV = currentY / Math.max(1.0, (contentHeight - viewportHeight));
-                    scrollPane.setVvalue(Math.max(0.0, Math.min(1.0, targetV)));
-                }
-
-                if (pageInfoManager != null) {
-                    pageInfoManager.updatePageInfo(document);
-                }
-                documentSidebarManager.syncCurrentPage(document, pageIndex);
-            } catch (Exception e) {
-                logger.debug("Failed to navigate via sidebar: {}", e.getMessage());
-            }
-        });
     }
 
     /**
@@ -659,72 +568,5 @@ public class TabManager {
 
     public Tab getWelcomeTab() {
         return welcomeTab;
-    }
-
-    public void refreshCurrentTabSidebar() {
-        if (documentTabPane == null) {
-            return;
-        }
-        Tab selectedTab = documentTabPane.getSelectionModel().getSelectedItem();
-        if (selectedTab == null || selectedTab == welcomeTab) {
-            return;
-        }
-
-        DocumentContext context = tabContextMap.get(selectedTab);
-        if (context != null) {
-            documentSidebarManager.refreshPageLabels(context.getDocument());
-        }
-    }
-
-    public void toggleCurrentSidebar() {
-        DocumentContext context = getCurrentContext();
-        toggleSidebarForContext(context);
-    }
-
-    private void toggleSidebarForContext(DocumentContext context) {
-        if (context == null || context.getSplitPane() == null || context.getSidebarContainer() == null) {
-            return;
-        }
-
-        SplitPane splitPane = context.getSplitPane();
-        VBox sidebar = context.getSidebarContainer();
-
-        if (context.isSidebarCollapsed()) {
-            if (!splitPane.getItems().contains(sidebar)) {
-                splitPane.getItems().add(0, sidebar);
-            }
-            context.setSidebarCollapsed(false);
-            splitPane.setDividerPositions(context.getSidebarDividerPosition());
-        } else {
-            if (!splitPane.getDividers().isEmpty()) {
-                context.setSidebarDividerPosition(splitPane.getDividerPositions()[0]);
-            }
-            splitPane.getItems().remove(sidebar);
-            context.setSidebarCollapsed(true);
-        }
-    }
-
-    public void syncSidebarToCurrentPage() {
-        DocumentContext context = getCurrentContext();
-        if (context == null || context.getDocument() == null) {
-            return;
-        }
-        PDFDocument document = context.getDocument();
-        documentSidebarManager.syncCurrentPage(document, document.getCurrentPage());
-    }
-
-    private void attachZoomWheelHandler(ScrollPane scrollPane, Tab tab) {
-        scrollPane.addEventFilter(ScrollEvent.SCROLL, event -> {
-            if (!event.isShortcutDown()) {
-                return;
-            }
-            if (documentTabPane.getSelectionModel().getSelectedItem() != tab) {
-                return;
-            }
-            if (zoomManager != null) {
-                zoomManager.adjustZoomFromWheel(event.getDeltaY());
-                event.consume();
-            }
-        });
     }
 }

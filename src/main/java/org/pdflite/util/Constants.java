@@ -74,11 +74,6 @@ public class Constants {
      */
     public static final double ZOOM_STEP = 0.25;
 
-    /**
-     * Fine zoom step used by Ctrl/Cmd + mouse wheel.
-     */
-    public static final double WHEEL_ZOOM_STEP = 0.10;
-
     // File extensions
 
     /**

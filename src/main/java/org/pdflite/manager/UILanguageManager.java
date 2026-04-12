@@ -37,7 +37,6 @@ public class UILanguageManager {
     private RadioMenuItem englishItem;
     private RadioMenuItem vietnameseItem;
     private MenuItem toggleToolbarMenuItem;
-    private MenuItem toggleSidebarMenuItem;
     private MenuItem fullScreenMenuItem;
     private UIStateManager uiStateManager;
 
@@ -70,7 +69,6 @@ public class UILanguageManager {
             RadioMenuItem englishItem,
             RadioMenuItem vietnameseItem,
             MenuItem toggleToolbarMenuItem,
-            MenuItem toggleSidebarMenuItem,
             MenuItem fullScreenMenuItem,
             UIStateManager uiStateManager
     ) {
@@ -95,7 +93,6 @@ public class UILanguageManager {
         this.englishItem = englishItem;
         this.vietnameseItem = vietnameseItem;
         this.toggleToolbarMenuItem = toggleToolbarMenuItem;
-        this.toggleSidebarMenuItem = toggleSidebarMenuItem;
         this.fullScreenMenuItem = fullScreenMenuItem;
         this.uiStateManager = uiStateManager;
     }
@@ -370,7 +367,7 @@ public class UILanguageManager {
 
     private void updateViewMenuItems(Menu menu) {
         var items = menu.getItems();
-        if (items.size() >= 21) {
+        if (items.size() >= 15) {
             setMenuItemText(items, 0, "menu.view.zoomIn");
             setMenuItemText(items, 1, "menu.view.zoomOut");
             setMenuItemText(items, 2, "menu.view.fitWidth");
@@ -380,9 +377,7 @@ public class UILanguageManager {
             setMenuItemText(items, 8, "menu.view.smartBookmarks");
             setMenuItemText(items, 9, "menu.view.importOutline");
             setMenuItemText(items, 11, "menu.view.clearBookmarks");
-            setMenuItemText(items, 12, "menu.view.pageLabels");
-            setMenuItemText(items, 14, "menu.view.toggleSidebar");
-             
+            
             // Update toggle toolbar text based on current state
             if (toggleToolbarMenuItem != null) {
                 if (toolbar != null && toolbar.isVisible()) {
@@ -391,11 +386,7 @@ public class UILanguageManager {
                     toggleToolbarMenuItem.setText(languageManager.getString("menu.view.showToolbar"));
                 }
             }
-
-            if (toggleSidebarMenuItem != null) {
-                toggleSidebarMenuItem.setText(languageManager.getString("menu.view.toggleSidebar"));
-            }
-             
+            
             // Update full screen menu item
             if (fullScreenMenuItem != null) {
                 fullScreenMenuItem.setText(languageManager.getString("menu.view.fullScreen"));
@@ -425,10 +416,9 @@ public class UILanguageManager {
 
     private void updateHelpMenuItems(Menu menu) {
         var items = menu.getItems();
-        if (items.size() >= 5) {
+        if (items.size() >= 3) {
             setMenuItemText(items, 0, "menu.help.aiAssistant");
-            setMenuItemText(items, 2, "menu.help.keyboardShortcuts");
-            setMenuItemText(items, 4, "menu.help.about");
+            setMenuItemText(items, 2, "menu.help.about");
         }
     }
 
