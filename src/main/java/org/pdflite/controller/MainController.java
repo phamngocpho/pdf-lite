@@ -549,7 +549,18 @@ public class MainController {
                 fileManager, autoSaveManager, recoveryManager, renderExecutor, autoSaveExecutor);
 
         // Keyboard Shortcut Manager
-        keyboardShortcutManager = new KeyboardShortcutManager(undoRedoManager, this::handleKeyboardShortcuts);
+        keyboardShortcutManager = new KeyboardShortcutManager(
+                undoRedoManager,
+                this::handleKeyboardShortcuts,
+                this::handlePreviousPage,
+                this::handleNextPage,
+                this::handleZoomIn,
+                this::handleZoomOut,
+                this::handleFitToWidth,
+                this::handleFitToPage,
+                this::handleSearchLeft,
+                this::handleHideSearch,
+                this::handleToggleFullScreen);
 
         // Document Setup Manager
         documentSetupManager = new DocumentSetupManager(
