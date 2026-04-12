@@ -21,6 +21,9 @@ public final class ShortcutCatalog {
     public static List<ShortcutGroup> groups() {
         return List.of(
                 new ShortcutGroup("shortcuts.group.navigation", List.of(
+                        new ShortcutEntry("shortcuts.action.prevPage", "Page Up"),
+                        new ShortcutEntry("shortcuts.action.nextPage", "Page Down / Space"),
+                        new ShortcutEntry("shortcuts.action.goToPage", "Enter"),
                         new ShortcutEntry("menu.file.open", "Ctrl+O"),
                         new ShortcutEntry("menu.file.export", "Ctrl+Shift+E"),
                         new ShortcutEntry("menu.file.print", "Ctrl+P"),
@@ -72,7 +75,7 @@ public final class ShortcutCatalog {
                 )),
                 new ShortcutGroup("shortcuts.group.help", List.of(
                         new ShortcutEntry("menu.help.aiAssistant", "Ctrl+Shift+A"),
-                        new ShortcutEntry("menu.help.keyboardShortcuts", "Ctrl+/"),
+                        new ShortcutEntry("menu.help.keyboardShortcuts", "? or Ctrl+K"),
                         new ShortcutEntry("menu.help.about", "F1")
                 ))
         );

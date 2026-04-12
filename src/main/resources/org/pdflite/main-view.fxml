@@ -131,7 +131,7 @@
                 <Menu text="Help">
                     <MenuItem text="AI Assistant" onAction="#handleOpenChat" accelerator="Ctrl+Shift+A"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Keyboard Shortcuts" onAction="#handleKeyboardShortcuts" accelerator="Ctrl+/"/>
+                    <MenuItem text="Keyboard Shortcuts" onAction="#handleKeyboardShortcuts" accelerator="Ctrl+K"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="About" onAction="#handleAbout" accelerator="F1"/>
                 </Menu>
