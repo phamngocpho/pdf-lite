@@ -1,6 +1,8 @@
 package org.pdflite.model;
 
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.SplitPane;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import org.pdflite.controller.ScrollHandler;
@@ -21,6 +23,11 @@ public class DocumentContext {
     private AnnotationManager annotationManager;
     private RenderingManager renderingManager;
     private ScrollHandler scrollHandler;
+    private BorderPane tabRoot;
+    private SplitPane splitPane;
+    private VBox sidebarContainer;
+    private boolean sidebarCollapsed;
+    private double sidebarDividerPosition = 0.24;
     
     public DocumentContext(PDFDocument document, ScrollPane scrollPane, VBox pagesContainer, StackPane contentPane) {
         this.document = document;
@@ -76,5 +83,45 @@ public class DocumentContext {
     
     public void setScrollHandler(ScrollHandler scrollHandler) {
         this.scrollHandler = scrollHandler;
+    }
+
+    public BorderPane getTabRoot() {
+        return tabRoot;
+    }
+
+    public void setTabRoot(BorderPane tabRoot) {
+        this.tabRoot = tabRoot;
+    }
+
+    public SplitPane getSplitPane() {
+        return splitPane;
+    }
+
+    public void setSplitPane(SplitPane splitPane) {
+        this.splitPane = splitPane;
+    }
+
+    public VBox getSidebarContainer() {
+        return sidebarContainer;
+    }
+
+    public void setSidebarContainer(VBox sidebarContainer) {
+        this.sidebarContainer = sidebarContainer;
+    }
+
+    public boolean isSidebarCollapsed() {
+        return sidebarCollapsed;
+    }
+
+    public void setSidebarCollapsed(boolean sidebarCollapsed) {
+        this.sidebarCollapsed = sidebarCollapsed;
+    }
+
+    public double getSidebarDividerPosition() {
+        return sidebarDividerPosition;
+    }
+
+    public void setSidebarDividerPosition(double sidebarDividerPosition) {
+        this.sidebarDividerPosition = sidebarDividerPosition;
     }
 }
