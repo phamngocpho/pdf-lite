@@ -8,9 +8,31 @@ import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
 import org.apache.pdfbox.pdmodel.encryption.StandardProtectionPolicy;
+import org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature;
+import org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureInterface;
+import org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureOptions;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1OctetString;
+import org.bouncycastle.asn1.ASN1Primitive;
+import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.asn1.cms.ContentInfo;
+import org.bouncycastle.asn1.cms.Attribute;
+import org.bouncycastle.asn1.cms.AttributeTable;
+import org.bouncycastle.asn1.cms.CMSAttributes;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.jcajce.JcaCertStore;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
+import org.bouncycastle.cms.*;
+import org.bouncycastle.cms.jcajce.JcaSignerInfoGeneratorBuilder;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
+import org.bouncycastle.util.Store;
 import org.pdflite.model.*;
 import org.pdflite.util.Constants;
 import org.slf4j.Logger;
@@ -20,10 +42,13 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.*;
+import java.security.cert.*;
+import java.security.cert.Certificate;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -509,7 +534,7 @@ public class PDFService {
         File originalFile = pdfDoc.getFile();
 
         // Check if document has digital signatures
-        List<org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature> signatures =
+        List<PDSignature> signatures =
                 pdDoc.getSignatureDictionaries();
         if (signatures != null && !signatures.isEmpty()) {
             logger.warn("Document has {} digital signature(s). Saving will invalidate them!", signatures.size());
@@ -595,7 +620,7 @@ public class PDFService {
             return false;
         }
         try {
-            List<org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature> signatures =
+            List<PDSignature> signatures =
                     pdfDoc.getDocument().getSignatureDictionaries();
             return signatures != null && !signatures.isEmpty();
         } catch (Exception e) {
@@ -875,11 +900,11 @@ public class PDFService {
         logger.info("Signing PDF: {}", inputFile.getName());
 
         // Load keystore
-        java.security.KeyStore keyStore;
+        KeyStore keyStore;
         String keystoreType = keystorePath.toLowerCase().endsWith(".jks") ? "JKS" : "PKCS12";
 
         try (java.io.FileInputStream fis = new java.io.FileInputStream(keystorePath)) {
-            keyStore = java.security.KeyStore.getInstance(keystoreType);
+            keyStore = KeyStore.getInstance(keystoreType);
             keyStore.load(fis, keystorePassword.toCharArray());
         }
 
@@ -887,29 +912,29 @@ public class PDFService {
         String effectiveKeyPassword = (keyPassword == null || keyPassword.isEmpty())
                 ? keystorePassword : keyPassword;
 
-        java.security.PrivateKey privateKey = (java.security.PrivateKey)
+        PrivateKey privateKey = (PrivateKey)
                 keyStore.getKey(alias, effectiveKeyPassword.toCharArray());
 
         if (privateKey == null) {
             throw new Exception("Private key not found for alias: " + alias);
         }
 
-        java.security.cert.Certificate[] certChain = keyStore.getCertificateChain(alias);
+        Certificate[] certChain = keyStore.getCertificateChain(alias);
         if (certChain == null || certChain.length == 0) {
             throw new Exception("Certificate chain not found for alias: " + alias);
         }
 
         // Load PDF document
         try (PDDocument document = Loader.loadPDF(inputFile);
-             java.io.FileOutputStream fos = new java.io.FileOutputStream(outputFile)) {
+             FileOutputStream fos = new FileOutputStream(outputFile)) {
 
             // Create signature
-            org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature signature =
-                    new org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature();
+            PDSignature signature =
+                    new PDSignature();
 
-            signature.setFilter(org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature.FILTER_ADOBE_PPKLITE);
-            signature.setSubFilter(org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature.SUBFILTER_ADBE_PKCS7_DETACHED);
-            signature.setName(((java.security.cert.X509Certificate) certChain[0]).getSubjectX500Principal().getName());
+            signature.setFilter(PDSignature.FILTER_ADOBE_PPKLITE);
+            signature.setSubFilter(PDSignature.SUBFILTER_ADBE_PKCS7_DETACHED);
+            signature.setName(((X509Certificate) certChain[0]).getSubjectX500Principal().getName());
 
             if (reason != null && !reason.isEmpty()) {
                 signature.setReason(reason);
@@ -921,17 +946,17 @@ public class PDFService {
                 signature.setContactInfo(contact);
             }
 
-            signature.setSignDate(java.util.Calendar.getInstance());
+            signature.setSignDate(Calendar.getInstance());
 
             // Create signature options for visible signature
-            org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureOptions signatureOptions =
-                    new org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureOptions();
+            SignatureOptions signatureOptions =
+                    new SignatureOptions();
 
             if (visibleSignature) {
                 // Create visible signature rectangle
                 signatureOptions.setVisualSignature(
                         createVisibleSignature(document, page - 1, x, y, width, height,
-                                ((java.security.cert.X509Certificate) certChain[0]).getSubjectX500Principal().getName(),
+                                ((X509Certificate) certChain[0]).getSubjectX500Principal().getName(),
                                 reason, location)
                 );
                 signatureOptions.setPage(page - 1);
@@ -999,100 +1024,93 @@ public class PDFService {
                 }
 
                 java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                cs.showText("Date: " + sdf.format(new java.util.Date()));
+                cs.showText("Date: " + sdf.format(new Date()));
 
                 cs.endText();
             }
 
-            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
             sigDoc.save(baos);
-            return new java.io.ByteArrayInputStream(baos.toByteArray());
+            return new ByteArrayInputStream(baos.toByteArray());
         }
     }
 
     /**
-     * Inner class to handle the actual signing process using BouncyCastle.
-     */
-    private static class SigningSupport implements org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureInterface {
-        private final java.security.PrivateKey privateKey;
-        private final java.security.cert.Certificate[] certChain;
-        private static final Logger sigLogger = LoggerFactory.getLogger(SigningSupport.class);
-
-        public SigningSupport(java.security.PrivateKey privateKey, java.security.cert.Certificate[] certChain) {
-            this.privateKey = privateKey;
-            this.certChain = certChain;
-        }
+         * Inner class to handle the actual signing process using BouncyCastle.
+         */
+        private record SigningSupport(PrivateKey privateKey, Certificate[] certChain) implements SignatureInterface {
+            private static final Logger sigLogger = LoggerFactory.getLogger(SigningSupport.class);
 
         @Override
-        public byte[] sign(java.io.InputStream content) throws IOException {
-            try {
-                // Add BouncyCastle provider if not already added
-                if (java.security.Security.getProvider(org.bouncycastle.jce.provider.BouncyCastleProvider.PROVIDER_NAME) == null) {
-                    java.security.Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+            public byte[] sign(InputStream content) throws IOException {
+                try {
+                    // Add BouncyCastle provider if not already added
+                    if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+                        Security.addProvider(new BouncyCastleProvider());
+                    }
+
+                    // Read all content bytes - this is the data that will be signed
+                    byte[] contentBytes = content.readAllBytes();
+                    sigLogger.debug("Signing {} bytes of content", contentBytes.length);
+
+                    X509Certificate cert = (X509Certificate) certChain[0];
+
+                    // Create certificate store
+                    List<Certificate> certList = new ArrayList<>();
+                    Collections.addAll(certList, certChain);
+                    JcaCertStore certStore =
+                            new JcaCertStore(certList);
+
+                    // Create CMS signed data generator
+                    CMSSignedDataGenerator gen = new CMSSignedDataGenerator();
+
+                    // Determine signature algorithm based on key type
+                    String signatureAlgorithm;
+                    String keyAlgorithm = privateKey.getAlgorithm();
+                    if ("EC".equals(keyAlgorithm) || "ECDSA".equals(keyAlgorithm)) {
+                        signatureAlgorithm = "SHA256withECDSA";
+                    } else {
+                        signatureAlgorithm = "SHA256withRSA";
+                    }
+
+                    // Create content signer
+                    ContentSigner contentSigner =
+                            new JcaContentSignerBuilder(signatureAlgorithm)
+                                    .setProvider("BC")
+                                    .build(privateKey);
+
+                    // Create signer info generator with signed attributes
+                    JcaSignerInfoGeneratorBuilder signerInfoBuilder =
+                            new JcaSignerInfoGeneratorBuilder(
+                                    new JcaDigestCalculatorProviderBuilder()
+                                            .setProvider("BC")
+                                            .build());
+
+                    // Enable signed attributes (required for detached signatures)
+                    signerInfoBuilder.setDirectSignature(false);
+
+                    gen.addSignerInfoGenerator(
+                            signerInfoBuilder.build(contentSigner,
+                                    new JcaX509CertificateHolder(cert)));
+
+                    gen.addCertificates(certStore);
+
+                    // Create CMSTypedData for the content to be signed
+                    CMSTypedData msg = new CMSProcessableByteArray(contentBytes);
+
+                    // Generate detached signature (encapsulate = false)
+                    CMSSignedData signedData = gen.generate(msg, false);
+
+                    byte[] signature = signedData.getEncoded();
+                    sigLogger.debug("Generated signature of {} bytes", signature.length);
+
+                    return signature;
+
+                } catch (Exception e) {
+                    throw new IOException("Error signing PDF: " + e.getMessage(), e);
                 }
-
-                // Read all content bytes - this is the data that will be signed
-                byte[] contentBytes = content.readAllBytes();
-                sigLogger.debug("Signing {} bytes of content", contentBytes.length);
-
-                java.security.cert.X509Certificate cert = (java.security.cert.X509Certificate) certChain[0];
-
-                // Create certificate store
-                java.util.List<java.security.cert.Certificate> certList = new java.util.ArrayList<>();
-                java.util.Collections.addAll(certList, certChain);
-                org.bouncycastle.cert.jcajce.JcaCertStore certStore =
-                        new org.bouncycastle.cert.jcajce.JcaCertStore(certList);
-
-                // Create CMS signed data generator
-                org.bouncycastle.cms.CMSSignedDataGenerator gen = new org.bouncycastle.cms.CMSSignedDataGenerator();
-
-                // Determine signature algorithm based on key type
-                String signatureAlgorithm;
-                String keyAlgorithm = privateKey.getAlgorithm();
-                if ("EC".equals(keyAlgorithm) || "ECDSA".equals(keyAlgorithm)) {
-                    signatureAlgorithm = "SHA256withECDSA";
-                } else {
-                    signatureAlgorithm = "SHA256withRSA";
-                }
-
-                // Create content signer
-                org.bouncycastle.operator.ContentSigner contentSigner =
-                        new org.bouncycastle.operator.jcajce.JcaContentSignerBuilder(signatureAlgorithm)
-                                .setProvider("BC")
-                                .build(privateKey);
-
-                // Create signer info generator with signed attributes
-                org.bouncycastle.cms.jcajce.JcaSignerInfoGeneratorBuilder signerInfoBuilder =
-                        new org.bouncycastle.cms.jcajce.JcaSignerInfoGeneratorBuilder(
-                                new org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder()
-                                        .setProvider("BC")
-                                        .build());
-
-                // Enable signed attributes (required for detached signatures)
-                signerInfoBuilder.setDirectSignature(false);
-
-                gen.addSignerInfoGenerator(
-                        signerInfoBuilder.build(contentSigner,
-                                new org.bouncycastle.cert.jcajce.JcaX509CertificateHolder(cert)));
-
-                gen.addCertificates(certStore);
-
-                // Create CMSTypedData for the content to be signed
-                org.bouncycastle.cms.CMSTypedData msg = new org.bouncycastle.cms.CMSProcessableByteArray(contentBytes);
-
-                // Generate detached signature (encapsulate = false)
-                org.bouncycastle.cms.CMSSignedData signedData = gen.generate(msg, false);
-
-                byte[] signature = signedData.getEncoded();
-                sigLogger.debug("Generated signature of {} bytes", signature.length);
-
-                return signature;
-
-            } catch (Exception e) {
-                throw new IOException("Error signing PDF: " + e.getMessage(), e);
             }
         }
-    }
 
     /**
      * Verifies all digital signatures in a PDF file.
@@ -1111,7 +1129,7 @@ public class PDFService {
         PDDocument document = pdfDoc.getDocument();
 
         // Get all signature fields
-        List<org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature> signatures =
+        List<PDSignature> signatures =
                 document.getSignatureDictionaries();
 
         if (signatures.isEmpty()) {
@@ -1121,7 +1139,7 @@ public class PDFService {
 
         logger.info("Found {} signature(s) in document", signatures.size());
 
-        for (org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature signature : signatures) {
+        for (PDSignature signature : signatures) {
             SignatureVerificationResult result = verifySignature(pdfDoc.getFile(), signature);
             results.add(result);
         }
@@ -1133,13 +1151,13 @@ public class PDFService {
      * Verifies a single signature.
      */
     private SignatureVerificationResult verifySignature(File pdfFile,
-            org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature signature) {
+            PDSignature signature) {
 
         String signerName = signature.getName();
         String reason = signature.getReason();
         String location = signature.getLocation();
         String contactInfo = signature.getContactInfo();
-        java.util.Calendar signDate = signature.getSignDate();
+        Calendar signDate = signature.getSignDate();
 
         boolean isValid = false;
         String status = "Unknown";
@@ -1153,8 +1171,8 @@ public class PDFService {
 
         try {
             // Add BouncyCastle provider if not already added
-            if (java.security.Security.getProvider(org.bouncycastle.jce.provider.BouncyCastleProvider.PROVIDER_NAME) == null) {
-                java.security.Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+            if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null) {
+                Security.addProvider(new BouncyCastleProvider());
             }
 
             // Check signature subfilter to determine signature type
@@ -1164,7 +1182,7 @@ public class PDFService {
             // Read the PDF file bytes directly from disk
             byte[] pdfBytes;
             try {
-                pdfBytes = java.nio.file.Files.readAllBytes(pdfFile.toPath());
+                pdfBytes = Files.readAllBytes(pdfFile.toPath());
             } catch (IOException e) {
                 status = "Error";
                 details = "Cannot read PDF file: " + e.getMessage();
@@ -1214,22 +1232,22 @@ public class PDFService {
             }
 
             // For PKCS#7/CMS signatures (adbe.pkcs7.detached, adbe.pkcs7.sha1, ETSI.CAdES.detached, etc.)
-            org.bouncycastle.cms.CMSSignedData cmsSignedData;
+            CMSSignedData cmsSignedData;
             try {
                 // First try parsing signature content directly
-                cmsSignedData = new org.bouncycastle.cms.CMSSignedData(signatureContent);
-            } catch (org.bouncycastle.cms.CMSException e) {
+                cmsSignedData = new CMSSignedData(signatureContent);
+            } catch (CMSException e) {
                 // If that fails, try with ContentInfo wrapper
                 try {
-                    org.bouncycastle.asn1.ASN1InputStream asn1Stream =
-                            new org.bouncycastle.asn1.ASN1InputStream(signatureContent);
-                    org.bouncycastle.asn1.ASN1Primitive asn1Object = asn1Stream.readObject();
+                    ASN1InputStream asn1Stream =
+                            new ASN1InputStream(signatureContent);
+                    ASN1Primitive asn1Object = asn1Stream.readObject();
                     asn1Stream.close();
 
-                    if (asn1Object instanceof org.bouncycastle.asn1.ASN1Sequence) {
-                        org.bouncycastle.asn1.cms.ContentInfo contentInfo =
-                                org.bouncycastle.asn1.cms.ContentInfo.getInstance(asn1Object);
-                        cmsSignedData = new org.bouncycastle.cms.CMSSignedData(contentInfo);
+                    if (asn1Object instanceof ASN1Sequence) {
+                        ContentInfo contentInfo =
+                                ContentInfo.getInstance(asn1Object);
+                        cmsSignedData = new CMSSignedData(contentInfo);
                     } else {
                         status = "Unknown";
                         details = "Unsupported signature format. SubFilter: " + subFilter;
@@ -1247,12 +1265,12 @@ public class PDFService {
             }
 
             // Get certificates from signature
-            org.bouncycastle.util.Store<org.bouncycastle.cert.X509CertificateHolder> certStore =
+            Store<X509CertificateHolder> certStore =
                     cmsSignedData.getCertificates();
 
             // Get signer infos
-            org.bouncycastle.cms.SignerInformationStore signerInfoStore = cmsSignedData.getSignerInfos();
-            Collection<org.bouncycastle.cms.SignerInformation> signers = signerInfoStore.getSigners();
+            SignerInformationStore signerInfoStore = cmsSignedData.getSignerInfos();
+            Collection<SignerInformation> signers = signerInfoStore.getSigners();
 
             if (signers.isEmpty()) {
                 status = "Invalid";
@@ -1262,8 +1280,8 @@ public class PDFService {
             }
 
             // Verify each signer
-            for (org.bouncycastle.cms.SignerInformation signer : signers) {
-                Collection<org.bouncycastle.cert.X509CertificateHolder> certCollection =
+            for (SignerInformation signer : signers) {
+                Collection<X509CertificateHolder> certCollection =
                         certStore.getMatches(signer.getSID());
 
                 if (certCollection.isEmpty()) {
@@ -1272,11 +1290,11 @@ public class PDFService {
                     continue;
                 }
 
-                org.bouncycastle.cert.X509CertificateHolder certHolder = certCollection.iterator().next();
+                X509CertificateHolder certHolder = certCollection.iterator().next();
 
                 // Convert to X509Certificate
-                java.security.cert.X509Certificate cert =
-                        new org.bouncycastle.cert.jcajce.JcaX509CertificateConverter()
+                X509Certificate cert =
+                        new JcaX509CertificateConverter()
                                 .setProvider("BC")
                                 .getCertificate(certHolder);
 
@@ -1287,25 +1305,25 @@ public class PDFService {
 
                 // Get digest algorithm and calculate digest of signed content
                 String digestAlgOID = signer.getDigestAlgOID();
-                java.security.MessageDigest md = java.security.MessageDigest.getInstance(
+                MessageDigest md = MessageDigest.getInstance(
                         getDigestAlgorithmName(digestAlgOID), "BC");
                 byte[] calculatedDigest = md.digest(signedContent);
 
                 // Get the message-digest attribute from the signature
-                org.bouncycastle.asn1.cms.AttributeTable signedAttrs = signer.getSignedAttributes();
+                AttributeTable signedAttrs = signer.getSignedAttributes();
                 if (signedAttrs != null) {
-                    org.bouncycastle.asn1.cms.Attribute digestAttr = signedAttrs.get(
-                            org.bouncycastle.asn1.cms.CMSAttributes.messageDigest);
+                    Attribute digestAttr = signedAttrs.get(
+                            CMSAttributes.messageDigest);
                     if (digestAttr != null) {
-                        org.bouncycastle.asn1.ASN1OctetString digestValue =
-                                (org.bouncycastle.asn1.ASN1OctetString) digestAttr.getAttrValues().getObjectAt(0);
+                        ASN1OctetString digestValue =
+                                (ASN1OctetString) digestAttr.getAttrValues().getObjectAt(0);
                         byte[] signedDigest = digestValue.getOctets();
 
                         logger.debug("Calculated digest: {}", bytesToHex(calculatedDigest));
                         logger.debug("Signed digest: {}", bytesToHex(signedDigest));
 
                         // Compare digests - this checks if document was modified
-                        if (!java.util.Arrays.equals(calculatedDigest, signedDigest)) {
+                        if (!Arrays.equals(calculatedDigest, signedDigest)) {
                             status = "Invalid";
                             details = "Document has been modified after signing (digest mismatch).";
                             logger.warn("Digest mismatch detected - document may have been modified");
@@ -1327,9 +1345,9 @@ public class PDFService {
                     try {
                         cert.checkValidity();
                         details = "Signature is valid. Certificate is valid.";
-                    } catch (java.security.cert.CertificateExpiredException e) {
+                    } catch (CertificateExpiredException e) {
                         details = "Signature is valid but certificate has expired.";
-                    } catch (java.security.cert.CertificateNotYetValidException e) {
+                    } catch (CertificateNotYetValidException e) {
                         details = "Signature is valid but certificate is not yet valid.";
                     }
                 } else {
@@ -1353,10 +1371,10 @@ public class PDFService {
      * In this format, the certificate is stored in /Cert entry and signature is raw RSA.
      */
     private SignatureVerificationResult verifyPKCS1Signature(
-            org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature signature,
+            PDSignature signature,
             byte[] signatureBytes, byte[] signedContent,
             String signerName, String reason, String location, String contactInfo,
-            java.util.Calendar signDate) {
+            Calendar signDate) {
 
         boolean isValid = false;
         String status = "Unknown";
@@ -1404,9 +1422,9 @@ public class PDFService {
             }
 
             // Parse the X.509 certificate
-            java.security.cert.CertificateFactory certFactory =
-                    java.security.cert.CertificateFactory.getInstance("X.509", "BC");
-            java.security.cert.X509Certificate cert = (java.security.cert.X509Certificate)
+            CertificateFactory certFactory =
+                    CertificateFactory.getInstance("X.509", "BC");
+            X509Certificate cert = (X509Certificate)
                     certFactory.generateCertificate(new java.io.ByteArrayInputStream(certBytes));
 
             // Get signer name from certificate if not provided
@@ -1422,19 +1440,19 @@ public class PDFService {
             // 3. Compare the two hashes
 
             // Calculate SHA-1 hash of signed content
-            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-1", "BC");
+            MessageDigest md = MessageDigest.getInstance("SHA-1", "BC");
             byte[] calculatedHash = md.digest(signedContent);
             logger.debug("Calculated SHA-1 hash: {}", bytesToHex(calculatedHash));
 
             // Try standard verification first
-            java.security.Signature sig = java.security.Signature.getInstance("SHA1withRSA", "BC");
+            Signature sig = Signature.getInstance("SHA1withRSA", "BC");
             sig.initVerify(cert.getPublicKey());
             sig.update(signedContent);
 
             boolean verified = false;
             try {
                 verified = sig.verify(signatureBytes);
-            } catch (java.security.SignatureException e) {
+            } catch (SignatureException e) {
                 logger.debug("Standard verification failed, trying raw RSA decryption");
 
                 // If standard verification fails, try raw RSA decryption
@@ -1447,29 +1465,29 @@ public class PDFService {
                     // The decrypted data might be DigestInfo (ASN.1 structure) containing the hash
                     // or just the raw hash
                     if (decryptedHash.length == calculatedHash.length) {
-                        verified = java.util.Arrays.equals(decryptedHash, calculatedHash);
+                        verified = Arrays.equals(decryptedHash, calculatedHash);
                     } else if (decryptedHash.length > calculatedHash.length) {
                         // DigestInfo structure - extract the hash from the end
                         byte[] extractedHash = new byte[calculatedHash.length];
                         System.arraycopy(decryptedHash, decryptedHash.length - calculatedHash.length,
                                 extractedHash, 0, calculatedHash.length);
-                        verified = java.util.Arrays.equals(extractedHash, calculatedHash);
+                        verified = Arrays.equals(extractedHash, calculatedHash);
 
                         if (!verified) {
                             // Try parsing as DigestInfo ASN.1
                             try {
-                                org.bouncycastle.asn1.ASN1InputStream asn1 =
-                                        new org.bouncycastle.asn1.ASN1InputStream(decryptedHash);
-                                org.bouncycastle.asn1.ASN1Sequence seq =
-                                        (org.bouncycastle.asn1.ASN1Sequence) asn1.readObject();
+                                ASN1InputStream asn1 =
+                                        new ASN1InputStream(decryptedHash);
+                                ASN1Sequence seq =
+                                        (ASN1Sequence) asn1.readObject();
                                 asn1.close();
 
                                 // DigestInfo ::= SEQUENCE { digestAlgorithm, digest }
                                 if (seq.size() >= 2) {
-                                    org.bouncycastle.asn1.ASN1OctetString digestOctet =
-                                            (org.bouncycastle.asn1.ASN1OctetString) seq.getObjectAt(1);
+                                    ASN1OctetString digestOctet =
+                                            (ASN1OctetString) seq.getObjectAt(1);
                                     byte[] signedHash = digestOctet.getOctets();
-                                    verified = java.util.Arrays.equals(signedHash, calculatedHash);
+                                    verified = Arrays.equals(signedHash, calculatedHash);
                                     logger.debug("Extracted hash from DigestInfo: {}", bytesToHex(signedHash));
                                 }
                             } catch (Exception asn1Ex) {
@@ -1490,9 +1508,9 @@ public class PDFService {
                 try {
                     cert.checkValidity();
                     details = "Signature is valid (PKCS#1/RSA-SHA1). Certificate is valid.";
-                } catch (java.security.cert.CertificateExpiredException e) {
+                } catch (CertificateExpiredException e) {
                     details = "Signature is valid but certificate has expired.";
-                } catch (java.security.cert.CertificateNotYetValidException e) {
+                } catch (CertificateNotYetValidException e) {
                     details = "Signature is valid but certificate is not yet valid.";
                 }
             } else {
@@ -1514,14 +1532,14 @@ public class PDFService {
      * Verifies only the cryptographic signature without checking message digest.
      * This is used for detached signatures where we manually verify the digest.
      */
-    private boolean verifySignatureOnly(org.bouncycastle.cms.SignerInformation signer,
-                                        org.bouncycastle.cert.X509CertificateHolder certHolder) {
+    private boolean verifySignatureOnly(SignerInformation signer,
+                                        X509CertificateHolder certHolder) {
         try {
             // Get the signature bytes
             byte[] signatureBytes = signer.getSignature();
 
             // Get the signed attributes (what was actually signed)
-            org.bouncycastle.asn1.cms.AttributeTable signedAttrs = signer.getSignedAttributes();
+            AttributeTable signedAttrs = signer.getSignedAttributes();
             if (signedAttrs == null) {
                 logger.warn("No signed attributes found");
                 return false;
@@ -1538,9 +1556,9 @@ public class PDFService {
             String signatureAlgorithm = getSignatureAlgorithmName(digestAlgOID, encryptionAlgOID);
 
             // Verify using Java security API
-            java.security.Signature sig = java.security.Signature.getInstance(signatureAlgorithm, "BC");
-            java.security.cert.X509Certificate cert =
-                    new org.bouncycastle.cert.jcajce.JcaX509CertificateConverter()
+            Signature sig = Signature.getInstance(signatureAlgorithm, "BC");
+            X509Certificate cert =
+                    new JcaX509CertificateConverter()
                             .setProvider("BC")
                             .getCertificate(certHolder);
             sig.initVerify(cert.getPublicKey());
@@ -1610,14 +1628,14 @@ public class PDFService {
             String reason,
             String location,
             String contactInfo,
-            java.util.Calendar signDate,
+            Calendar signDate,
             boolean isValid,
             String status,
             String details
     ) {
         public String getFormattedSignDate() {
             if (signDate == null) return "Unknown";
-            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             return sdf.format(signDate.getTime());
         }
     }
