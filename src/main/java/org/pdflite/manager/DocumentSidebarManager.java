@@ -16,6 +16,7 @@ import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
@@ -23,6 +24,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.interactive.action.PDAction;
 import org.apache.pdfbox.pdmodel.interactive.action.PDActionGoTo;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDNamedDestination;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDDestination;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageDestination;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
@@ -155,7 +157,7 @@ public class DocumentSidebarManager {
         Label title = new Label(lang().getString("sidebar.title"));
         title.getStyleClass().add("document-sidebar-title");
 
-        Button closeButton = new Button("x");
+        Button closeButton = new Button("×");
         closeButton.getStyleClass().add("sidebar-close-button");
         closeButton.setFocusTraversable(false);
         closeButton.setOnAction(event -> {
@@ -247,10 +249,15 @@ public class DocumentSidebarManager {
             if (newVal == null || newVal.getValue() == null || state.suppressNavigate) {
                 return;
             }
-            int pageIndex = newVal.getValue().pageIndex();
-            if (pageIndex >= 0) {
-                state.navigateToPage.accept(pageIndex);
+            navigateToOutlineItem(state, newVal);
+        });
+
+        treeView.setOnMouseClicked(event -> {
+            if (event.getButton() != MouseButton.PRIMARY) {
+                return;
             }
+            TreeItem<OutlineNodeData> selected = treeView.getSelectionModel().getSelectedItem();
+            navigateToOutlineItem(state, selected);
         });
 
         treeView.addEventHandler(TreeItem.branchExpandedEvent(), event -> {
@@ -322,27 +329,55 @@ public class DocumentSidebarManager {
     private int resolveOutlinePageIndex(PDOutlineItem item, PDDocument pdDocument) {
         try {
             PDDestination destination = item.getDestination();
-            if (destination instanceof PDPageDestination pageDestination) {
-                PDPage page = pageDestination.getPage();
-                if (page != null) {
-                    return pdDocument.getPages().indexOf(page);
-                }
+            int destinationPageIndex = resolveDestinationPageIndex(destination, pdDocument);
+            if (destinationPageIndex >= 0) {
+                return destinationPageIndex;
             }
 
             PDAction action = item.getAction();
             if (action instanceof PDActionGoTo goToAction) {
-                PDDestination actionDestination = goToAction.getDestination();
-                if (actionDestination instanceof PDPageDestination pageDestination) {
-                    PDPage page = pageDestination.getPage();
-                    if (page != null) {
-                        return pdDocument.getPages().indexOf(page);
-                    }
-                }
+                return resolveDestinationPageIndex(goToAction.getDestination(), pdDocument);
             }
         } catch (Exception e) {
             logger.debug("Failed to resolve outline destination: {}", e.getMessage());
         }
         return -1;
+    }
+
+    private int resolveDestinationPageIndex(PDDestination destination, PDDocument pdDocument) throws IOException {
+        if (destination instanceof PDNamedDestination namedDestination) {
+            return resolveDestinationPageIndex(
+                    pdDocument.getDocumentCatalog().findNamedDestinationPage(namedDestination),
+                    pdDocument
+            );
+        }
+
+        if (destination instanceof PDPageDestination pageDestination) {
+            PDPage page = pageDestination.getPage();
+            if (page != null) {
+                return pdDocument.getPages().indexOf(page);
+            }
+
+            int pageIndex = pageDestination.retrievePageNumber();
+            if (pageIndex < 0) {
+                pageIndex = pageDestination.getPageNumber();
+            }
+            if (pageIndex >= 0 && pageIndex < pdDocument.getNumberOfPages()) {
+                return pageIndex;
+            }
+        }
+
+        return -1;
+    }
+
+    private void navigateToOutlineItem(SidebarState state, TreeItem<OutlineNodeData> item) {
+        if (item == null || item.getValue() == null || state.suppressNavigate) {
+            return;
+        }
+        int pageIndex = item.getValue().pageIndex();
+        if (pageIndex >= 0) {
+            state.navigateToPage.accept(pageIndex);
+        }
     }
 
     private TreeItem<OutlineNodeData> findClosestOutlineItem(SidebarState state, int pageIndex) {

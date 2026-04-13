@@ -167,11 +167,11 @@
                 <Region prefWidth="20"/>
 
                 <!-- Navigation Group -->
-                <HBox spacing="3" alignment="CENTER">
-                    <Button fx:id="prevButton" text="Previous" onAction="#handlePreviousPage"/>
+                <HBox spacing="3" alignment="CENTER" minWidth="260" prefWidth="260" maxWidth="260">
+                    <Button fx:id="prevButton" text="Previous" minWidth="82" prefWidth="82" maxWidth="82" onAction="#handlePreviousPage"/>
                     <TextField fx:id="pageNumberField" prefWidth="55" minWidth="55" maxWidth="55" onAction="#handleGoToPage" alignment="CENTER"/>
-                    <Label fx:id="totalPagesLabel" text="/ 0" minWidth="50"/>
-                    <Button fx:id="nextButton" text="Next" onAction="#handleNextPage"/>
+                    <Label fx:id="totalPagesLabel" text="/ 0" minWidth="54" prefWidth="54" maxWidth="54"/>
+                    <Button fx:id="nextButton" text="Next" minWidth="60" prefWidth="60" maxWidth="60" onAction="#handleNextPage"/>
                 </HBox>
 
                 <Region prefWidth="20"/>

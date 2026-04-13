@@ -40,11 +40,7 @@ public record PageInfoManager(Label totalPagesLabel, TextField pageNumberField, 
                 : String.valueOf(current);
 
         if (totalPagesLabel != null) {
-            if (!String.valueOf(current).equals(pageLabel)) {
-                totalPagesLabel.setText("/ " + total + " (page " + current + ")");
-            } else {
-                totalPagesLabel.setText("/ " + total);
-            }
+            totalPagesLabel.setText("/ " + total);
         }
 
         if (pageNumberField != null) {
@@ -58,9 +54,6 @@ public record PageInfoManager(Label totalPagesLabel, TextField pageNumberField, 
         if (nextButton != null) {
             nextButton.setDisable(current == total);
             nextButton.setMinSize(40, 40);
-        }
-        if (pageNumberField != null) {
-            pageNumberField.setPrefColumnCount(4);
         }
     }
 

@@ -1400,12 +1400,17 @@
 .sidebar-close-button {
     -fx-background-color: #e9edf5;
     -fx-text-fill: #4e607f;
-    -fx-background-radius: 10;
-    -fx-min-width: 22;
-    -fx-min-height: 22;
-    -fx-max-width: 22;
-    -fx-max-height: 22;
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+    -fx-min-width: 24;
+    -fx-min-height: 24;
+    -fx-pref-width: 24;
+    -fx-pref-height: 24;
+    -fx-max-width: 24;
+    -fx-max-height: 24;
     -fx-padding: 0;
+    -fx-font-size: 14px;
+    -fx-alignment: center;
     -fx-cursor: hand;
 }
 

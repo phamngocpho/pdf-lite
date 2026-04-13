@@ -4,6 +4,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.interactive.action.PDAction;
 import org.apache.pdfbox.pdmodel.interactive.action.PDActionGoTo;
+import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDNamedDestination;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDDestination;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.destination.PDPageDestination;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDDocumentOutline;
@@ -13,6 +14,7 @@ import org.pdflite.model.PDFDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -101,19 +103,9 @@ public record PDFOutlineBookmarkManager(BookmarkManager bookmarkManager) {
         try {
             // Try destination first
             if (item.getDestination() != null) {
-                PDDestination dest = item.getDestination();
-
-                // PDFBox 3.x: PDDestination doesn't have getPage() directly
-                // Need to check if it's a PDPageDestination
-                if (dest instanceof PDPageDestination pageDest) {
-                    try {
-                        PDPage page = pageDest.getPage();
-                        if (page != null) {
-                            return pdDoc.getPages().indexOf(page);
-                        }
-                    } catch (Exception e) {
-                        logger.debug("Could not get page from destination: {}", e.getMessage());
-                    }
+                int pageIndex = resolveDestinationPageIndex(item.getDestination(), pdDoc);
+                if (pageIndex >= 0) {
+                    return pageIndex;
                 }
             }
 
@@ -121,22 +113,40 @@ public record PDFOutlineBookmarkManager(BookmarkManager bookmarkManager) {
             if (item.getAction() != null) {
                 PDAction action = item.getAction();
                 if (action instanceof PDActionGoTo goToAction) {
-                    PDDestination dest = goToAction.getDestination();
-
-                    if (dest instanceof PDPageDestination pageDest) {
-                        try {
-                            PDPage page = pageDest.getPage();
-                            if (page != null) {
-                                return pdDoc.getPages().indexOf(page);
-                            }
-                        } catch (Exception e) {
-                            logger.debug("Could not get page from action destination: {}", e.getMessage());
-                        }
+                    int pageIndex = resolveDestinationPageIndex(goToAction.getDestination(), pdDoc);
+                    if (pageIndex >= 0) {
+                        return pageIndex;
                     }
                 }
             }
         } catch (Exception e) {
             logger.debug("Error extracting page number: {}", e.getMessage());
+        }
+
+        return -1;
+    }
+
+    private int resolveDestinationPageIndex(PDDestination destination, PDDocument pdDoc) throws IOException {
+        if (destination instanceof PDNamedDestination namedDestination) {
+            return resolveDestinationPageIndex(
+                    pdDoc.getDocumentCatalog().findNamedDestinationPage(namedDestination),
+                    pdDoc
+            );
+        }
+
+        if (destination instanceof PDPageDestination pageDest) {
+            PDPage page = pageDest.getPage();
+            if (page != null) {
+                return pdDoc.getPages().indexOf(page);
+            }
+
+            int pageIndex = pageDest.retrievePageNumber();
+            if (pageIndex < 0) {
+                pageIndex = pageDest.getPageNumber();
+            }
+            if (pageIndex >= 0 && pageIndex < pdDoc.getNumberOfPages()) {
+                return pageIndex;
+            }
         }
 
         return -1;

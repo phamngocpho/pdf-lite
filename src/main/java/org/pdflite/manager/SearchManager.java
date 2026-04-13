@@ -291,14 +291,14 @@ public class SearchManager {
         if (activeSetCount > 1) {
             logger.error("CRITICAL: Active result set on {} pages! Should be 1!", activeSetCount);
         } else if (activeSetCount == 0 && activeResult != null) {
-            logger.warn("Active result not set on any page (page may not be loaded yet)");
+            logger.debug("Active result not set on any page (page may not be loaded yet)");
         }
 
         if (pagesMissing > 0) {
-            logger.warn("{} pages missing AnnotationLayer - they may not be rendered yet", pagesMissing);
+            logger.debug("{} pages missing AnnotationLayer - they may not be rendered yet", pagesMissing);
         }
 
-        logger.info("Applied {} highlights to {} pages ({} missing, {} active)",
+        logger.debug("Applied {} highlights to {} pages ({} missing, {} active)",
                 highlightCount, resultsByPage.size() - pagesMissing, pagesMissing, activeSetCount);
     }
 
