@@ -35,16 +35,12 @@ public record PageInfoManager(Label totalPagesLabel, TextField pageNumberField, 
 
         int current = document.getCurrentPage() + 1;
         int total = document.getTotalPages();
-        String pageLabel = pageLabelManager != null
-                ? pageLabelManager.getPageLabel(document, document.getCurrentPage())
-                : String.valueOf(current);
-
         if (totalPagesLabel != null) {
             totalPagesLabel.setText("/ " + total);
         }
 
         if (pageNumberField != null) {
-            pageNumberField.setText(pageLabel);
+            pageNumberField.setText(String.valueOf(current));
         }
 
         if (prevButton != null) {
@@ -64,10 +60,7 @@ public record PageInfoManager(Label totalPagesLabel, TextField pageNumberField, 
      */
     public void resetPageFieldToCurrentPage(PDFDocument document) {
         if (document != null && pageNumberField != null) {
-            String pageLabel = pageLabelManager != null
-                    ? pageLabelManager.getPageLabel(document, document.getCurrentPage())
-                    : String.valueOf(document.getCurrentPage() + 1);
-            pageNumberField.setText(pageLabel);
+            pageNumberField.setText(String.valueOf(document.getCurrentPage() + 1));
         }
     }
 
