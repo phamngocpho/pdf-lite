@@ -9,6 +9,7 @@ import org.pdflite.model.Annotation;
 import org.pdflite.model.ArrowAnnotation;
 import org.pdflite.model.CircleAnnotation;
 import org.pdflite.model.CommentAnnotation;
+import org.pdflite.model.FreehandAnnotation;
 import org.pdflite.model.HighlightAnnotation;
 import org.pdflite.model.RectangleAnnotation;
 import org.pdflite.model.SearchResult;
@@ -84,6 +85,12 @@ public class AnnotationLayer extends Canvas {
      * Starting X coordinate for drag operations.
      */
     private double startX, startY;
+
+    /**
+     * List of points for freehand drawing.
+     */
+    private final List<Double> freehandPointsX = new ArrayList<>();
+    private final List<Double> freehandPointsY = new ArrayList<>();
 
     /**
      * Flag indicating whether a draw operation is in progress.
@@ -204,6 +211,15 @@ public class AnnotationLayer extends Canvas {
                     startX = event.getX();
                     startY = event.getY();
                     isDrawing = true;
+
+                    // Initialize freehand drawing points
+                    if (currentMode == AnnotationMode.FREEHAND) {
+                        freehandPointsX.clear();
+                        freehandPointsY.clear();
+                        freehandPointsX.add(startX / scale);
+                        freehandPointsY.add(startY / scale);
+                    }
+
                     event.consume(); // Rất quan trọng để chặn ContextMenuPane
                 }
                 // Nếu bấm chuột phụ (phải), HỦY chế độ vẽ hiện tại
@@ -260,6 +276,14 @@ public class AnnotationLayer extends Canvas {
                 } catch (NullPointerException e) {
                     logger.warn("Cannot draw highlight - canvas too large", e);
                 }
+            } else if (currentMode == AnnotationMode.FREEHAND) {
+                // Add point for freehand drawing
+                freehandPointsX.add(mEndX);
+                freehandPointsY.add(mEndY);
+
+                // Create temp annotation for preview
+                tempAnnotation = new FreehandAnnotation(pageIndex, freehandPointsX, freehandPointsY, drawingColor, currentLineWidth);
+                redraw();
             } else {
                 switch (currentMode) {
                     case RECTANGLE:
@@ -281,6 +305,25 @@ public class AnnotationLayer extends Canvas {
 
                 if (currentMode == AnnotationMode.HIGHLIGHT) {
                     addHighlight(startX, startY, event.getX(), event.getY());
+                } else if (currentMode == AnnotationMode.FREEHAND) {
+                    // Create freehand annotation from collected points
+                    if (freehandPointsX.size() >= 2) {
+                        FreehandAnnotation freehandAnnotation = new FreehandAnnotation(
+                                pageIndex, freehandPointsX, freehandPointsY, drawingColor, currentLineWidth);
+
+                        if (onAnnotationAdded != null) {
+                            onAnnotationAdded.accept(freehandAnnotation);
+                        } else {
+                            annotations.add(freehandAnnotation);
+                        }
+
+                        logger.debug("Added freehand annotation with {} points on page {}",
+                                freehandPointsX.size(), pageIndex);
+                    }
+
+                    // Clear freehand points
+                    freehandPointsX.clear();
+                    freehandPointsY.clear();
                 } else if (tempAnnotation != null) {
                     // Don't add to local list - let the callback/command handle it
                     // annotations.add(tempAnnotation);
@@ -402,6 +445,8 @@ public class AnnotationLayer extends Canvas {
                     drawCommentIcon(gc, comment);
                 } else if (annotation instanceof ShapeAnnotation shape) {
                     shape.draw(gc, scale);
+                } else if (annotation instanceof FreehandAnnotation freehand) {
+                    freehand.draw(gc, scale);
                 }
             }
 
@@ -517,9 +562,9 @@ public class AnnotationLayer extends Canvas {
         ARROW,
 
         /**
-         * Freehand drawing mode (not yet implemented).
+         * Freehand drawing mode.
          */
-        DRAW,
+        FREEHAND,
 
         /**
          * Text annotation mode (not yet implemented).

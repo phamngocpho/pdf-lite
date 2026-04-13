@@ -69,6 +69,7 @@ public class TabManager {
     private Supplier<javafx.scene.control.ToggleButton> btnDrawRectSupplier;
     private Supplier<javafx.scene.control.ToggleButton> btnDrawCircleSupplier;
     private Supplier<javafx.scene.control.ToggleButton> btnDrawArrowSupplier;
+    private Supplier<javafx.scene.control.ToggleButton> btnDrawFreehandSupplier;
     private Supplier<javafx.scene.control.ColorPicker> colorPickerSupplier;
     private Supplier<javafx.scene.control.ColorPicker> highlightColorPickerSupplier;
     private Supplier<javafx.scene.control.Slider> strokeWidthSliderSupplier;
@@ -136,11 +137,13 @@ public class TabManager {
             Supplier<javafx.scene.control.ToggleGroup> drawingToolsGroupSupplier,
             Supplier<javafx.scene.control.ToggleButton> btnDrawRectSupplier,
             Supplier<javafx.scene.control.ToggleButton> btnDrawCircleSupplier,
-            Supplier<javafx.scene.control.ToggleButton> btnDrawArrowSupplier) {
+            Supplier<javafx.scene.control.ToggleButton> btnDrawArrowSupplier,
+            Supplier<javafx.scene.control.ToggleButton> btnDrawFreehandSupplier) {
         this.drawingToolsGroupSupplier = drawingToolsGroupSupplier;
         this.btnDrawRectSupplier = btnDrawRectSupplier;
         this.btnDrawCircleSupplier = btnDrawCircleSupplier;
         this.btnDrawArrowSupplier = btnDrawArrowSupplier;
+        this.btnDrawFreehandSupplier = btnDrawFreehandSupplier;
     }
 
     public void setColorPickerSuppliers(
@@ -335,12 +338,14 @@ public class TabManager {
                         btnDrawRectSupplier.get(),
                         btnDrawCircleSupplier.get(),
                         btnDrawArrowSupplier.get(),
+                        btnDrawFreehandSupplier.get(),
                         pagesContainer, context.getAnnotationManager());
 
                 drawingToolsSetupManager.makeToggleButtonsDeselectable(
                         btnDrawRectSupplier.get(),
                         btnDrawCircleSupplier.get(),
                         btnDrawArrowSupplier.get(),
+                        btnDrawFreehandSupplier.get(),
                         drawingToolsGroupSupplier.get(),
                         context.getAnnotationManager());
             }
@@ -444,6 +449,26 @@ public class TabManager {
 
         // Update annotation manager reference
         annotationManager = context.getAnnotationManager();
+
+        // Sync drawing tools and styles when switching tabs
+        if (drawingToolsSetupManager != null && annotationManager != null
+                && drawingToolsGroupSupplier != null) {
+            drawingToolsSetupManager.setupDrawingToolSelection(
+                    drawingToolsGroupSupplier.get(),
+                    btnDrawRectSupplier.get(),
+                    btnDrawCircleSupplier.get(),
+                    btnDrawArrowSupplier.get(),
+                    btnDrawFreehandSupplier.get(),
+                    pagesContainer, annotationManager);
+
+            drawingToolsSetupManager.makeToggleButtonsDeselectable(
+                    btnDrawRectSupplier.get(),
+                    btnDrawCircleSupplier.get(),
+                    btnDrawArrowSupplier.get(),
+                    btnDrawFreehandSupplier.get(),
+                    drawingToolsGroupSupplier.get(),
+                    annotationManager);
+        }
 
         // Sync drawing colors from UI to the new tab's annotation layers
         if (annotationManager != null && colorPickerSupplier != null && strokeWidthSliderSupplier != null) {

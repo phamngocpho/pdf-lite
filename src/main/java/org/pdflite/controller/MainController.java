@@ -135,6 +135,8 @@ public class MainController {
     @FXML
     private ToggleButton btnDrawArrow;
     @FXML
+    private ToggleButton btnDrawFreehand;
+    @FXML
     private Button undoButton;
     @FXML
     private Button redoButton;
@@ -415,7 +417,7 @@ public class MainController {
         }
 
         // Setup drawing tool icons
-        drawingToolIconManager.setupDrawingToolIcons(btnDrawRect, btnDrawCircle, btnDrawArrow);
+        drawingToolIconManager.setupDrawingToolIcons(btnDrawRect, btnDrawCircle, btnDrawArrow, btnDrawFreehand);
         drawingToolIconManager.setupUndoIcon(undoButton);
         drawingToolIconManager.setupRedoIcon(redoButton);
 
@@ -608,7 +610,8 @@ public class MainController {
                 () -> drawingToolsGroup,
                 () -> btnDrawRect,
                 () -> btnDrawCircle,
-                () -> btnDrawArrow
+                () -> btnDrawArrow,
+                () -> btnDrawFreehand
         );
         tabManager.setColorPickerSuppliers(
                 () -> colorPicker,
