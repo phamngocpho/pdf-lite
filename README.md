@@ -92,6 +92,7 @@ java -jar target/pdf-lite-1.0-SNAPSHOT.jar
 
 | Action | Shortcut |
 |--------|----------|
+| Show keyboard shortcuts | ? or Ctrl+K |
 | Open file | Ctrl+O |
 | Save | Ctrl+S |
 | Save As | Ctrl+Shift+S |
@@ -106,6 +107,9 @@ java -jar target/pdf-lite-1.0-SNAPSHOT.jar
 | Insert Stamp | Ctrl+Shift+I |
 | Search | Ctrl+F |
 | Hide Search | Escape |
+| Previous page | Page Up |
+| Next page | Page Down or Space |
+| Go to page | Type page number/label and press Enter |
 | Zoom in | Ctrl++ |
 | Zoom out | Ctrl+- |
 | Fit width | Ctrl+0 |
@@ -129,6 +133,8 @@ java -jar target/pdf-lite-1.0-SNAPSHOT.jar
 | Redo | Ctrl+Y |
 | AI Assistant | Ctrl+Shift+A |
 | About | F1 |
+
+Shortcut customization is planned for Settings.
 
 ## Dependencies
 

@@ -281,6 +281,34 @@ public class RenderingManager {
     }
 
     /**
+     * Calculates zoom that fits exactly two pages in the current viewport.
+     */
+    public double calculateTwoPageFitZoom() {
+        if (currentDocument == null || scrollPane == null) {
+            return 0;
+        }
+        try {
+            int pageIndex = Math.max(0, currentDocument.getCurrentPage());
+            double[] dims = pdfService.getPageDimensions(currentDocument, pageIndex, 1.0f);
+            double pageWidth = dims[0];
+
+            // Account for container horizontal padding and two-page gap.
+            double viewportWidth = scrollPane.getViewportBounds().getWidth();
+            double horizontalPadding = 40.0; // pagesContainer padding left+right
+            double pageGap = 20.0; // HBox spacing in two-page mode
+            double requiredWidthAt100 = (2 * pageWidth) + pageGap;
+            double availableWidth = Math.max(100.0, viewportWidth - horizontalPadding);
+
+            double fitZoom = availableWidth / requiredWidthAt100;
+            return Math.max(org.pdflite.util.Constants.MIN_ZOOM,
+                    Math.min(org.pdflite.util.Constants.MAX_ZOOM, fitZoom));
+        } catch (Exception e) {
+            logger.debug("Failed to calculate two-page fit zoom: {}", e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
      * Gets the page container.
      *
      * @return the page container

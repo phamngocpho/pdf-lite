@@ -33,9 +33,10 @@ public class ListenerFactory {
      */
     public static ZoomChangeListenerWithContext createZoomChangeListener(
             Supplier<RenderingManager> renderingManagerSupplier,
+            Supplier<ZoomManager> zoomManagerSupplier,
             SearchManager searchManager,
             UIStateManager uiStateManager) {
-        return new ZoomChangeListenerWithContext(renderingManagerSupplier, searchManager, uiStateManager);
+        return new ZoomChangeListenerWithContext(renderingManagerSupplier, zoomManagerSupplier, searchManager, uiStateManager);
     }
 
     /**
@@ -44,6 +45,7 @@ public class ListenerFactory {
      */
     public static class ZoomChangeListenerWithContext implements ZoomManager.ZoomChangeListener {
         private final Supplier<RenderingManager> renderingManagerSupplier;
+        private final Supplier<ZoomManager> zoomManagerSupplier;
         private final SearchManager searchManager;
         private final UIStateManager uiStateManager;
         private PDFDocument currentDocument;
@@ -51,9 +53,11 @@ public class ListenerFactory {
         private ScrollPane scrollPane;
 
         public ZoomChangeListenerWithContext(Supplier<RenderingManager> renderingManagerSupplier,
+                                             Supplier<ZoomManager> zoomManagerSupplier,
                                              SearchManager searchManager,
                                              UIStateManager uiStateManager) {
             this.renderingManagerSupplier = renderingManagerSupplier;
+            this.zoomManagerSupplier = zoomManagerSupplier;
             this.searchManager = searchManager;
             this.uiStateManager = uiStateManager;
             logger.info("ZoomChangeListenerWithContext created with supplier");
@@ -81,12 +85,13 @@ public class ListenerFactory {
         @Override
         public void onZoomChanged(double newZoom) {
             RenderingManager renderingManager = renderingManagerSupplier.get();
+            ZoomManager zoomManager = zoomManagerSupplier.get();
             logger.info("ZoomChangeListener.onZoomChanged called - newZoom: {}, document: {}, pagesContainer: {}, renderingManager: {}",
                     newZoom,
                     currentDocument != null ? "loaded" : "null",
                     pagesContainer != null ? "set" : "null",
                     renderingManager != null ? "set" : "null");
-            handleZoomChanged(newZoom, currentDocument, pagesContainer, scrollPane, renderingManager, searchManager);
+            handleZoomChanged(newZoom, currentDocument, pagesContainer, scrollPane, renderingManager, zoomManager, searchManager);
         }
 
         @Override
@@ -111,6 +116,7 @@ public class ListenerFactory {
                                           VBox pagesContainer,
                                           ScrollPane scrollPane,
                                           RenderingManager renderingManager,
+                                          ZoomManager zoomManager,
                                           SearchManager searchManager) {
         logger.info("handleZoomChanged - newZoom: {}, document: {}, pagesContainer: {}, scrollPane: {}, renderingManager: {}",
                 newZoom,
@@ -120,20 +126,30 @@ public class ListenerFactory {
                 renderingManager != null ? "set" : "null");
 
         if (currentDocument != null && pagesContainer != null && scrollPane != null) {
-            // Switch layout mode based on the threshold (70% => 0.7)
-            try {
-                if (renderingManager != null) {
-                    boolean shouldTwoPage = newZoom < 0.7;
-                    logger.info("Setting two-page mode: {}", shouldTwoPage);
-                    renderingManager.setTwoPageMode(shouldTwoPage);
-                }
-            } catch (Exception e) {
-                logger.error("Error switching page layout mode", e);
-            }
-
             if (renderingManager != null) {
-                logger.info("Calling renderingManager.preserveScrollPositionAndApplyZoom({})", newZoom);
-                renderingManager.preserveScrollPositionAndApplyZoom(newZoom);
+                double effectiveZoom = newZoom;
+                boolean shouldTwoPage = newZoom < 0.7;
+                double twoPageFitZoom = renderingManager.calculateTwoPageFitZoom();
+
+                // If requested zoom would clip in two-page mode, switch back to single-page mode.
+                if (shouldTwoPage && twoPageFitZoom > 0 && newZoom > (twoPageFitZoom + 0.0001)) {
+                    shouldTwoPage = false;
+                }
+                try {
+                    renderingManager.setTwoPageMode(shouldTwoPage);
+                } catch (Exception e) {
+                    logger.error("Error switching page layout mode", e);
+                }
+
+                if (shouldTwoPage && twoPageFitZoom > 0) {
+                    effectiveZoom = Math.min(newZoom, twoPageFitZoom);
+                }
+
+                if (Math.abs(effectiveZoom - newZoom) > 0.0001 && zoomManager != null) {
+                    zoomManager.overrideZoomAfterConstraint(effectiveZoom);
+                }
+                logger.info("Calling renderingManager.preserveScrollPositionAndApplyZoom({})", effectiveZoom);
+                renderingManager.preserveScrollPositionAndApplyZoom(effectiveZoom);
             } else {
                 logger.warn("renderingManager is null!");
             }

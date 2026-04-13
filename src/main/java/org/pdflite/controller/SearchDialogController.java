@@ -81,7 +81,7 @@ public class SearchDialogController {
 
         progressIndicator.setVisible(false);
         progressIndicator.setManaged(false);
-        cancelButton.setDisable(true);
+        cancelButton.setDisable(false);
 
         logger.debug("SearchDialogController initialized");
     }
@@ -157,7 +157,7 @@ public class SearchDialogController {
             @Override
             public void onSearchComplete() {
                 searchButton.setDisable(false);
-                cancelButton.setDisable(true);
+                cancelButton.setDisable(false);
                 progressIndicator.setVisible(false);
                 progressIndicator.setManaged(false);
             }
@@ -180,7 +180,9 @@ public class SearchDialogController {
     @FXML
     private void handleCancel() {
         searchHandler.cancelSearch();
-        cancelButton.setDisable(true);
+        cancelButton.setDisable(false);
+        Stage stage = (Stage) cancelButton.getScene().getWindow();
+        stage.close();
     }
 
     @FXML

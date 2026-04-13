@@ -6,12 +6,15 @@ import java.util.List;
 import java.util.Map;
 
 import javafx.collections.ListChangeListener;
+import javafx.geometry.BoundingBox;
+import javafx.geometry.Bounds;
 import javafx.scene.layout.HBox;
 
 
 import org.pdflite.controller.MainController;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
+import org.pdflite.util.Constants;
 import org.pdflite.util.NavigationHelper;
 import org.pdflite.util.PageContainerUtils;
 import org.pdflite.view.AnnotationLayer;
@@ -19,12 +22,18 @@ import org.pdflite.view.SearchPanel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javafx.animation.Interpolator;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.scene.Node;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 
 /**
  * Manages all search-related functionality including
@@ -53,6 +62,9 @@ public class SearchManager {
     // Page listeners for auto-highlighting
     private final Map<VBox, ListChangeListener<Node>> pageListeners = new HashMap<>();
     private ListChangeListener<Node> containerListener;
+    private static final int SEARCH_NAVIGATION_MAX_RETRIES = 8;
+    private static final double SEARCH_NAVIGATION_CENTER_RATIO = 0.5;
+    private static final Duration SEARCH_NAVIGATION_SCROLL_DURATION = Duration.millis(220);
 
     private static LanguageManager lang() {
         return LanguageManager.getInstance();
@@ -101,8 +113,6 @@ public class SearchManager {
 
         groupResultsByPage(results);
 
-        groupResultsByPage(results);
-
         logger.info("Prepared {} pages with search results for lazy highlighting", resultsByPage.size());
 
         // Setup listeners to catch future renders (lazy loading)
@@ -133,11 +143,9 @@ public class SearchManager {
         if (pageIndex >= 0 && pageIndex < mainController.getTotalPages()) {
             navigationHelper.ensurePageLoadedAndReady(pageIndex, () -> Platform.runLater(() -> {
                 navigationHelper.navigateToPage(pageIndex);
-
-                // Delay to ensure scroll completes
                 Platform.runLater(() -> {
                     updateAllHighlights();
-                    logger.info("Active result updated on page {}", result.pageNumber());
+                    scrollToResultWhenReady(result, pageIndex, SEARCH_NAVIGATION_MAX_RETRIES);
                 });
             }));
         }
@@ -276,7 +284,7 @@ public class SearchManager {
                 logger.debug("Applied {} highlights to page {}", pageResults.size(), pageIndex + 1);
             } else {
                 pagesMissing++;
-                logger.warn("No AnnotationLayer found for page {} (not rendered yet)", pageIndex + 1);
+                logger.debug("No AnnotationLayer found for page {} (not rendered yet)", pageIndex + 1);
             }
         }
 
@@ -369,6 +377,137 @@ public class SearchManager {
 
     private VBox findPageBox(VBox pagesContainer, int pageIndex) {
         return PageContainerUtils.findPageBox(pagesContainer, pageIndex);
+    }
+
+    // ==================== SEARCH NAVIGATION ====================
+
+    /**
+     * Scrolls viewport to center the active search result once layout is stable.
+     * Retries for a few JavaFX pulses to avoid race conditions after page/zoom/render updates.
+     */
+    private void scrollToResultWhenReady(SearchResult result, int pageIndex, int retriesLeft) {
+        if (result == null) {
+            return;
+        }
+
+        Platform.runLater(() -> {
+            if (tryScrollToResultBounds(result, pageIndex)) {
+                logger.info("Search navigation aligned to active result on page {}", result.pageNumber());
+                return;
+            }
+
+            if (retriesLeft > 0) {
+                scrollToResultWhenReady(result, pageIndex, retriesLeft - 1);
+            } else {
+                logger.warn("Search navigation fallback reached retries limit for page {}", result.pageNumber());
+            }
+        });
+    }
+
+    /**
+     * Calculates the match bounds in rendered coordinates and scrolls ScrollPane to that center.
+     */
+    private boolean tryScrollToResultBounds(SearchResult result, int pageIndex) {
+        ScrollPane scrollPane = mainController.getScrollPane();
+        VBox pagesContainer = mainController.getPagesContainer();
+        if (scrollPane == null || pagesContainer == null || scrollPane.getContent() == null) {
+            logger.debug("Cannot navigate search result - missing scroll context");
+            return false;
+        }
+
+        VBox pageBox = findPageBox(pagesContainer, pageIndex);
+        if (pageBox == null) {
+            logger.debug("Cannot navigate search result - page {} not found", pageIndex + 1);
+            return false;
+        }
+
+        AnnotationLayer layer = findAnnotationLayer(pageBox);
+        if (layer == null || layer.getScene() == null) {
+            logger.debug("Cannot navigate search result - annotation layer not ready for page {}", pageIndex + 1);
+            return false;
+        }
+
+        scrollPane.applyCss();
+        scrollPane.layout();
+        Node contentNode = scrollPane.getContent();
+        contentNode.applyCss();
+        if (contentNode instanceof javafx.scene.Parent contentParent) {
+            contentParent.layout();
+        }
+        pageBox.applyCss();
+        pageBox.layout();
+        layer.applyCss();
+
+        double renderScale = mainController.getCurrentZoom() * Constants.LOW_RENDER_SCALE;
+        double matchX = result.x() * renderScale;
+        double matchY = result.y() * renderScale;
+        double matchWidth = Math.max(1.0, result.width() * renderScale);
+        double matchHeight = Math.max(1.0, result.height() * renderScale);
+        Bounds matchInLayer = new BoundingBox(matchX, matchY, matchWidth, matchHeight);
+
+        Bounds matchInScene = layer.localToScene(matchInLayer);
+        if (matchInScene == null) {
+            return false;
+        }
+        Bounds matchInContent = contentNode.sceneToLocal(matchInScene);
+
+        double targetCenterX = matchInContent.getMinX() + (matchInContent.getWidth() * 0.5);
+        double targetCenterY = matchInContent.getMinY() + (matchInContent.getHeight() * SEARCH_NAVIGATION_CENTER_RATIO);
+
+        return scrollContentToCenter(scrollPane, contentNode, targetCenterX, targetCenterY);
+    }
+
+    /**
+     * Converts content-local target center point to ScrollPane hvalue/vvalue.
+     */
+    private boolean scrollContentToCenter(ScrollPane scrollPane, Node contentNode, double centerX, double centerY) {
+        Bounds contentBounds = contentNode.getLayoutBounds();
+        Bounds viewport = scrollPane.getViewportBounds();
+
+        if (viewport == null || viewport.getWidth() <= 0 || viewport.getHeight() <= 0) {
+            return false;
+        }
+
+        double targetH = scrollPane.getHvalue();
+        double targetV = scrollPane.getVvalue();
+
+        if (contentBounds.getWidth() > viewport.getWidth()) {
+            double maxX = contentBounds.getWidth() - viewport.getWidth();
+            targetH = clamp(
+                    (centerX - contentBounds.getMinX() - (viewport.getWidth() * 0.5)) / maxX,
+                    0.0,
+                    1.0
+            );
+        }
+
+        if (contentBounds.getHeight() > viewport.getHeight()) {
+            double maxY = contentBounds.getHeight() - viewport.getHeight();
+            targetV = clamp(
+                    (centerY - contentBounds.getMinY() - (viewport.getHeight() * 0.5)) / maxY,
+                    0.0,
+                    1.0
+            );
+        }
+
+        if (Math.abs(scrollPane.getHvalue() - targetH) < 1e-4
+                && Math.abs(scrollPane.getVvalue() - targetV) < 1e-4) {
+            return true;
+        }
+
+        Timeline timeline = new Timeline(
+                new KeyFrame(Duration.ZERO,
+                        new KeyValue(scrollPane.hvalueProperty(), scrollPane.getHvalue(), Interpolator.EASE_BOTH),
+                        new KeyValue(scrollPane.vvalueProperty(), scrollPane.getVvalue(), Interpolator.EASE_BOTH)),
+                new KeyFrame(SEARCH_NAVIGATION_SCROLL_DURATION,
+                        new KeyValue(scrollPane.hvalueProperty(), targetH, Interpolator.EASE_BOTH),
+                        new KeyValue(scrollPane.vvalueProperty(), targetV, Interpolator.EASE_BOTH))
+        );
+        timeline.play();
+        return true;
+    }
+
+    private double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     // ==================== GETTERS ====================

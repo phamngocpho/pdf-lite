@@ -9,7 +9,8 @@ import org.pdflite.model.PDFDocument;
  * Manages page information display and navigation buttons.
  * Handles updating page numbers and button states.
  */
-public record PageInfoManager(Label totalPagesLabel, TextField pageNumberField, Button prevButton, Button nextButton) {
+public record PageInfoManager(Label totalPagesLabel, TextField pageNumberField, Button prevButton, Button nextButton,
+                              PageLabelManager pageLabelManager) {
 
     /**
      * Creates a new PageInfoManager.
@@ -34,13 +35,20 @@ public record PageInfoManager(Label totalPagesLabel, TextField pageNumberField, 
 
         int current = document.getCurrentPage() + 1;
         int total = document.getTotalPages();
+        String pageLabel = pageLabelManager != null
+                ? pageLabelManager.getPageLabel(document, document.getCurrentPage())
+                : String.valueOf(current);
 
         if (totalPagesLabel != null) {
-            totalPagesLabel.setText("/ " + total);
+            if (!String.valueOf(current).equals(pageLabel)) {
+                totalPagesLabel.setText("/ " + total + " (page " + current + ")");
+            } else {
+                totalPagesLabel.setText("/ " + total);
+            }
         }
 
         if (pageNumberField != null) {
-            pageNumberField.setText(String.valueOf(current));
+            pageNumberField.setText(pageLabel);
         }
 
         if (prevButton != null) {
@@ -63,24 +71,18 @@ public record PageInfoManager(Label totalPagesLabel, TextField pageNumberField, 
      */
     public void resetPageFieldToCurrentPage(PDFDocument document) {
         if (document != null && pageNumberField != null) {
-            pageNumberField.setText(String.valueOf(document.getCurrentPage() + 1));
+            String pageLabel = pageLabelManager != null
+                    ? pageLabelManager.getPageLabel(document, document.getCurrentPage())
+                    : String.valueOf(document.getCurrentPage() + 1);
+            pageNumberField.setText(pageLabel);
         }
     }
 
-    /**
-     * Gets the page number from the text field.
-     *
-     * @return the page number (1-based), or -1 if invalid
-     */
-    public int getPageNumberFromField() {
-        if (pageNumberField == null || pageNumberField.getText().isEmpty()) {
-            return -1;
+    public String getPageInputFromField() {
+        if (pageNumberField == null) {
+            return "";
         }
-        try {
-            return Integer.parseInt(pageNumberField.getText());
-        } catch (NumberFormatException e) {
-            return -1;
-        }
+        return pageNumberField.getText() != null ? pageNumberField.getText().trim() : "";
     }
 }
 

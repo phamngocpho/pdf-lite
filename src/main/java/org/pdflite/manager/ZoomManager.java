@@ -25,6 +25,13 @@ public class ZoomManager {
     private ComboBox<String> zoomComboBox;
     private ScrollPane scrollPane;
     private PDFDocument currentDocument;
+    private ZoomMode zoomMode = ZoomMode.CUSTOM;
+
+    public enum ZoomMode {
+        CUSTOM,
+        FIT_WIDTH,
+        FIT_PAGE
+    }
 
     /**
      * Interface for listening to zoom changes.
@@ -129,6 +136,7 @@ public class ZoomManager {
     public void zoomIn() {
         logger.info("Zoom In clicked - current zoom: {}, document: {}", currentZoom, currentDocument != null ? "loaded" : "null");
         currentZoom = Math.min(Constants.MAX_ZOOM, currentZoom + Constants.ZOOM_STEP);
+        zoomMode = ZoomMode.CUSTOM;
         logger.info("New zoom level: {}", currentZoom);
         applyZoom(null);
     }
@@ -139,6 +147,7 @@ public class ZoomManager {
     public void zoomOut() {
         logger.info("Zoom Out clicked - current zoom: {}, document: {}", currentZoom, currentDocument != null ? "loaded" : "null");
         currentZoom = Math.max(Constants.MIN_ZOOM, currentZoom - Constants.ZOOM_STEP);
+        zoomMode = ZoomMode.CUSTOM;
         logger.info("New zoom level: {}", currentZoom);
         applyZoom(null);
     }
@@ -152,6 +161,7 @@ public class ZoomManager {
             if (value != null) {
                 try {
                     currentZoom = Double.parseDouble(value.replace("%", "")) / 100.0;
+                    zoomMode = ZoomMode.CUSTOM;
                     applyZoom(null);
                 } catch (NumberFormatException e) {
                     logger.error("Invalid zoom value: {}", value);
@@ -170,6 +180,7 @@ public class ZoomManager {
                 double viewportWidth = scrollPane.getViewportBounds().getWidth() - 20;
                 double imageWidth = image.getWidth();
                 currentZoom = Math.min(1.0, viewportWidth / imageWidth);
+                zoomMode = ZoomMode.FIT_WIDTH;
                 applyZoom("Fit to Width");
             } catch (IOException e) {
                 logger.error("Error fitting to width", e);
@@ -185,10 +196,47 @@ public class ZoomManager {
             try {
                 Image image = pdfService.renderPage(currentDocument, currentDocument.getCurrentPage(), 1.0f);
                 currentZoom = calculateFitToPageZoom(image.getWidth(), image.getHeight());
+                zoomMode = ZoomMode.FIT_PAGE;
                 applyZoom("Fit to Page");
             } catch (IOException e) {
                 logger.error("Error fitting to page", e);
             }
+        }
+    }
+
+    /**
+     * Adjusts zoom when users hold Ctrl/Cmd and scroll mouse wheel.
+     * Positive delta zooms in, negative delta zooms out.
+     */
+    public void adjustZoomFromWheel(double wheelDelta) {
+        if (currentDocument == null) {
+            return;
+        }
+        if (wheelDelta == 0) {
+            return;
+        }
+
+        double direction = wheelDelta > 0 ? 1.0 : -1.0;
+        currentZoom = Math.max(Constants.MIN_ZOOM,
+                Math.min(Constants.MAX_ZOOM, currentZoom + (direction * Constants.WHEEL_ZOOM_STEP)));
+        zoomMode = ZoomMode.CUSTOM;
+        applyZoom("Custom Zoom");
+    }
+
+    public ZoomMode getZoomMode() {
+        return zoomMode;
+    }
+
+    /**
+     * Applies a constrained zoom value without triggering another zoom event cycle.
+     */
+    public void overrideZoomAfterConstraint(double constrainedZoom) {
+        this.currentZoom = Math.max(Constants.MIN_ZOOM, Math.min(Constants.MAX_ZOOM, constrainedZoom));
+        if (currentDocument != null) {
+            currentDocument.setZoomLevel(this.currentZoom);
+        }
+        if (zoomComboBox != null) {
+            zoomComboBox.setValue(String.format("%.0f%%", this.currentZoom * 100));
         }
     }
 
