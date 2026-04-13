@@ -216,6 +216,10 @@
                                                               prefWidth="50" prefHeight="50">
                                                     <tooltip><Tooltip text="Arrow"/></tooltip>
                                                 </ToggleButton>
+                                                <ToggleButton fx:id="btnDrawFreehand" toggleGroup="$drawingToolsGroup"
+                                                              prefWidth="50" prefHeight="50">
+                                                    <tooltip><Tooltip text="Freehand"/></tooltip>
+                                                </ToggleButton>
                                             </HBox>
                                         </VBox>
                                         

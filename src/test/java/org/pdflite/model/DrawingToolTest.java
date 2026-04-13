@@ -12,7 +12,7 @@ class DrawingToolTest {
     @Test
     void testAllDrawingToolsExist() {
         DrawingTool[] tools = DrawingTool.values();
-        assertEquals(4, tools.length);
+        assertEquals(5, tools.length);
     }
 
     @Test
@@ -44,11 +44,19 @@ class DrawingToolTest {
     }
 
     @Test
+    void testFreehandTool() {
+        DrawingTool tool = DrawingTool.FREEHAND;
+        assertNotNull(tool);
+        assertEquals("FREEHAND", tool.name());
+    }
+
+    @Test
     void testValueOf() {
         assertEquals(DrawingTool.NONE, DrawingTool.valueOf("NONE"));
         assertEquals(DrawingTool.RECTANGLE, DrawingTool.valueOf("RECTANGLE"));
         assertEquals(DrawingTool.CIRCLE, DrawingTool.valueOf("CIRCLE"));
         assertEquals(DrawingTool.ARROW, DrawingTool.valueOf("ARROW"));
+        assertEquals(DrawingTool.FREEHAND, DrawingTool.valueOf("FREEHAND"));
     }
 
     @Test

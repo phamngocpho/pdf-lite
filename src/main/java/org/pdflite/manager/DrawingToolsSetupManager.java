@@ -33,6 +33,7 @@ public class DrawingToolsSetupManager {
                                           ToggleButton btnDrawRect,
                                           ToggleButton btnDrawCircle,
                                           ToggleButton btnDrawArrow,
+                                          ToggleButton btnDrawFreehand,
                                           VBox pagesContainer,
                                           AnnotationManager annotationManager) {
         if (drawingToolsGroup == null) {
@@ -65,6 +66,7 @@ public class DrawingToolsSetupManager {
                     btnDrawRect,
                     btnDrawCircle,
                     btnDrawArrow,
+                    btnDrawFreehand,
                     active -> {
                         if (pageRenderer != null && pagesContainer != null) {
                             pageRenderer.setSelectionModeActive(pagesContainer, active);
@@ -84,6 +86,7 @@ public class DrawingToolsSetupManager {
     public void makeToggleButtonsDeselectable(ToggleButton btnDrawRect,
                                               ToggleButton btnDrawCircle,
                                               ToggleButton btnDrawArrow,
+                                              ToggleButton btnDrawFreehand,
                                               ToggleGroup drawingToolsGroup,
                                               AnnotationManager annotationManager) {
         if (annotationManager != null && drawingToolsGroup != null) {
@@ -95,6 +98,9 @@ public class DrawingToolsSetupManager {
             }
             if (btnDrawArrow != null) {
                 annotationManager.makeToggleButtonDeselectable(btnDrawArrow, drawingToolsGroup);
+            }
+            if (btnDrawFreehand != null) {
+                annotationManager.makeToggleButtonDeselectable(btnDrawFreehand, drawingToolsGroup);
             }
         }
     }

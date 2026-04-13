@@ -164,6 +164,7 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
      * @param btnDrawRect        the rectangle drawing toggle button
      * @param btnDrawCircle      the circle drawing toggle button
      * @param btnDrawArrow       the arrow drawing toggle button
+     * @param btnDrawFreehand    the freehand drawing toggle button
      * @param setSelectionMode   callback to set text selection mode (pagesContainer, active)
      * @param pagesContainer     the page container
      * @param updateDrawingStyle callback to update drawing style for all pages
@@ -172,6 +173,7 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
                                     ToggleButton btnDrawRect,
                                     ToggleButton btnDrawCircle,
                                     ToggleButton btnDrawArrow,
+                                    ToggleButton btnDrawFreehand,
                                     Consumer<Boolean> setSelectionMode,
                                     VBox pagesContainer,
                                     Runnable updateDrawingStyle) {
@@ -196,6 +198,8 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
             updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.CIRCLE);
         } else if (selectedBtn == btnDrawArrow) {
             updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.ARROW);
+        } else if (selectedBtn == btnDrawFreehand) {
+            updateAnnotationModeForAllPages(AnnotationLayer.AnnotationMode.FREEHAND);
         }
 
         if (updateDrawingStyle != null) {
