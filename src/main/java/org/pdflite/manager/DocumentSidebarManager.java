@@ -113,8 +113,13 @@ public class DocumentSidebarManager {
                 state.suppressNavigate = true;
                 expandParents(best);
                 state.outlineTree.getSelectionModel().select(best);
-                state.outlineTree.scrollTo(state.outlineTree.getRow(best));
+                if (!state.suppressNextOutlineScroll) {
+                    state.outlineTree.scrollTo(state.outlineTree.getRow(best));
+                }
+                state.suppressNextOutlineScroll = false;
                 state.suppressNavigate = false;
+            } else {
+                state.suppressNextOutlineScroll = false;
             }
         }
     }
@@ -305,17 +310,24 @@ public class DocumentSidebarManager {
                 String title = current.getTitle();
                 int pageIndex = resolveOutlinePageIndex(current, pdDocument);
                 if (title != null && !title.isBlank()) {
-                    String display = pageIndex >= 0
-                            ? "[" + pageLabelManager.getPageLabel(document, pageIndex) + "] " + title.trim()
-                            : title.trim();
+                    String cleanTitle = title.trim();
+                    String display = pageIndex >= 0 ? formatOutlineTitle(pageIndex, cleanTitle) : cleanTitle;
                     TreeItem<OutlineNodeData> treeItem = new TreeItem<>(new OutlineNodeData(display, pageIndex, path));
                     targetNode.getChildren().add(treeItem);
 
-                    if (pageIndex >= 0) {
-                        state.outlineItemsByPage.computeIfAbsent(pageIndex, ignored -> new ArrayList<>()).add(treeItem);
-                    }
                     if (current.hasChildren()) {
                         appendOutlineChildren(state, current, treeItem, document, pdDocument, path);
+                    }
+
+                    if (pageIndex < 0) {
+                        pageIndex = findFirstDescendantPageIndex(treeItem);
+                        if (pageIndex >= 0) {
+                            treeItem.setValue(new OutlineNodeData(formatOutlineTitle(pageIndex, cleanTitle), pageIndex, path));
+                        }
+                    }
+
+                    if (pageIndex >= 0) {
+                        state.outlineItemsByPage.computeIfAbsent(pageIndex, ignored -> new ArrayList<>()).add(treeItem);
                     }
                 }
             } catch (Exception e) {
@@ -340,6 +352,26 @@ public class DocumentSidebarManager {
             }
         } catch (Exception e) {
             logger.debug("Failed to resolve outline destination: {}", e.getMessage());
+        }
+        return -1;
+    }
+
+    private String formatOutlineTitle(int pageIndex, String title) {
+        return "[" + (pageIndex + 1) + "] " + title;
+    }
+
+    private int findFirstDescendantPageIndex(TreeItem<OutlineNodeData> item) {
+        if (item == null) {
+            return -1;
+        }
+        for (TreeItem<OutlineNodeData> child : item.getChildren()) {
+            if (child.getValue() != null && child.getValue().pageIndex() >= 0) {
+                return child.getValue().pageIndex();
+            }
+            int descendantPageIndex = findFirstDescendantPageIndex(child);
+            if (descendantPageIndex >= 0) {
+                return descendantPageIndex;
+            }
         }
         return -1;
     }
@@ -376,6 +408,7 @@ public class DocumentSidebarManager {
         }
         int pageIndex = item.getValue().pageIndex();
         if (pageIndex >= 0) {
+            state.suppressNextOutlineScroll = true;
             state.navigateToPage.accept(pageIndex);
         }
     }
@@ -434,6 +467,7 @@ public class DocumentSidebarManager {
         private int activeTabIndex = 0;
         private int currentPageIndex = 0;
         private boolean suppressNavigate = false;
+        private boolean suppressNextOutlineScroll = false;
 
         private SidebarState(PDFDocument document, Consumer<Integer> navigateToPage, Runnable hideSidebarAction) {
             this.document = document;
