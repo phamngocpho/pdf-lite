@@ -284,7 +284,7 @@ public class SearchManager {
                 logger.debug("Applied {} highlights to page {}", pageResults.size(), pageIndex + 1);
             } else {
                 pagesMissing++;
-                logger.warn("No AnnotationLayer found for page {} (not rendered yet)", pageIndex + 1);
+                logger.debug("No AnnotationLayer found for page {} (not rendered yet)", pageIndex + 1);
             }
         }
 
