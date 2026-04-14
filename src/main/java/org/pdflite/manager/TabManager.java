@@ -29,6 +29,7 @@ import org.pdflite.controller.ScrollHandler;
 import org.pdflite.model.DocumentContext;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
+import org.pdflite.util.PageContainerUtils;
 import org.pdflite.util.ScrollCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +40,7 @@ import org.slf4j.LoggerFactory;
 public class TabManager {
 
     private static final Logger logger = LoggerFactory.getLogger(TabManager.class);
+    private static final double OUTLINE_TARGET_VIEWPORT_RATIO = 0.42;
 
     private final Map<Tab, DocumentContext> tabContextMap = new HashMap<>();
     private final TabPane documentTabPane;
@@ -546,7 +548,7 @@ public class TabManager {
 
         VBox sidebar = documentSidebarManager.createSidebar(
                 document,
-                pageIndex -> navigateToPage(context, pageIndex),
+                target -> navigateToPage(context, target.pageIndex(), target.pageYOffsetFraction()),
                 () -> toggleSidebarForContext(context)
         );
         SplitPane splitPane = new SplitPane(sidebar, scrollPane);
@@ -569,6 +571,10 @@ public class TabManager {
     }
 
     private void navigateToPage(DocumentContext context, int pageIndex) {
+        navigateToPage(context, pageIndex, Double.NaN);
+    }
+
+    private void navigateToPage(DocumentContext context, int pageIndex, double pageYOffsetFraction) {
         PDFDocument document = context.getDocument();
         VBox pagesContainer = context.getPagesContainer();
         ScrollPane scrollPane = context.getScrollPane();
@@ -587,11 +593,20 @@ public class TabManager {
         Platform.runLater(() -> {
             try {
                 pagesContainer.layout();
-                double currentY = ScrollCalculator.calculatePageYPosition(pagesContainer, pageIndex);
+                ScrollCalculator.PageBounds pageBounds = ScrollCalculator.calculatePageBounds(pagesContainer, pageIndex);
+                double currentY = pageBounds.start();
+                double pageHeight = pageBounds.height();
+                VBox pageBox = PageContainerUtils.findPageBox(pagesContainer, pageIndex);
+                if (pageBox != null) {
+                    pageHeight = Math.max(pageHeight, pageBox.getBoundsInParent().getHeight());
+                }
                 double contentHeight = pagesContainer.getHeight();
                 double viewportHeight = scrollPane.getViewportBounds().getHeight();
 
                 if (contentHeight > viewportHeight) {
+                    if (!Double.isNaN(pageYOffsetFraction) && pageHeight > 0) {
+                        currentY += pageHeight * pageYOffsetFraction - viewportHeight * OUTLINE_TARGET_VIEWPORT_RATIO;
+                    }
                     double targetV = currentY / Math.max(1.0, (contentHeight - viewportHeight));
                     scrollPane.setVvalue(Math.max(0.0, Math.min(1.0, targetV)));
                 }

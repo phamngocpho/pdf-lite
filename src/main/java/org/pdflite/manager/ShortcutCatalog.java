@@ -46,16 +46,16 @@ public final class ShortcutCatalog {
                         new ShortcutEntry("menu.edit.hideSearch", "Escape")
                 )),
                 new ShortcutGroup("shortcuts.group.sidebar", List.of(
-                        new ShortcutEntry("menu.view.toggleSidebar", "Shortcut+BACK_SLASH"),
-                        new ShortcutEntry("menu.view.toggleBookmarks", "Ctrl+B"),
-                        new ShortcutEntry("menu.view.addBookmark", "Ctrl+Shift+B"),
-                        new ShortcutEntry("menu.view.smartBookmarks", "Ctrl+Alt+B"),
-                        new ShortcutEntry("menu.view.importOutline", "Ctrl+Alt+O"),
-                        new ShortcutEntry("menu.view.clearBookmarks", "Ctrl+Shift+Delete"),
-                        new ShortcutEntry("menu.view.pageLabels", "Ctrl+Shift+L"),
-                        new ShortcutEntry("menu.view.hideToolbar", "Ctrl+T"),
-                        new ShortcutEntry("menu.view.autoHideUI", "Ctrl+Shift+H"),
-                        new ShortcutEntry("menu.view.fullScreen", "F11")
+                        new ShortcutEntry("shortcuts.action.toggleSidebar", "Shortcut+BACK_SLASH"),
+                        new ShortcutEntry("shortcuts.action.toggleBookmarks", "Ctrl+B"),
+                        new ShortcutEntry("shortcuts.action.addBookmark", "Ctrl+Shift+B"),
+                        new ShortcutEntry("shortcuts.action.smartBookmarks", "Ctrl+Alt+B"),
+                        new ShortcutEntry("shortcuts.action.importOutline", "Ctrl+Alt+O"),
+                        new ShortcutEntry("shortcuts.action.clearBookmarks", "Ctrl+Shift+Delete"),
+                        new ShortcutEntry("shortcuts.action.pageLabels", "Ctrl+Shift+L"),
+                        new ShortcutEntry("shortcuts.action.hideToolbar", "Ctrl+T"),
+                        new ShortcutEntry("shortcuts.action.autoHideUI", "Ctrl+Shift+H"),
+                        new ShortcutEntry("shortcuts.action.fullScreen", "F11")
                 )),
                 new ShortcutGroup("shortcuts.group.edit", List.of(
                         new ShortcutEntry("menu.edit.editText", "Ctrl+E"),
