@@ -76,6 +76,29 @@ class ShapeAnnotationTest {
     }
 
     @Test
+    void testCustomShapeStyleCreation() {
+        RectangleAnnotation rect = new RectangleAnnotation(
+            0, 10, 20, 110, 120, Color.RED, 4.0, AnnotationLineStyle.DASHED, 0.6
+        );
+
+        assertEquals(AnnotationLineStyle.DASHED, rect.getLineStyle());
+        assertEquals(0.6, rect.getOpacity());
+    }
+
+    @Test
+    void testShapeOpacityIsClamped() {
+        CircleAnnotation transparent = new CircleAnnotation(
+            0, 0, 0, 100, 100, Color.BLACK, 1.0, AnnotationLineStyle.DOTTED, -1.0
+        );
+        CircleAnnotation opaque = new CircleAnnotation(
+            0, 0, 0, 100, 100, Color.BLACK, 1.0, AnnotationLineStyle.DOTTED, 2.0
+        );
+
+        assertEquals(0.0, transparent.getOpacity());
+        assertEquals(1.0, opaque.getOpacity());
+    }
+
+    @Test
     void testAnnotationSetters() {
         RectangleAnnotation rect = new RectangleAnnotation(
             0, 0, 0, 100, 100, Color.BLACK, 1.0

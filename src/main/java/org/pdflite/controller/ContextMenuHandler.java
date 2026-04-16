@@ -404,6 +404,9 @@ public class ContextMenuHandler {
                 currentSelection.getPageIndex(),
                 highlightRegions,
                 highlightColor);
+
+        // Clear selection state to avoid duplicate Ctrl+H re-highlighting
+        clearCurrentSelection();
     }
 
     /**
@@ -615,6 +618,13 @@ public class ContextMenuHandler {
      */
     public boolean hasTextAtPosition() {
         return currentSelection != null && currentSelection.hasText();
+    }
+
+    /**
+     * Clears current text selection state.
+     */
+    public void clearCurrentSelection() {
+        currentSelection = null;
     }
 
     /**

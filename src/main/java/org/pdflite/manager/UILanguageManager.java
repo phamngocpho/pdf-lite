@@ -34,6 +34,8 @@ public class UILanguageManager {
     private Label drawingColorLabel;
     private Label highlightColorLabel;
     private Label strokeWidthTitleLabel;
+    private Label lineStyleTitleLabel;
+    private Label opacityTitleLabel;
     private RadioMenuItem englishItem;
     private RadioMenuItem vietnameseItem;
     private MenuItem toggleToolbarMenuItem;
@@ -67,6 +69,8 @@ public class UILanguageManager {
             Label drawingColorLabel,
             Label highlightColorLabel,
             Label strokeWidthTitleLabel,
+            Label lineStyleTitleLabel,
+            Label opacityTitleLabel,
             RadioMenuItem englishItem,
             RadioMenuItem vietnameseItem,
             MenuItem toggleToolbarMenuItem,
@@ -92,6 +96,8 @@ public class UILanguageManager {
         this.drawingColorLabel = drawingColorLabel;
         this.highlightColorLabel = highlightColorLabel;
         this.strokeWidthTitleLabel = strokeWidthTitleLabel;
+        this.lineStyleTitleLabel = lineStyleTitleLabel;
+        this.opacityTitleLabel = opacityTitleLabel;
         this.englishItem = englishItem;
         this.vietnameseItem = vietnameseItem;
         this.toggleToolbarMenuItem = toggleToolbarMenuItem;
@@ -210,6 +216,8 @@ public class UILanguageManager {
         if (drawingColorLabel != null) drawingColorLabel.setText(languageManager.getString("draw.color"));
         if (highlightColorLabel != null) highlightColorLabel.setText(languageManager.getString("draw.highlightColor"));
         if (strokeWidthTitleLabel != null) strokeWidthTitleLabel.setText(languageManager.getString("draw.strokeWidth"));
+        if (lineStyleTitleLabel != null) lineStyleTitleLabel.setText(languageManager.getString("draw.lineStyle"));
+        if (opacityTitleLabel != null) opacityTitleLabel.setText(languageManager.getString("draw.opacity"));
     }
 
     private void updateButton(Button button, String textKey, String tooltipKey) {

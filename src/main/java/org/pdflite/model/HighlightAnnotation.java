@@ -40,6 +40,7 @@ public class HighlightAnnotation extends Annotation {
      * The color of the highlight.
      */
     private final Color color;
+    private final double opacity;
 
     /**
      * Creates a new highlight annotation with the specified properties.
@@ -64,10 +65,21 @@ public class HighlightAnnotation extends Annotation {
      * @param batchId identifier shared by highlight segments created in one action; may be null
      */
     public HighlightAnnotation(int pageNumber, double x, double y, double width, double height, Color color, String batchId) {
+        this(pageNumber, x, y, width, height, color, 0.4, batchId);
+    }
+
+    public HighlightAnnotation(int pageNumber, double x, double y, double width, double height,
+                               Color color, double opacity) {
+        this(pageNumber, x, y, width, height, color, opacity, null);
+    }
+
+    public HighlightAnnotation(int pageNumber, double x, double y, double width, double height,
+                               Color color, double opacity, String batchId) {
         super(pageNumber, x, y, "HIGHLIGHT");
         this.width = width;
         this.height = height;
         this.color = color;
+        this.opacity = clampOpacity(opacity);
         this.batchId = batchId;
     }
 
@@ -100,5 +112,13 @@ public class HighlightAnnotation extends Annotation {
      */
     public Color getColor() {
         return color;
+    }
+
+    public double getOpacity() {
+        return opacity;
+    }
+
+    private double clampOpacity(double opacity) {
+        return Math.max(0.0, Math.min(1.0, opacity));
     }
 }

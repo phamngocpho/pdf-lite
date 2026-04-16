@@ -2,6 +2,7 @@ package org.pdflite.manager;
 
 import java.awt.geom.Rectangle2D;
 import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
@@ -37,6 +38,8 @@ public class HighlightManager {
 
     private static final double HIGHLIGHT_HEIGHT_MULTIPLIER = 1.35;
     private static final double HIGHLIGHT_EXTRA_PADDING_PX = 2.0;
+    private static final double HIGHLIGHT_DUPLICATE_TOLERANCE = 0.8;
+    private static final double MIN_REGION_SIZE = 0.25;
 
     /**
      * Creates a new HighlightManager.
@@ -66,9 +69,9 @@ public class HighlightManager {
      */
     private void initializeColorPicker() {
         if (highlightColorPicker != null) {
-            highlightColorPicker.setValue(Color.YELLOW);
-            highlightColorPicker.setOnAction(e -> updateHighlightColorForAllPages());
-            logger.debug("Highlight color picker initialized with YELLOW");
+            // Color picker state and persistence are managed by DrawingToolsSetupManager.
+            // Keep this manager read-only to avoid overriding user custom colors/actions.
+            logger.debug("Highlight color picker linked to HighlightManager");
         }
     }
 
@@ -99,6 +102,9 @@ public class HighlightManager {
 
                         final String batchId = java.util.UUID.randomUUID().toString();
 
+                        int addedCount = 0;
+                        List<Rect> existingRects = collectExistingHighlightRects(currentDocument, pageIndex);
+
                         // Create highlight annotations for each region
                         for (Rectangle2D region : highlightRegions) {
                             // highlightRegions are in PDF coordinates (from SmartTextSelector)
@@ -115,25 +121,39 @@ public class HighlightManager {
                             double normalizedHeight = expandedHeight;
                             double normalizedYAdjusted = normalizedY - ((expandedHeight - originalHeight) / 2.0);
 
-                            // Create highlight annotation with normalized coordinates
-                            HighlightAnnotation highlight = new HighlightAnnotation(
-                                    pageIndex,
-                                    normalizedX,
-                                    normalizedYAdjusted,
-                                    normalizedWidth,
-                                    normalizedHeight,
-                                    highlightColor,
-                                    batchId);
+                            Rect candidate = new Rect(normalizedX, normalizedYAdjusted, normalizedWidth, normalizedHeight);
+                            List<Rect> nonOverlapping = subtractOverlaps(candidate, existingRects);
 
-                            // Add to document
-                            currentDocument.addAnnotation(highlight);
+                            for (Rect piece : nonOverlapping) {
+                                if (piece.width < MIN_REGION_SIZE || piece.height < MIN_REGION_SIZE) {
+                                    continue;
+                                }
+                                if (isDuplicateHighlight(currentDocument, pageIndex,
+                                        piece.x, piece.y, piece.width, piece.height)) {
+                                    continue;
+                                }
 
-                            logger.debug("Added highlight: page={}, pdfX={}, pdfY={}, normalizedX={}, normalizedY={}, w={}, h={}",
+                                HighlightAnnotation highlight = new HighlightAnnotation(
+                                        pageIndex,
+                                        piece.x,
+                                        piece.y,
+                                        piece.width,
+                                        piece.height,
+                                        highlightColor,
+                                        batchId);
+                                currentDocument.addAnnotation(highlight);
+                                existingRects.add(piece);
+                                addedCount++;
+                            }
+
+                            logger.debug("Processed highlight region: page={}, pdfX={}, pdfY={}, normalizedX={}, normalizedY={}, w={}, h={}",
                                     pageIndex, region.getX(), region.getY(), normalizedX, normalizedYAdjusted, normalizedWidth, normalizedHeight);
                         }
 
                         // Mark document as modified
-                        currentDocument.setHasUnsavedEdits(true);
+                        if (addedCount > 0) {
+                            currentDocument.setHasUnsavedEdits(true);
+                        }
 
                         // Refresh the page to show the highlights
                         AnnotationManager annotationManager = annotationManagerSupplier.get();
@@ -142,9 +162,12 @@ public class HighlightManager {
                         }
 
                         // Update status
-                        uiStateManager.updateStatus(
-                                MessageFormat.format(lang().getString("highlight.added"),
-                                        highlightRegions.size()));
+                        if (addedCount > 0) {
+                            uiStateManager.updateStatus(
+                                    MessageFormat.format(lang().getString("highlight.added"), addedCount));
+                        } else {
+                            uiStateManager.updateStatus(lang().getString("highlight.alreadyExists"));
+                        }
 
                     } catch (Exception e) {
                         logger.error("Error creating highlights", e);
@@ -163,6 +186,127 @@ public class HighlightManager {
                 });
 
         logger.info("Highlight callback configured successfully");
+    }
+
+    private boolean isDuplicateHighlight(PDFDocument document, int pageIndex,
+                                         double x, double y, double width, double height) {
+        for (Annotation annotation : document.getAnnotations()) {
+            if (!(annotation instanceof HighlightAnnotation existing)) {
+                continue;
+            }
+            if (existing.getPageNumber() != pageIndex) {
+                continue;
+            }
+
+            if (Math.abs(existing.getX() - x) < HIGHLIGHT_DUPLICATE_TOLERANCE
+                    && Math.abs(existing.getY() - y) < HIGHLIGHT_DUPLICATE_TOLERANCE
+                    && Math.abs(existing.getWidth() - width) < HIGHLIGHT_DUPLICATE_TOLERANCE
+                    && Math.abs(existing.getHeight() - height) < HIGHLIGHT_DUPLICATE_TOLERANCE) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<Rect> collectExistingHighlightRects(PDFDocument document, int pageIndex) {
+        List<Rect> rects = new ArrayList<>();
+        for (Annotation annotation : document.getAnnotations()) {
+            if (annotation instanceof HighlightAnnotation highlight && highlight.getPageNumber() == pageIndex) {
+                rects.add(new Rect(highlight.getX(), highlight.getY(), highlight.getWidth(), highlight.getHeight()));
+            }
+        }
+        return rects;
+    }
+
+    private List<Rect> subtractOverlaps(Rect candidate, List<Rect> existingRects) {
+        List<Rect> result = new ArrayList<>();
+        result.add(candidate);
+
+        for (Rect existing : existingRects) {
+            List<Rect> next = new ArrayList<>();
+            for (Rect current : result) {
+                next.addAll(subtractRect(current, existing));
+            }
+            result = next;
+            if (result.isEmpty()) {
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    private List<Rect> subtractRect(Rect source, Rect mask) {
+        Rect intersection = source.intersection(mask);
+        if (intersection == null) {
+            return List.of(source);
+        }
+
+        List<Rect> pieces = new ArrayList<>();
+
+        // Top
+        addRectIfValid(pieces, new Rect(
+                source.x,
+                source.y,
+                source.width,
+                intersection.y - source.y));
+
+        // Bottom
+        addRectIfValid(pieces, new Rect(
+                source.x,
+                intersection.y + intersection.height,
+                source.width,
+                (source.y + source.height) - (intersection.y + intersection.height)));
+
+        // Left
+        addRectIfValid(pieces, new Rect(
+                source.x,
+                intersection.y,
+                intersection.x - source.x,
+                intersection.height));
+
+        // Right
+        addRectIfValid(pieces, new Rect(
+                intersection.x + intersection.width,
+                intersection.y,
+                (source.x + source.width) - (intersection.x + intersection.width),
+                intersection.height));
+
+        return pieces;
+    }
+
+    private void addRectIfValid(List<Rect> target, Rect rect) {
+        if (rect.width > MIN_REGION_SIZE && rect.height > MIN_REGION_SIZE) {
+            target.add(rect);
+        }
+    }
+
+    private static final class Rect {
+        private final double x;
+        private final double y;
+        private final double width;
+        private final double height;
+
+        private Rect(double x, double y, double width, double height) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+        }
+
+        private Rect intersection(Rect other) {
+            double ix = Math.max(this.x, other.x);
+            double iy = Math.max(this.y, other.y);
+            double ix2 = Math.min(this.x + this.width, other.x + other.width);
+            double iy2 = Math.min(this.y + this.height, other.y + other.height);
+
+            double iw = ix2 - ix;
+            double ih = iy2 - iy;
+            if (iw <= 0 || ih <= 0) {
+                return null;
+            }
+            return new Rect(ix, iy, iw, ih);
+        }
     }
 
     /**

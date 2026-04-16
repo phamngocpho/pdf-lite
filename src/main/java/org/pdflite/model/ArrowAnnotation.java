@@ -11,6 +11,11 @@ public class ArrowAnnotation extends ShapeAnnotation {
         super(pageNumber, startX, startY, endX, endY, color, lineWidth, TYPE);
     }
 
+    public ArrowAnnotation(int pageNumber, double startX, double startY, double endX, double endY,
+                           Color color, double lineWidth, AnnotationLineStyle lineStyle, double opacity) {
+        super(pageNumber, startX, startY, endX, endY, color, lineWidth, lineStyle, opacity, TYPE);
+    }
+
     @Override
     public void draw(GraphicsContext gc, double scale) {
         prepareGraphicsContext(gc, scale);
@@ -28,5 +33,6 @@ public class ArrowAnnotation extends ShapeAnnotation {
 
         gc.strokeLine(endX * scale, endY * scale, arrowHeadX1, arrowHeadY1);
         gc.strokeLine(endX * scale, endY * scale, arrowHeadX2, arrowHeadY2);
+        resetGraphicsContext(gc);
     }
 }
