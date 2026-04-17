@@ -260,7 +260,7 @@
                                         <!-- Line Style Section -->
                                         <VBox spacing="8">
                                             <Label fx:id="lineStyleTitleLabel" text="Line Style" styleClass="drawing-tools-section-label"/>
-                                            <ComboBox fx:id="lineStyleComboBox" prefWidth="178" maxWidth="178"/>
+                                            <ComboBox fx:id="lineStyleComboBox" prefWidth="178" maxWidth="178" styleClass="line-style-combo"/>
                                         </VBox>
 
                                         <Separator styleClass="drawing-tools-separator"/>
