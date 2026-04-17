@@ -82,14 +82,20 @@ public class UndoRedoManager {
             try {
                 commandManager.undo();
                 String desc = commandManager.getUndoDescription();
-                uiStateManager.updateStatus(lang().getString("status.undone", desc != null ? desc : ""));
+                if (uiStateManager != null) {
+                    uiStateManager.updateStatus(lang().getString("status.undone", desc != null ? desc : ""));
+                }
                 logger.debug("Undo successful");
             } catch (Exception e) {
                 logger.error("Error during undo", e);
-                uiStateManager.showError(lang().getString("error.title"), lang().getString("error.undo") + ": " + e.getMessage());
+                if (uiStateManager != null) {
+                    uiStateManager.showError(lang().getString("error.title"), lang().getString("error.undo") + ": " + e.getMessage());
+                }
             }
         } else {
-            uiStateManager.updateStatus(lang().getString("status.nothingToUndo"));
+            if (uiStateManager != null) {
+                uiStateManager.updateStatus(lang().getString("status.nothingToUndo"));
+            }
             logger.debug("Nothing to undo");
         }
     }
@@ -102,14 +108,20 @@ public class UndoRedoManager {
             try {
                 commandManager.redo();
                 String desc = commandManager.getRedoDescription();
-                uiStateManager.updateStatus(lang().getString("status.redone", desc != null ? desc : ""));
+                if (uiStateManager != null) {
+                    uiStateManager.updateStatus(lang().getString("status.redone", desc != null ? desc : ""));
+                }
                 logger.debug("Redo successful");
             } catch (Exception e) {
                 logger.error("Error during redo", e);
-                uiStateManager.showError(lang().getString("error.title"), lang().getString("error.redo") + ": " + e.getMessage());
+                if (uiStateManager != null) {
+                    uiStateManager.showError(lang().getString("error.title"), lang().getString("error.redo") + ": " + e.getMessage());
+                }
             }
         } else {
-            uiStateManager.updateStatus(lang().getString("status.nothingToRedo"));
+            if (uiStateManager != null) {
+                uiStateManager.updateStatus(lang().getString("status.nothingToRedo"));
+            }
             logger.debug("Nothing to redo");
         }
     }

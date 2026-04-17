@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 
 import javafx.scene.paint.Color;
 import org.pdflite.model.Annotation;
+import org.pdflite.model.AnnotationLineStyle;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.util.PageContainerUtils;
 import org.pdflite.view.AnnotationLayer;
@@ -54,11 +55,18 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
      * @param strokeWidth the stroke width
      */
     public void updateDrawingStyleForAllPages(Color color, double strokeWidth) {
+        updateDrawingStyleForAllPages(color, strokeWidth, AnnotationLineStyle.SOLID, 1.0);
+    }
+
+    public void updateDrawingStyleForAllPages(Color color, double strokeWidth,
+                                              AnnotationLineStyle lineStyle, double opacity) {
         if (pagesContainer == null) return;
 
         processAllAnnotationLayers(layer -> {
             layer.setDrawingColor(color);
             layer.setLineWidth(strokeWidth);
+            layer.setLineStyle(lineStyle);
+            layer.setAnnotationOpacity(opacity);
             layer.redraw();
         });
 
@@ -71,10 +79,15 @@ public record AnnotationManager(VBox pagesContainer, UIStateManager uiStateManag
      * @param color the highlight color
      */
     public void updateHighlightColorForAllPages(Color color) {
+        updateHighlightColorForAllPages(color, 0.4);
+    }
+
+    public void updateHighlightColorForAllPages(Color color, double opacity) {
         if (pagesContainer == null) return;
 
         processAllAnnotationLayers(layer -> {
             layer.setHighlightColor(color);
+            layer.setAnnotationOpacity(opacity);
             layer.redraw();
         });
 

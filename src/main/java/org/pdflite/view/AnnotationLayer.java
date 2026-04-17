@@ -6,6 +6,7 @@ import java.util.function.Consumer;
 
 import org.pdflite.command.CommandManager;
 import org.pdflite.model.Annotation;
+import org.pdflite.model.AnnotationLineStyle;
 import org.pdflite.model.ArrowAnnotation;
 import org.pdflite.model.CircleAnnotation;
 import org.pdflite.model.CommentAnnotation;
@@ -59,6 +60,9 @@ public class AnnotationLayer extends Canvas {
     private int pageIndex = 0;
     private Annotation tempAnnotation;
     private double currentLineWidth = 2.0;
+    private AnnotationLineStyle currentLineStyle = AnnotationLineStyle.SOLID;
+    private double currentOpacity = 1.0;
+    private double highlightOpacity = 0.4;
     private Consumer<Annotation> onAnnotationAdded;
 
     /**
@@ -171,6 +175,15 @@ public class AnnotationLayer extends Canvas {
         this.currentLineWidth = width;
     }
 
+    public void setLineStyle(AnnotationLineStyle lineStyle) {
+        this.currentLineStyle = lineStyle == null ? AnnotationLineStyle.SOLID : lineStyle;
+    }
+
+    public void setAnnotationOpacity(double opacity) {
+        this.currentOpacity = clampOpacity(opacity);
+        this.highlightOpacity = clampOpacity(opacity);
+    }
+
     // Hàm này dùng để set màu cho Vẽ hình (shapes)
     public void setDrawingColor(Color color) {
         this.drawingColor = color;
@@ -267,7 +280,7 @@ public class AnnotationLayer extends Canvas {
                         logger.warn("Cannot draw highlight - GraphicsContext is null (canvas too large)");
                         return;
                     }
-                    gc.setFill(getColorWithAlpha(highlightColor, 0.4));
+                    gc.setFill(getColorWithAlpha(highlightColor, highlightOpacity));
                     double x = Math.min(startX, event.getX());
                     double y = Math.min(startY, event.getY());
                     double w = Math.abs(event.getX() - startX);
@@ -282,22 +295,28 @@ public class AnnotationLayer extends Canvas {
                 freehandPointsY.add(mEndY);
 
                 // Create temp annotation for preview
-                tempAnnotation = new FreehandAnnotation(pageIndex, freehandPointsX, freehandPointsY, drawingColor, currentLineWidth);
+                tempAnnotation = new FreehandAnnotation(pageIndex, freehandPointsX, freehandPointsY, drawingColor,
+                        currentLineWidth, currentLineStyle, currentOpacity);
                 redraw();
             } else {
                 switch (currentMode) {
                     case RECTANGLE:
-                        tempAnnotation = new RectangleAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY, drawingColor, currentLineWidth);
+                        tempAnnotation = new RectangleAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY,
+                                drawingColor, currentLineWidth, currentLineStyle, currentOpacity);
                         break;
                     case CIRCLE:
-                        tempAnnotation = new CircleAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY, drawingColor, currentLineWidth);
+                        tempAnnotation = new CircleAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY,
+                                drawingColor, currentLineWidth, currentLineStyle, currentOpacity);
                         break;
                     case ARROW:
-                        tempAnnotation = new ArrowAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY, drawingColor, currentLineWidth);
+                        tempAnnotation = new ArrowAnnotation(pageIndex, mStartX, mStartY, mEndX, mEndY,
+                                drawingColor, currentLineWidth, currentLineStyle, currentOpacity);
                         break;
                 }
                 redraw();
             }
+
+            event.consume();
         });
 
         setOnMouseReleased(event -> {
@@ -309,7 +328,8 @@ public class AnnotationLayer extends Canvas {
                     // Create freehand annotation from collected points
                     if (freehandPointsX.size() >= 2) {
                         FreehandAnnotation freehandAnnotation = new FreehandAnnotation(
-                                pageIndex, freehandPointsX, freehandPointsY, drawingColor, currentLineWidth);
+                                pageIndex, freehandPointsX, freehandPointsY, drawingColor, currentLineWidth,
+                                currentLineStyle, currentOpacity);
 
                         if (onAnnotationAdded != null) {
                             onAnnotationAdded.accept(freehandAnnotation);
@@ -386,7 +406,8 @@ public class AnnotationLayer extends Canvas {
             double normalizedHeight = height / scale;
 
             HighlightAnnotation annotation = new HighlightAnnotation(
-                    pageIndex, normalizedX, normalizedY, normalizedWidth, normalizedHeight, highlightColor);
+                    pageIndex, normalizedX, normalizedY, normalizedWidth, normalizedHeight,
+                    highlightColor, highlightOpacity);
 
             // Don't add to local list - let the callback/command handle it
             // annotations.add(annotation);
@@ -434,7 +455,7 @@ public class AnnotationLayer extends Canvas {
             drawTextRegionHighlights(gc);
             for (Annotation annotation : annotations) {
                 if (annotation instanceof HighlightAnnotation highlight) {
-                    gc.setFill(getColorWithAlpha(highlight.getColor(), 0.4));
+                    gc.setFill(getColorWithAlpha(highlight.getColor(), highlight.getOpacity()));
                     // Scale normalized coordinates to screen coordinates
                     double scaledX = highlight.getX() * scale;
                     double scaledY = highlight.getY() * scale;
@@ -451,9 +472,7 @@ public class AnnotationLayer extends Canvas {
             }
 
             if (tempAnnotation instanceof ShapeAnnotation shapeTemp) {
-                gc.setLineDashes(5); // Nét đứt
                 shapeTemp.draw(gc, scale);
-                gc.setLineDashes(0); // Reset về nét liền
             }
         } catch (NullPointerException e) {
             logger.error("NullPointerException in redraw() - canvas too large ({}x{}). " +
@@ -477,6 +496,10 @@ public class AnnotationLayer extends Canvas {
      */
     private Color getColorWithAlpha(Color color, double alpha) {
         return Color.color(color.getRed(), color.getGreen(), color.getBlue(), alpha);
+    }
+
+    private double clampOpacity(double opacity) {
+        return Math.max(0.0, Math.min(1.0, opacity));
     }
 
     /**
@@ -944,7 +967,9 @@ public class AnnotationLayer extends Canvas {
                         highlight.getY(),
                         highlight.getWidth(),
                         highlight.getHeight(),
-                        newColor
+                        newColor,
+                        highlight.getOpacity(),
+                        highlight.getBatchId()
                 );
 
                 // Replace in list

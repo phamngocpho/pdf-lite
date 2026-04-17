@@ -26,6 +26,7 @@ import javafx.scene.shape.SVGPath;
 
 import org.pdflite.controller.PageRenderer;
 import org.pdflite.controller.ScrollHandler;
+import org.pdflite.model.AnnotationLineStyle;
 import org.pdflite.model.DocumentContext;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.service.PDFService;
@@ -75,6 +76,8 @@ public class TabManager {
     private Supplier<javafx.scene.control.ColorPicker> colorPickerSupplier;
     private Supplier<javafx.scene.control.ColorPicker> highlightColorPickerSupplier;
     private Supplier<javafx.scene.control.Slider> strokeWidthSliderSupplier;
+    private Supplier<javafx.scene.control.ComboBox<AnnotationLineStyle>> lineStyleComboBoxSupplier;
+    private Supplier<javafx.scene.control.Slider> opacitySliderSupplier;
 
     private static LanguageManager lang() {
         return LanguageManager.getInstance();
@@ -151,10 +154,14 @@ public class TabManager {
     public void setColorPickerSuppliers(
             Supplier<javafx.scene.control.ColorPicker> colorPickerSupplier,
             Supplier<javafx.scene.control.ColorPicker> highlightColorPickerSupplier,
-            Supplier<javafx.scene.control.Slider> strokeWidthSliderSupplier) {
+            Supplier<javafx.scene.control.Slider> strokeWidthSliderSupplier,
+            Supplier<javafx.scene.control.ComboBox<AnnotationLineStyle>> lineStyleComboBoxSupplier,
+            Supplier<javafx.scene.control.Slider> opacitySliderSupplier) {
         this.colorPickerSupplier = colorPickerSupplier;
         this.highlightColorPickerSupplier = highlightColorPickerSupplier;
         this.strokeWidthSliderSupplier = strokeWidthSliderSupplier;
+        this.lineStyleComboBoxSupplier = lineStyleComboBoxSupplier;
+        this.opacitySliderSupplier = opacitySliderSupplier;
     }
 
     /**
@@ -476,14 +483,21 @@ public class TabManager {
         if (annotationManager != null && colorPickerSupplier != null && strokeWidthSliderSupplier != null) {
             javafx.scene.control.ColorPicker colorPicker = colorPickerSupplier.get();
             javafx.scene.control.Slider strokeWidthSlider = strokeWidthSliderSupplier.get();
+            javafx.scene.control.ComboBox<AnnotationLineStyle> lineStyleComboBox =
+                    lineStyleComboBoxSupplier == null ? null : lineStyleComboBoxSupplier.get();
+            javafx.scene.control.Slider opacitySlider = opacitySliderSupplier == null ? null : opacitySliderSupplier.get();
+            AnnotationLineStyle lineStyle = lineStyleComboBox == null || lineStyleComboBox.getValue() == null
+                    ? AnnotationLineStyle.SOLID
+                    : lineStyleComboBox.getValue();
+            double opacity = opacitySlider == null ? 1.0 : opacitySlider.getValue();
             if (colorPicker != null && strokeWidthSlider != null) {
                 annotationManager.updateDrawingStyleForAllPages(
-                        colorPicker.getValue(), strokeWidthSlider.getValue());
+                        colorPicker.getValue(), strokeWidthSlider.getValue(), lineStyle, opacity);
             }
 
             javafx.scene.control.ColorPicker highlightColorPicker = highlightColorPickerSupplier.get();
             if (highlightColorPicker != null) {
-                annotationManager.updateHighlightColorForAllPages(highlightColorPicker.getValue());
+                annotationManager.updateHighlightColorForAllPages(highlightColorPicker.getValue(), opacity);
             }
         }
 

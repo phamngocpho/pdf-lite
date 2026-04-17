@@ -56,6 +56,13 @@ public class UserPreferencesManager {
         // View settings
         private boolean showToolbar = true;
         private boolean showStatusBar = true;
+
+        // Annotation style settings
+        private String annotationDrawingColor = "#FFFFFFFF";
+        private String annotationHighlightColor = "#FFFF00FF";
+        private double annotationStrokeWidth = 2.0;
+        private String annotationLineStyle = "SOLID";
+        private double annotationOpacity = 1.0;
         
         // AI settings
         private String aiProvider = "groq";
@@ -101,6 +108,21 @@ public class UserPreferencesManager {
         
         public boolean isShowStatusBar() { return showStatusBar; }
         public void setShowStatusBar(boolean showStatusBar) { this.showStatusBar = showStatusBar; }
+
+        public String getAnnotationDrawingColor() { return annotationDrawingColor; }
+        public void setAnnotationDrawingColor(String annotationDrawingColor) { this.annotationDrawingColor = annotationDrawingColor; }
+
+        public String getAnnotationHighlightColor() { return annotationHighlightColor; }
+        public void setAnnotationHighlightColor(String annotationHighlightColor) { this.annotationHighlightColor = annotationHighlightColor; }
+
+        public double getAnnotationStrokeWidth() { return annotationStrokeWidth; }
+        public void setAnnotationStrokeWidth(double annotationStrokeWidth) { this.annotationStrokeWidth = annotationStrokeWidth; }
+
+        public String getAnnotationLineStyle() { return annotationLineStyle; }
+        public void setAnnotationLineStyle(String annotationLineStyle) { this.annotationLineStyle = annotationLineStyle; }
+
+        public double getAnnotationOpacity() { return annotationOpacity; }
+        public void setAnnotationOpacity(double annotationOpacity) { this.annotationOpacity = annotationOpacity; }
         
         public String getAiProvider() { return aiProvider; }
         public void setAiProvider(String aiProvider) { this.aiProvider = aiProvider; }

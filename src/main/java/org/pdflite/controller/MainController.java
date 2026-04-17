@@ -15,6 +15,7 @@ import javafx.scene.layout.GridPane;
 import org.pdflite.dialog.SettingsDialog;
 import org.pdflite.dialog.KeyboardShortcutsDialog;
 import org.pdflite.manager.*;
+import org.pdflite.model.AnnotationLineStyle;
 import org.pdflite.model.PDFDocument;
 import org.pdflite.model.SearchResult;
 import org.pdflite.service.PDFPrintService;
@@ -22,6 +23,7 @@ import org.pdflite.service.PDFService;
 import org.pdflite.util.Constants;
 import org.pdflite.util.NavigationHelper;
 import org.pdflite.view.AnnotationLayer;
+import org.pdflite.view.ContextMenuPane;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,6 +120,16 @@ public class MainController {
     private Slider strokeWidthSlider;
     @FXML
     private Label strokeWidthLabel;
+    @FXML
+    private ComboBox<AnnotationLineStyle> lineStyleComboBox;
+    @FXML
+    private Slider opacitySlider;
+    @FXML
+    private Label opacityLabel;
+    @FXML
+    private Label lineStyleTitleLabel;
+    @FXML
+    private Label opacityTitleLabel;
     @FXML
     private Label drawingToolsLabel;
     @FXML
@@ -355,6 +367,7 @@ public class MainController {
 
         rootPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene != null) {
+                installCustomColorGuard(newScene);
                 themeManager = new ThemeManager(newScene, logoImageView);
                 themeManager.setThemeMenuItems(systemThemeItem, lightThemeItem, darkThemeItem);
                 searchDialogManager.setThemeManager(themeManager);
@@ -445,6 +458,32 @@ public class MainController {
                 if (autoHideUIManager != null) {
                     autoHideUIManager.setupSceneTracking(newScene);
                 }
+            }
+        });
+    }
+
+    private void installCustomColorGuard(javafx.scene.Scene scene) {
+        scene.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            Object target = event.getTarget();
+            if (!(target instanceof Hyperlink hyperlink)) {
+                return;
+            }
+
+            String text = hyperlink.getText();
+            if (text == null || !text.toLowerCase().contains("custom")) {
+                return;
+            }
+
+            javafx.scene.Node parent = hyperlink;
+            while (parent != null) {
+                if (parent.getStyleClass().contains("color-picker-popup")) {
+                    event.consume();
+                    if (uiStateManager != null) {
+                        uiStateManager.updateStatus("Custom color is disabled to avoid runtime crash");
+                    }
+                    return;
+                }
+                parent = parent.getParent();
             }
         });
     }
@@ -594,6 +633,8 @@ public class MainController {
         drawingToolsSetupManager.setupHighlightColorPicker(highlightColorPicker, this::updateHighlightColorForAllPages);
         drawingToolsSetupManager.setupStrokeWidthSlider(strokeWidthSlider, strokeWidthLabel,
                 this::updateDrawingStyleForAllPages);
+        drawingToolsSetupManager.setupLineStyleSelector(lineStyleComboBox, this::updateDrawingStyleForAllPages);
+        drawingToolsSetupManager.setupOpacitySlider(opacitySlider, opacityLabel, this::updateAnnotationOpacityForAllPages);
 
         // Save Manager
         saveManager = new SaveManager(fileManager, documentLifecycleManager, highlightPersistenceManager,
@@ -616,7 +657,9 @@ public class MainController {
         tabManager.setColorPickerSuppliers(
                 () -> colorPicker,
                 () -> highlightColorPicker,
-                () -> strokeWidthSlider
+                () -> strokeWidthSlider,
+                () -> lineStyleComboBox,
+                () -> opacitySlider
         );
         tabManager.setOnTabSwitched(doc -> {
             renderingManager = tabManager.getRenderingManager();
@@ -643,7 +686,7 @@ public class MainController {
             titleLabel, menuBar, toolbar, openButton, saveButton, printButton,
             prevButton, nextButton, zoomOutButton, zoomInButton, bookmarksButton,
             aiChatButton, aiChatTooltip, drawingToolsMenu, drawingToolsLabel,
-             drawingColorLabel, highlightColorLabel, strokeWidthTitleLabel,
+            drawingColorLabel, highlightColorLabel, strokeWidthTitleLabel, lineStyleTitleLabel, opacityTitleLabel,
             englishItem, vietnameseItem, toggleToolbarMenuItem, toggleSidebarMenuItem, fullScreenMenuItem, uiStateManager
         );
         
@@ -809,6 +852,7 @@ public class MainController {
                 uiStateManager,
                 pageRenderer,
                 () -> drawingToolsGroup,
+                this::getCurrentPagesContainer,
                 this::updateAnnotationModeForAllPages
         );
 
@@ -1069,8 +1113,47 @@ public class MainController {
 
     @FXML
     private void handleHighlight() {
+        if (pageRenderer != null && pageRenderer.getContextMenuHandler() != null
+                && pageRenderer.getContextMenuHandler().hasTextAtPosition()) {
+            // PDF-app style behavior: if text is selected, Ctrl+H highlights selection immediately.
+            pageRenderer.getContextMenuHandler().handleHighlightSelection();
+            clearContextMenuSelections();
+            if (highlightModeManager != null) {
+                highlightModeManager.deactivateHighlightMode();
+            }
+            return;
+        }
+
+        // One-shot behavior: no persistent drag-highlight mode.
         if (highlightModeManager != null) {
-            highlightModeManager.handleHighlight();
+            highlightModeManager.deactivateHighlightMode();
+        }
+        if (uiStateManager != null) {
+            uiStateManager.updateStatus(lang().getString("highlight.selectTextFirst"));
+        }
+    }
+
+    private void clearContextMenuSelections() {
+        VBox pagesContainer = getCurrentPagesContainer();
+        if (pagesContainer == null) {
+            return;
+        }
+
+        for (javafx.scene.Node node : pagesContainer.getChildren()) {
+            if (!(node instanceof VBox pageBox) || pageBox.getChildren().isEmpty()) {
+                continue;
+            }
+
+            javafx.scene.Node firstChild = pageBox.getChildren().getFirst();
+            if (!(firstChild instanceof StackPane stackPane)) {
+                continue;
+            }
+
+            for (javafx.scene.Node layer : stackPane.getChildren()) {
+                if (layer instanceof ContextMenuPane contextMenuPane) {
+                    contextMenuPane.clearSelection();
+                }
+            }
         }
     }
 
@@ -1466,15 +1549,40 @@ public class MainController {
     private void updateDrawingStyleForAllPages() {
         AnnotationManager currentAnnotationManager = getCurrentAnnotationManager();
         if (currentAnnotationManager != null && colorPicker != null && strokeWidthSlider != null) {
-            currentAnnotationManager.updateDrawingStyleForAllPages(colorPicker.getValue(), strokeWidthSlider.getValue());
+            javafx.scene.paint.Color drawingColor = colorPicker.getValue() == null
+                    ? javafx.scene.paint.Color.WHITE
+                    : colorPicker.getValue();
+            currentAnnotationManager.updateDrawingStyleForAllPages(
+                    drawingColor,
+                    strokeWidthSlider.getValue(),
+                    getSelectedLineStyle(),
+                    getSelectedOpacity());
         }
     }
 
     private void updateHighlightColorForAllPages() {
         AnnotationManager currentAnnotationManager = getCurrentAnnotationManager();
         if (currentAnnotationManager != null && highlightColorPicker != null) {
-            currentAnnotationManager.updateHighlightColorForAllPages(highlightColorPicker.getValue());
+            javafx.scene.paint.Color highlightColor = highlightColorPicker.getValue() == null
+                    ? javafx.scene.paint.Color.YELLOW
+                    : highlightColorPicker.getValue();
+            currentAnnotationManager.updateHighlightColorForAllPages(highlightColor, getSelectedOpacity());
         }
+    }
+
+    private void updateAnnotationOpacityForAllPages() {
+        updateDrawingStyleForAllPages();
+        updateHighlightColorForAllPages();
+    }
+
+    private AnnotationLineStyle getSelectedLineStyle() {
+        return lineStyleComboBox != null && lineStyleComboBox.getValue() != null
+                ? lineStyleComboBox.getValue()
+                : AnnotationLineStyle.SOLID;
+    }
+
+    private double getSelectedOpacity() {
+        return opacitySlider != null ? opacitySlider.getValue() : 1.0;
     }
 
     public javafx.scene.paint.Color getHighlightColor() {

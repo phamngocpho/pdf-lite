@@ -62,4 +62,13 @@ class HighlightAnnotationTest {
         assertEquals(Color.YELLOW, yellow.getColor());
         assertEquals(Color.CYAN, cyan.getColor());
     }
+
+    @Test
+    void testHighlightOpacity() {
+        HighlightAnnotation annotation = new HighlightAnnotation(
+            0, 0, 0, 100, 20, Color.YELLOW, 0.55
+        );
+
+        assertEquals(0.55, annotation.getOpacity());
+    }
 }

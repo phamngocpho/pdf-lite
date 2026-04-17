@@ -1,6 +1,7 @@
 package org.pdflite.manager;
 
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.VBox;
 import org.pdflite.controller.PageRenderer;
 import org.pdflite.view.AnnotationLayer;
 import org.slf4j.Logger;
@@ -19,6 +20,7 @@ public class HighlightModeManager {
     private final UIStateManager uiStateManager;
     private final PageRenderer pageRenderer;
     private final Supplier<ToggleGroup> drawingToolsGroupSupplier;
+    private final Supplier<VBox> pagesContainerSupplier;
     private final Consumer<AnnotationLayer.AnnotationMode> annotationModeUpdater;
 
     private boolean highlightModeActive = false;
@@ -30,10 +32,12 @@ public class HighlightModeManager {
     public HighlightModeManager(UIStateManager uiStateManager,
                                 PageRenderer pageRenderer,
                                 Supplier<ToggleGroup> drawingToolsGroupSupplier,
+                                Supplier<VBox> pagesContainerSupplier,
                                 Consumer<AnnotationLayer.AnnotationMode> annotationModeUpdater) {
         this.uiStateManager = uiStateManager;
         this.pageRenderer = pageRenderer;
         this.drawingToolsGroupSupplier = drawingToolsGroupSupplier;
+        this.pagesContainerSupplier = pagesContainerSupplier;
         this.annotationModeUpdater = annotationModeUpdater;
     }
 
@@ -51,13 +55,13 @@ public class HighlightModeManager {
             }
 
             uiStateManager.updateStatus(lang().getString("toolbar.highlight"));
-            pageRenderer.setHighlightModeActive();
+            pageRenderer.setSelectionModeActive(pagesContainerSupplier.get(), false);
             annotationModeUpdater.accept(AnnotationLayer.AnnotationMode.HIGHLIGHT);
             logger.debug("Highlight mode activated");
         } else {
             uiStateManager.updateStatus(lang().getString("status.ready"));
-            pageRenderer.setHighlightModeActive();
             annotationModeUpdater.accept(AnnotationLayer.AnnotationMode.NONE);
+            pageRenderer.setSelectionModeActive(pagesContainerSupplier.get(), true);
             logger.debug("Highlight mode deactivated");
         }
     }
@@ -68,5 +72,20 @@ public class HighlightModeManager {
 
     public void setHighlightModeActive(boolean active) {
         this.highlightModeActive = active;
+    }
+
+    /**
+     * Explicitly turns off highlight mode and restores text selection mode.
+     */
+    public void deactivateHighlightMode() {
+        if (!highlightModeActive) {
+            return;
+        }
+
+        highlightModeActive = false;
+        annotationModeUpdater.accept(AnnotationLayer.AnnotationMode.NONE);
+        pageRenderer.setSelectionModeActive(pagesContainerSupplier.get(), true);
+        uiStateManager.updateStatus(lang().getString("status.ready"));
+        logger.debug("Highlight mode deactivated explicitly");
     }
 }

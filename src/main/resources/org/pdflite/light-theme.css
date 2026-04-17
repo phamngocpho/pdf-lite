@@ -1742,3 +1742,13 @@
     -fx-background-color: #007AFF;
     -fx-text-fill: white;
 }
+
+/* Workaround: disable JavaFX built-in Custom Color link (can crash on some runtimes) */
+.color-picker-popup .custom-color-link,
+.color-picker-popup .hyperlink {
+    -fx-opacity: 0;
+    -fx-pref-height: 0;
+    -fx-max-height: 0;
+    -fx-min-height: 0;
+    -fx-padding: 0;
+}

@@ -20,8 +20,15 @@ public class FreehandAnnotation extends Annotation {
     private final List<Double> pointsY;
     private Color color;
     private double lineWidth;
+    private AnnotationLineStyle lineStyle;
+    private double opacity;
 
     public FreehandAnnotation(int pageNumber, List<Double> pointsX, List<Double> pointsY, Color color, double lineWidth) {
+        this(pageNumber, pointsX, pointsY, color, lineWidth, AnnotationLineStyle.SOLID, 1.0);
+    }
+
+    public FreehandAnnotation(int pageNumber, List<Double> pointsX, List<Double> pointsY, Color color,
+                              double lineWidth, AnnotationLineStyle lineStyle, double opacity) {
         super(pageNumber,
               pointsX.isEmpty() ? 0 : pointsX.get(0),
               pointsY.isEmpty() ? 0 : pointsY.get(0),
@@ -30,6 +37,8 @@ public class FreehandAnnotation extends Annotation {
         this.pointsY = new ArrayList<>(pointsY);
         this.color = color;
         this.lineWidth = lineWidth;
+        this.lineStyle = lineStyle == null ? AnnotationLineStyle.SOLID : lineStyle;
+        this.opacity = clampOpacity(opacity);
     }
 
     public List<Double> getPointsX() {
@@ -56,6 +65,22 @@ public class FreehandAnnotation extends Annotation {
         this.lineWidth = lineWidth;
     }
 
+    public AnnotationLineStyle getLineStyle() {
+        return lineStyle;
+    }
+
+    public void setLineStyle(AnnotationLineStyle lineStyle) {
+        this.lineStyle = lineStyle == null ? AnnotationLineStyle.SOLID : lineStyle;
+    }
+
+    public double getOpacity() {
+        return opacity;
+    }
+
+    public void setOpacity(double opacity) {
+        this.opacity = clampOpacity(opacity);
+    }
+
     public int getPointCount() {
         return Math.min(pointsX.size(), pointsY.size());
     }
@@ -76,8 +101,9 @@ public class FreehandAnnotation extends Annotation {
             return;
         }
 
-        gc.setStroke(color);
+        gc.setStroke(Color.color(color.getRed(), color.getGreen(), color.getBlue(), opacity));
         gc.setLineWidth(lineWidth * scale);
+        gc.setLineDashes(lineStyle.getDashPattern(lineWidth, scale));
         gc.setLineCap(javafx.scene.shape.StrokeLineCap.ROUND);
         gc.setLineJoin(javafx.scene.shape.StrokeLineJoin.ROUND);
 
@@ -92,5 +118,10 @@ public class FreehandAnnotation extends Annotation {
         }
 
         gc.stroke();
+        gc.setLineDashes(0);
+    }
+
+    private double clampOpacity(double opacity) {
+        return Math.max(0.0, Math.min(1.0, opacity));
     }
 }
