@@ -425,6 +425,43 @@
     -fx-background-radius: 4;
 }
 
+/* Line Style ComboBox in Drawing Tools */
+.context-menu .custom-menu-item .line-style-combo {
+    -fx-background-color: #3a3a3a;
+    -fx-border-color: #505050;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 4 8;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.context-menu .custom-menu-item .line-style-combo:hover {
+    -fx-border-color: #606060;
+}
+
+.context-menu .custom-menu-item .line-style-combo:focused {
+    -fx-border-color: #505050;
+    -fx-border-width: 1;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.context-menu .custom-menu-item .line-style-combo .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #c0c0c0;
+    -fx-padding: 0 8 0 0;
+}
+
+.context-menu .custom-menu-item .line-style-combo .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.context-menu .custom-menu-item .line-style-combo .arrow {
+    -fx-background-color: #c0c0c0;
+}
+
 /* Slider in Drawing Tools */
 .context-menu .custom-menu-item .slider .track {
     -fx-background-color: #404040;
