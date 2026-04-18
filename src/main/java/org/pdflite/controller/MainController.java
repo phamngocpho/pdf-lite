@@ -292,6 +292,7 @@ public class MainController {
     private PageReorderUIManager pageReorderUIManager;
     private PageInsertManager pageInsertManager;
     private AIChatManager aiChatManager;
+    private AnnotationExchangeManager annotationExchangeManager;
 
     // ==================== Document State ====================
     
@@ -401,6 +402,9 @@ public class MainController {
 
                 if (bookmarkUIManager != null) {
                     bookmarkUIManager.setThemeManager(themeManager);
+                }
+                if (annotationExchangeManager != null) {
+                    annotationExchangeManager.setThemeManager(themeManager);
                 }
 
                 documentOperationManager = new DocumentOperationManager(pdfService, renderingManager, zoomManager,
@@ -773,6 +777,14 @@ public class MainController {
         // Bookmark UI Manager
         bookmarkUIManager = new BookmarkUIManager(rootPane, bookmarkManager, uiStateManager, navigationHelper);
 
+        // Annotation XFDF exchange manager
+        annotationExchangeManager = new AnnotationExchangeManager(
+                rootPane,
+                uiStateManager,
+                this::getActiveDocument,
+                this::getCurrentAnnotationManager
+        );
+
         // PDF Outline Bookmark Manager
         pdfOutlineBookmarkManager = new PDFOutlineBookmarkManager(bookmarkManager);
 
@@ -979,6 +991,20 @@ public class MainController {
     @FXML
     private void handleExport() {
         exportManager.openExportDialog(getActiveDocument());
+    }
+
+    @FXML
+    private void handleExportAnnotations() {
+        if (annotationExchangeManager != null) {
+            annotationExchangeManager.handleExportAnnotations();
+        }
+    }
+
+    @FXML
+    private void handleImportAnnotations() {
+        if (annotationExchangeManager != null) {
+            annotationExchangeManager.handleImportAnnotations();
+        }
     }
 
     @FXML

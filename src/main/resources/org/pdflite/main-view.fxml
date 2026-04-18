@@ -126,6 +126,9 @@
                     <SeparatorMenuItem/>
                     <MenuItem text="Delete Page" onAction="#handleDeletePage" accelerator="Delete"/>
                     <MenuItem text="Duplicate Page" onAction="#handleDuplicatePage" accelerator="Ctrl+Shift+D"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="Export Annotations (XFDF)" onAction="#handleExportAnnotations"/>
+                    <MenuItem text="Import Annotations (XFDF)" onAction="#handleImportAnnotations"/>
                 </Menu>
 
                 <Menu text="Help">
@@ -338,6 +341,9 @@
                         <MenuItem text="Search..." onAction="#handleSearch"/>
                         <MenuItem text="Search Panel (Left)" onAction="#handleSearchLeft"/>
                         <MenuItem text="Search Panel (Right)" onAction="#handleSearchRight"/>
+                        <SeparatorMenuItem/>
+                        <MenuItem text="Export Annotations (XFDF)" onAction="#handleExportAnnotations"/>
+                        <MenuItem text="Import Annotations (XFDF)" onAction="#handleImportAnnotations"/>
                     </items>
                 </MenuButton>
 
