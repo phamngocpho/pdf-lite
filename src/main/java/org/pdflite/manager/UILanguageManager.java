@@ -315,6 +315,8 @@ public class UILanguageManager {
             setMenuItemText(items, 2, "annotate.search");
             setMenuItemText(items, 3, "annotate.searchLeft");
             setMenuItemText(items, 4, "annotate.searchRight");
+            setMenuItemText(items, 6, "annotate.exportAnnotations");
+            setMenuItemText(items, 7, "annotate.importAnnotations");
         }
     }
 
@@ -428,6 +430,8 @@ public class UILanguageManager {
             setMenuItemText(items, 15, "menu.tools.permissions");
             setMenuItemText(items, 17, "menu.tools.deletePage");
             setMenuItemText(items, 18, "menu.tools.duplicatePage");
+            setMenuItemText(items, 20, "menu.tools.exportAnnotations");
+            setMenuItemText(items, 21, "menu.tools.importAnnotations");
         }
     }
 
