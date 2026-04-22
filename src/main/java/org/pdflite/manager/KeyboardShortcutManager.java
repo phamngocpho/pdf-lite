@@ -9,6 +9,8 @@ import javafx.scene.input.KeyEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.function.BooleanSupplier;
+
 /**
  * Manages keyboard shortcuts for the application.
  */
@@ -27,9 +29,13 @@ public class KeyboardShortcutManager {
     private final Runnable searchAction;
     private final Runnable hideSearchAction;
     private final Runnable fullScreenAction;
+    private final Runnable presentationModeAction;
+    private final BooleanSupplier presentationModeActiveSupplier;
+    private final Runnable exitPresentationModeAction;
 
     public KeyboardShortcutManager(UndoRedoManager undoRedoManager, Runnable openShortcutsHelpAction) {
-        this(undoRedoManager, openShortcutsHelpAction, null, null, null, null, null, null, null, null, null);
+        this(undoRedoManager, openShortcutsHelpAction, null, null, null, null, null, null, null, null, null,
+                null, null, null);
     }
 
     public KeyboardShortcutManager(UndoRedoManager undoRedoManager,
@@ -42,7 +48,10 @@ public class KeyboardShortcutManager {
                                    Runnable fitToPageAction,
                                    Runnable searchAction,
                                    Runnable hideSearchAction,
-                                   Runnable fullScreenAction) {
+                                   Runnable fullScreenAction,
+                                   Runnable presentationModeAction,
+                                   BooleanSupplier presentationModeActiveSupplier,
+                                   Runnable exitPresentationModeAction) {
         this.undoRedoManager = undoRedoManager;
         this.openShortcutsHelpAction = openShortcutsHelpAction;
         this.previousPageAction = previousPageAction;
@@ -54,6 +63,9 @@ public class KeyboardShortcutManager {
         this.searchAction = searchAction;
         this.hideSearchAction = hideSearchAction;
         this.fullScreenAction = fullScreenAction;
+        this.presentationModeAction = presentationModeAction;
+        this.presentationModeActiveSupplier = presentationModeActiveSupplier;
+        this.exitPresentationModeAction = exitPresentationModeAction;
     }
 
     /**
@@ -97,12 +109,20 @@ public class KeyboardShortcutManager {
             runAndConsume(nextPageAction, event);
             return;
         }
+        if (event.getCode() == KeyCode.ESCAPE && isPresentationModeActive()) {
+            runAndConsume(exitPresentationModeAction, event);
+            return;
+        }
         if (event.getCode() == KeyCode.ESCAPE) {
             runAndConsume(hideSearchAction, event);
             return;
         }
         if (event.getCode() == KeyCode.F11) {
             runAndConsume(fullScreenAction, event);
+            return;
+        }
+        if (event.getCode() == KeyCode.F5) {
+            runAndConsume(presentationModeAction, event);
             return;
         }
 
@@ -179,5 +199,9 @@ public class KeyboardShortcutManager {
         if (undoRedoManager != null) {
             undoRedoManager.handleRedo();
         }
+    }
+
+    private boolean isPresentationModeActive() {
+        return presentationModeActiveSupplier != null && presentationModeActiveSupplier.getAsBoolean();
     }
 }

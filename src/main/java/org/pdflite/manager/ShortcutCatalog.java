@@ -55,7 +55,8 @@ public final class ShortcutCatalog {
                         new ShortcutEntry("shortcuts.action.pageLabels", "Ctrl+Shift+L"),
                         new ShortcutEntry("shortcuts.action.hideToolbar", "Ctrl+T"),
                         new ShortcutEntry("shortcuts.action.autoHideUI", "Ctrl+Shift+H"),
-                        new ShortcutEntry("shortcuts.action.fullScreen", "F11")
+                        new ShortcutEntry("shortcuts.action.fullScreen", "F11"),
+                        new ShortcutEntry("shortcuts.action.presentation", "F5")
                 )),
                 new ShortcutGroup("shortcuts.group.edit", List.of(
                         new ShortcutEntry("menu.edit.editText", "Ctrl+E"),
