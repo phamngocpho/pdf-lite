@@ -1,6 +1,5 @@
 package org.pdflite.controller;
 
-import javafx.animation.FadeTransition;
 import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
 import javafx.event.EventHandler;
@@ -24,7 +23,6 @@ import javafx.scene.paint.Color;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
-import javafx.util.Duration;
 import org.pdflite.util.DialogTitleBar;
 import org.pdflite.manager.LanguageManager;
 import org.pdflite.manager.UIStateManager;
@@ -178,7 +176,6 @@ public class PresentationViewController {
             return;
         }
         action.run();
-        playTransition();
         Platform.runLater(this::updateProgress);
     }
 
@@ -374,16 +371,6 @@ public class PresentationViewController {
         }
         scrollListener = null;
         fullscreenListener = null;
-    }
-
-    private void playTransition() {
-        if (activeContext == null || activeContext.getContentPane() == null) {
-            return;
-        }
-        FadeTransition transition = new FadeTransition(Duration.millis(120), activeContext.getContentPane());
-        transition.setFromValue(0.86);
-        transition.setToValue(1.0);
-        transition.play();
     }
 
     private void openPresenterView(Stage presentationStage) {
