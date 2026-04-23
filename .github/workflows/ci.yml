@@ -41,26 +41,22 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Make mvnw executable (Unix)
-        if: runner.os != 'Windows'
-        run: chmod +x ./mvnw
-
       - name: Run Tests (Windows)
         if: runner.os == 'Windows'
         run: |
-          ./mvnw.cmd clean test -B "-Dtest=!org.pdflite.service.SearchServiceTest,!org.pdflite.service.WatermarkServiceTest,!org.pdflite.service.PDFServiceTest,!org.pdflite.manager.ContentStreamManagerTest,!org.pdflite.manager.AutoSaveManagerTest,!org.pdflite.manager.BookmarkManagerTest,!org.pdflite.manager.CompressionManagerTest,!org.pdflite.manager.ImageManagerTest,!org.pdflite.manager.MetadataManagerTest,!org.pdflite.manager.PageDeletionTest,!org.pdflite.manager.PageDuplicationManagerTest,!org.pdflite.manager.PageInfoManagerTest,!org.pdflite.model.PDFDocumentTest,!org.pdflite.command.AddAnnotationCommandTest,!org.pdflite.command.DeletePageCommandTest"
+          mvn clean test -B "-Dtest=!org.pdflite.service.SearchServiceTest,!org.pdflite.service.WatermarkServiceTest,!org.pdflite.service.PDFServiceTest,!org.pdflite.manager.ContentStreamManagerTest,!org.pdflite.manager.AutoSaveManagerTest,!org.pdflite.manager.BookmarkManagerTest,!org.pdflite.manager.CompressionManagerTest,!org.pdflite.manager.ImageManagerTest,!org.pdflite.manager.MetadataManagerTest,!org.pdflite.manager.PageDeletionTest,!org.pdflite.manager.PageDuplicationManagerTest,!org.pdflite.manager.PageInfoManagerTest,!org.pdflite.model.PDFDocumentTest,!org.pdflite.command.AddAnnotationCommandTest,!org.pdflite.command.DeletePageCommandTest"
 
       - name: Run Tests (Unix)
         if: runner.os != 'Windows'
-        run: ./mvnw clean test -Djava.awt.headless=true -Dglass.platform=Monocle -Dmonocle.platform=Headless -Dprism.order=sw -B
+        run: mvn clean test -Djava.awt.headless=true -Dglass.platform=Monocle -Dmonocle.platform=Headless -Dprism.order=sw -B
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
-        run: ./mvnw.cmd package -DskipTests -T 1C
+        run: mvn package -DskipTests -T 1C
 
       - name: Build (Unix)
         if: runner.os != 'Windows'
-        run: ./mvnw package -DskipTests -T 1C
+        run: mvn package -DskipTests -T 1C
 
       - name: Rename JAR (Windows)
         if: runner.os == 'Windows'
