@@ -41,6 +41,7 @@ public class UILanguageManager {
     private MenuItem toggleToolbarMenuItem;
     private MenuItem toggleSidebarMenuItem;
     private MenuItem fullScreenMenuItem;
+    private MenuItem presentationModeMenuItem;
     private UIStateManager uiStateManager;
 
     public UILanguageManager(LanguageManager languageManager) {
@@ -76,6 +77,7 @@ public class UILanguageManager {
             MenuItem toggleToolbarMenuItem,
             MenuItem toggleSidebarMenuItem,
             MenuItem fullScreenMenuItem,
+            MenuItem presentationModeMenuItem,
             UIStateManager uiStateManager
     ) {
         this.titleLabel = titleLabel;
@@ -103,6 +105,7 @@ public class UILanguageManager {
         this.toggleToolbarMenuItem = toggleToolbarMenuItem;
         this.toggleSidebarMenuItem = toggleSidebarMenuItem;
         this.fullScreenMenuItem = fullScreenMenuItem;
+        this.presentationModeMenuItem = presentationModeMenuItem;
         this.uiStateManager = uiStateManager;
     }
 
@@ -301,10 +304,11 @@ public class UILanguageManager {
 
     private void updateViewToolbarMenuItems(MenuButton menuBtn) {
         var items = menuBtn.getItems();
-        if (items.size() >= 4) {
+        if (items.size() >= 5) {
             setMenuItemText(items, 0, "menu.view.rotateLeft");
             setMenuItemText(items, 1, "menu.view.rotateRight");
             setMenuItemText(items, 3, "menu.view.fullScreen");
+            setMenuItemText(items, 4, "menu.view.presentation");
         }
     }
 
@@ -409,6 +413,9 @@ public class UILanguageManager {
             // Update full screen menu item
             if (fullScreenMenuItem != null) {
                 fullScreenMenuItem.setText(languageManager.getString("menu.view.fullScreen"));
+            }
+            if (presentationModeMenuItem != null) {
+                presentationModeMenuItem.setText(languageManager.getString("menu.view.presentation"));
             }
         }
     }

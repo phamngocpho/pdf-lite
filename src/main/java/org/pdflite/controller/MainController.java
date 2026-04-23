@@ -173,6 +173,8 @@ public class MainController {
     @FXML
     private javafx.scene.control.MenuItem fullScreenMenuItem;
     @FXML
+    private javafx.scene.control.MenuItem presentationModeMenuItem;
+    @FXML
     private RadioMenuItem systemThemeItem;
     @FXML
     private RadioMenuItem lightThemeItem;
@@ -293,6 +295,7 @@ public class MainController {
     private PageInsertManager pageInsertManager;
     private AIChatManager aiChatManager;
     private AnnotationExchangeManager annotationExchangeManager;
+    private PresentationViewController presentationViewController;
 
     // ==================== Document State ====================
     
@@ -605,7 +608,10 @@ public class MainController {
                 this::handleFitToPage,
                 this::handleSearchLeft,
                 this::handleHideSearch,
-                this::handleToggleFullScreen);
+                this::handleToggleFullScreen,
+                this::handleTogglePresentationMode,
+                () -> presentationViewController != null && presentationViewController.isActive(),
+                this::handleExitPresentationMode);
 
         // Document Setup Manager
         documentSetupManager = new DocumentSetupManager(
@@ -691,7 +697,8 @@ public class MainController {
             prevButton, nextButton, zoomOutButton, zoomInButton, bookmarksButton,
             aiChatButton, aiChatTooltip, drawingToolsMenu, drawingToolsLabel,
             drawingColorLabel, highlightColorLabel, strokeWidthTitleLabel, lineStyleTitleLabel, opacityTitleLabel,
-            englishItem, vietnameseItem, toggleToolbarMenuItem, toggleSidebarMenuItem, fullScreenMenuItem, uiStateManager
+            englishItem, vietnameseItem, toggleToolbarMenuItem, toggleSidebarMenuItem,
+            fullScreenMenuItem, presentationModeMenuItem, uiStateManager
         );
         
         // Update UI with current language
@@ -940,6 +947,18 @@ public class MainController {
         // Auto Hide UI Manager
         autoHideUIManager = new AutoHideUIManager(menuBar, toolbar, rootPane);
         autoHideUIManager.setTabPane(documentTabPane);
+
+        // Presentation Mode Controller
+        presentationViewController = new PresentationViewController(
+                rootPane,
+                documentTabPane,
+                uiStateManager,
+                this::getCurrentContext,
+                () -> rootPane.getScene() == null ? null : (Stage) rootPane.getScene().getWindow(),
+                zoomManager,
+                this::navigatePreviousPageInternal,
+                this::navigateNextPageInternal
+        );
     }
 
     // ==================== File Operations ====================
@@ -1020,6 +1039,9 @@ public class MainController {
     }
 
     public void performExit() {
+        if (presentationViewController != null && presentationViewController.isActive()) {
+            presentationViewController.exit();
+        }
         if (applicationLifecycleManager != null && tabManager != null) {
             for (org.pdflite.model.DocumentContext context : tabManager.getTabContextMap().values()) {
                 applicationLifecycleManager.performExit(context.getDocument());
@@ -1116,13 +1138,29 @@ public class MainController {
 
     @FXML
     private void handlePreviousPage() {
+        if (presentationViewController != null && presentationViewController.isActive()) {
+            presentationViewController.navigatePrevious();
+            return;
+        }
+        navigatePreviousPageInternal();
+    }
+
+    @FXML
+    private void handleNextPage() {
+        if (presentationViewController != null && presentationViewController.isActive()) {
+            presentationViewController.navigateNext();
+            return;
+        }
+        navigateNextPageInternal();
+    }
+
+    private void navigatePreviousPageInternal() {
         if (navigationManager != null) {
             navigationManager.handlePreviousPage();
         }
     }
 
-    @FXML
-    private void handleNextPage() {
+    private void navigateNextPageInternal() {
         if (navigationManager != null) {
             navigationManager.handleNextPage();
         }
@@ -1221,6 +1259,19 @@ public class MainController {
     @FXML
     private void handleToggleFullScreen() {
         fullscreenManager.toggleFullScreen();
+    }
+
+    @FXML
+    private void handleTogglePresentationMode() {
+        if (presentationViewController != null) {
+            presentationViewController.toggle();
+        }
+    }
+
+    private void handleExitPresentationMode() {
+        if (presentationViewController != null && presentationViewController.isActive()) {
+            presentationViewController.exit();
+        }
     }
 
     // ==================== Search Operations ====================

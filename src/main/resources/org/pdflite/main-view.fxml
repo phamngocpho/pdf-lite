@@ -104,6 +104,7 @@
                     </Menu>
                     <SeparatorMenuItem/>
                     <MenuItem fx:id="fullScreenMenuItem" text="Toggle Full Screen" onAction="#handleToggleFullScreen" accelerator="F11"/>
+                    <MenuItem fx:id="presentationModeMenuItem" text="Presentation Mode" onAction="#handleTogglePresentationMode" accelerator="F5"/>
                 </Menu>
 
                 <Menu text="Tools">
@@ -329,6 +330,7 @@
                         <MenuItem text="Rotate Right (90°)" onAction="#handleRotateRight"/>
                         <SeparatorMenuItem/>
                         <MenuItem text="Fullscreen" onAction="#handleToggleFullScreen"/>
+                        <MenuItem text="Presentation Mode" onAction="#handleTogglePresentationMode"/>
                     </items>
                 </MenuButton>
 
