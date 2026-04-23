@@ -955,6 +955,7 @@ public class MainController {
                 uiStateManager,
                 this::getCurrentContext,
                 () -> rootPane.getScene() == null ? null : (Stage) rootPane.getScene().getWindow(),
+                zoomManager,
                 this::navigatePreviousPageInternal,
                 this::navigateNextPageInternal
         );

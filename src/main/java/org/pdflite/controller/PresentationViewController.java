@@ -26,6 +26,7 @@ import javafx.stage.StageStyle;
 import org.pdflite.util.DialogTitleBar;
 import org.pdflite.manager.LanguageManager;
 import org.pdflite.manager.UIStateManager;
+import org.pdflite.manager.ZoomManager;
 import org.pdflite.model.DocumentContext;
 import org.pdflite.model.PDFDocument;
 
@@ -47,6 +48,7 @@ public class PresentationViewController {
     private final UIStateManager uiStateManager;
     private final Supplier<DocumentContext> contextSupplier;
     private final Supplier<Stage> stageSupplier;
+    private final ZoomManager zoomManager;
     private final Runnable previousPageAction;
     private final Runnable nextPageAction;
 
@@ -78,6 +80,7 @@ public class PresentationViewController {
             UIStateManager uiStateManager,
             Supplier<DocumentContext> contextSupplier,
             Supplier<Stage> stageSupplier,
+            ZoomManager zoomManager,
             Runnable previousPageAction,
             Runnable nextPageAction
     ) {
@@ -86,6 +89,7 @@ public class PresentationViewController {
         this.uiStateManager = uiStateManager;
         this.contextSupplier = contextSupplier;
         this.stageSupplier = stageSupplier;
+        this.zoomManager = zoomManager;
         this.previousPageAction = previousPageAction;
         this.nextPageAction = nextPageAction;
     }
@@ -130,6 +134,11 @@ public class PresentationViewController {
         if (!stage.isFullScreen()) {
             stage.setFullScreen(true);
         }
+        Platform.runLater(() -> {
+            if (active && zoomManager != null) {
+                zoomManager.fitToPage();
+            }
+        });
 
         updateProgress();
         if (uiStateManager != null) {
