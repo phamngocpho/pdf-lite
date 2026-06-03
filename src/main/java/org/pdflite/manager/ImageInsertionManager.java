@@ -98,6 +98,7 @@ public class ImageInsertionManager {
             controller.setImageManager(imageManager);
             controller.setTotalPages(currentDocument.getTotalPages());
             controller.setDefaultPage(currentDocument.getCurrentPage() + 1);
+            controller.setStampDefault(false);
 
             // Set page height for coordinate conversion
             int currentPageIndex = currentDocument.getCurrentPage();
@@ -173,6 +174,7 @@ public class ImageInsertionManager {
             controller.setImageManager(imageManager);
             controller.setTotalPages(currentDocument.getTotalPages());
             controller.setDefaultPage(currentDocument.getCurrentPage() + 1);
+            controller.setStampDefault(true);
 
             // Set page height for coordinate conversion
             int currentPageIndex = currentDocument.getCurrentPage();

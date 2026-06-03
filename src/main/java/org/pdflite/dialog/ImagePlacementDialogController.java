@@ -105,15 +105,22 @@ public class ImagePlacementDialogController {
      */
     public void setDialogStage(Stage dialogStage) {
         this.dialogStage = dialogStage;
-
-        // Create and add a custom title bar
-        String title = lang().getString("imagePlacement.title");
-        DialogTitleBar titleBar = new DialogTitleBar(title, dialogStage);
+        this.stageTitleFallback(dialogStage);
         // Copy children from the title bar to dialogTitleBar HBox
         dialogTitleBar.getChildren().setAll(titleBar.getTitleBar().getChildren());
         
         // Update all UI text
         updateAllUIText();
+    }
+
+    private DialogTitleBar titleBar;
+
+    private void stageTitleFallback(Stage dialogStage) {
+        String title = dialogStage.getTitle();
+        if (title == null || title.isEmpty()) {
+            title = lang().getString("imagePlacement.title");
+        }
+        titleBar = new DialogTitleBar(title, dialogStage);
     }
     
     /**
@@ -216,6 +223,17 @@ public class ImagePlacementDialogController {
     public void setDefaultPage(int pageNumber) {
         if (pageSpinner.getValueFactory() != null) {
             pageSpinner.getValueFactory().setValue(pageNumber);
+        }
+    }
+
+    /**
+     * Sets whether the stamp checkbox is selected by default.
+     *
+     * @param isStamp true to check the stamp checkbox, false otherwise
+     */
+    public void setStampDefault(boolean isStamp) {
+        if (isStampCheckBox != null) {
+            isStampCheckBox.setSelected(isStamp);
         }
     }
 
